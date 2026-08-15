@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the version you used."
+title: "GeoMapper (geoMap v2): cartographic visualisation in base MATLAB for GRACE-like gravimetry"
+type: software
+authors:
+  - family-names: Weigelt
+    given-names: Matthias
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+repository-code: "https://github.com/matweigelt/GeoMapper"
+license: MIT
+version: "2.0.0-alpha.0"
+date-released: "2026-08-13"
+keywords:
+  - MATLAB
+  - cartography
+  - map projections
+  - GRACE
+  - satellite gravimetry
+  - equivalent water height
+  - mascon
+abstract: >-
+  Publication-quality cartographic visualisation in base MATLAB, with no
+  toolbox dependencies, aimed at GRACE-like satellite gravimetry products:
+  equivalent water height fields, mascon solutions, trend maps with
+  significance masking, and along-track and time-series displays. Sixteen
+  map projections are implemented forward and inverse on a spherical
+  Earth, each validated against published worked examples, an independent
+  projection library, and analytic invariants.
+notes: >-
+  ORCID above is a placeholder and must be completed before any release
+  that is cited. The patch component of the version tracks the count of
+  verified test points, so it moves when the evidence moves and a pure
+  rename bumps nothing.

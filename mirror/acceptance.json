@@ -1,0 +1,141 @@
+{
+  "_comment": [
+    "FROZEN ACCEPTANCE CRITERIA. This file is the scientific instrument in",
+    "CI: a numerical criterion that can say no before any human reads a",
+    "diff. In a reference project the same wrong algorithm was pushed three",
+    "times in different forms and a frozen acceptance number rejected it",
+    "three times.",
+    "",
+    "Every value here was MEASURED by mirror/geomap_mirror/references.py on",
+    "13-Aug-2026 (pyproj 3.7.2 / PROJ 9.5.1). None was copied from a",
+    "document. Four values in handover revision 2.0 were refuted by that",
+    "run and do not appear here; see RECORDS.md R-002.",
+    "",
+    "A tolerance is NEVER widened to make a run pass. If a value drifts,",
+    "that is a finding: decompose the residual first. A criterion loosened",
+    "until green is an instrument destroyed in place.",
+    "",
+    "'source' records where the authority comes from, so the next reader",
+    "does not have to guess whether a number is published, measured or",
+    "analytic."
+  ],
+  "generated": "2026-08-13",
+  "oracle": "pyproj 3.7.2 / PROJ 9.5.1",
+  "expected_value_count": 37,
+  "point_values": {
+    "mercator_y_at_lat35": {
+      "expected": 0.6528365797197981,
+      "tol": 1e-12,
+      "source": "analytic: ln(tan(45 + 17.5 deg)); confirmed against O1 and O4"
+    },
+    "lcc_x_at_35N_75W": {
+      "expected": 0.2966784599,
+      "tol": 5e-06,
+      "source": "O1 Snyder 1987 p.296 worked example, spherical, R=1"
+    },
+    "lcc_y_at_35N_75W": {
+      "expected": 0.2462112293,
+      "tol": 5e-06,
+      "source": "O1 Snyder 1987 p.296 worked example, spherical, R=1"
+    },
+    "lcc_33_45_cone_constant": {
+      "expected": 0.6304776973,
+      "tol": 1e-09,
+      "source": "analytic, SPHERICAL. The handover quoted 0.6304962, which is the ELLIPSOIDAL Clarke-1866 value (matches to 2.6e-7) for a model geoMap does not use. Finding PV-011."
+    },
+    "polarstereo_rho_lat70_sp71": {
+      "expected": 0.3430474163,
+      "tol": 1e-09,
+      "source": "analytic (1+sin 71)*tan(10 deg), confirmed by O4 to 1e-10. The handover quoted 0.6116372, which matches no evaluation of any formula in either model. Finding PV-002."
+    },
+    "robinson_X_at_lat50": {
+      "expected": 0.8679,
+      "tol": 1e-12,
+      "source": "O2 Robinson table node. The handover quoted 0.9427, which is the X entry at lat 35. Finding PV-005."
+    },
+    "robinson_Y_at_lat50": {
+      "expected": 0.6176,
+      "tol": 1e-12,
+      "source": "O2 Robinson table node. The handover quoted 0.5722, which is the X entry at lat 85. Finding PV-005."
+    },
+    "robinson_pchip_node_reproduction": {
+      "expected": 0.0,
+      "tol": 1e-12,
+      "source": "PCHIP must reproduce its own table nodes exactly; anything looser hides an interpolation defect"
+    },
+    "hammer_x_limit_at_equator": {
+      "expected": 2.8284271247,
+      "tol": 0.0001,
+      "source": "analytic limit 2*sqrt(2) as lon -> 180 at the equator"
+    },
+    "paris_nyc_spherical_km": {
+      "expected": 5837.2,
+      "tol": 1.0,
+      "source": "haversine at the authalic radius; the WGS84 geodesic is 5852.9 km (O4), a difference of -0.268%, which is what decision D-001's '<= 0.3%' claim rests on"
+    }
+  },
+  "invariants_max": {
+    "_comment": "Upper bounds on measured errors. Analytic invariants (O3): equal-area projections have AreaScale 1, conformal ones have h == k, a conic has k == 1 on both standard parallels, Mercator has k == sec(phi). Bounds sit about a decade above the measured values, so drift is visible before it is harmful.",
+    "mercator_k_err": 1e-07,
+    "mollweide_area_scale_err": 1e-07,
+    "hammer_area_scale_err": 1e-07,
+    "sinusoidal_area_scale_err": 1e-07,
+    "lambert_area_scale_err": 1e-07,
+    "albers_area_scale_err": 1e-07,
+    "mercator_h_minus_k": 1e-07,
+    "stereographic_h_minus_k": 1e-06,
+    "lambertconformal_h_minus_k": 1e-07,
+    "lcc_k_on_standard_parallels_err": 1e-08
+  },
+  "equal_area_max_relative_error": {
+    "_comment": "Global quad integral against 4*pi, 1-degree quads. Pseudocylindricals only: the azimuthal rim and the conic apex are singular, so a global integral there measures discretisation rather than the projection (finding PV-007).",
+    "mollweide": 0.0002,
+    "hammer": 0.0002,
+    "sinusoidal": 0.0002
+  },
+  "round_trip_max_deg_error": {
+    "_comment": "Forward then inverse, 10000 quasi-random in-domain points, seed 42. Lambert azimuthal is inherently worse: asin conditioning at the antipodal rim (PV-010). Everything else is double-precision closed form or a converged iteration.",
+    "equirectangular": 1e-11,
+    "mercator": 1e-11,
+    "transversemercator": 1e-11,
+    "robinson": 1e-11,
+    "mollweide": 1e-10,
+    "hammer": 1e-10,
+    "winkeltripel": 1e-10,
+    "sinusoidal": 1e-11,
+    "lambert": 1e-08,
+    "stereographic": 1e-10,
+    "orthographic": 1e-09,
+    "azimuthalequidistant": 1e-09,
+    "gnomonic": 1e-10,
+    "polarstereographic": 1e-11,
+    "lambertconformal": 1e-11,
+    "albers": 1e-10
+  },
+  "proj_max_abs_diff": {
+    "_comment": "Agreement with the independent oracle O4 in projected units (Earth radii). Robinson is excluded from tight agreement: PROJ uses its own interpolation of the Robinson table, so it certifies only to about 1e-3 there (mirror limit L5). That is corroboration, not a tolerance.",
+    "default": 1e-11,
+    "robinson": 0.001,
+    "transversemercator": 1e-11,
+    "lambert": 1e-11
+  },
+  "regressions": {
+    "_comment": [
+      "Boolean criteria pinning the v1 defects this redesign exists to fix.",
+      "Added after a fault-injection run showed the gate caught a reinstated",
+      "Robinson wrap bug ONLY through oracle disagreement on two OTHER",
+      "projections: Robinson's own round trip stayed self-consistent while",
+      "being wrong. That is failure mode F1 - no self-consistency check can",
+      "catch a consistently wrong program - and it is why each defect needs",
+      "its own pinned criterion rather than trusting a general suite."
+    ],
+    "robinson_x_at_lon359": {
+      "must_be_true": "agrees",
+      "meaning": "F2: project(359,10,robinson) must be negative and |x|<0.02. v1 returned about +3.0 because it passed an unwrapped longitude difference to the table."
+    },
+    "mercator_y_at_lat87_is_nan": {
+      "must_be_true": "agrees",
+      "meaning": "F3: latitudes outside crs.Domain.LatLimit return NaN. v1 clamped to +/-85 and drew the data at the wrong place."
+    }
+  }
+}

@@ -1,0 +1,482 @@
+{
+  "generated": "2026-08-13",
+  "model": "sphere, R = 1 (authalic 6371.0072 km for distances)",
+  "oracle": "pyproj 3.7.2 / PROJ 9.5.1",
+  "values": {
+    "lcc_33_45_cone_constant": {
+      "measured": 0.6304776973154274,
+      "handover_quoted": 0.6304962,
+      "tolerance": 1e-06,
+      "agrees": false,
+      "note": "Snyder 1987 p.296 example; handover Part 7.3 / accuracy table"
+    },
+    "albers_29p5_45p5_cone_constant": {
+      "measured": 0.6028370046288244,
+      "handover_quoted": null,
+      "tolerance": 0.0,
+      "agrees": true,
+      "note": "no handover claim; recorded for Stage B"
+    },
+    "mercator_y_at_lat35": {
+      "measured": 0.6528365797197981,
+      "handover_quoted": 0.6528366,
+      "tolerance": 1e-06,
+      "agrees": true,
+      "note": "y = ln(tan(45 + 17.5 deg))"
+    },
+    "mercator_y_at_lat35_PROJ": {
+      "measured": 0.6528365797197979,
+      "handover_quoted": 0.6528365797197981,
+      "tolerance": 1e-12,
+      "agrees": true,
+      "note": "oracle O4 cross-check of the mirror kernel"
+    },
+    "mercator_y_at_lat87_is_nan": {
+      "measured": true,
+      "handover_quoted": true,
+      "tolerance": 0,
+      "agrees": true,
+      "note": "F3: v1 clamped to +/-85 and drew data at the wrong place"
+    },
+    "polarstereo_rho_lat70_sp71": {
+      "measured": 0.34304741634766106,
+      "handover_quoted": 0.6116372,
+      "tolerance": 2e-06,
+      "agrees": false,
+      "note": "Snyder 1987 eq. 21-8 spherical, k0 = (1 + sin 71)/2"
+    },
+    "polarstereo_rho_lat70_sp71_PROJ": {
+      "measured": 0.3430474163476611,
+      "handover_quoted": 0.34304741634766106,
+      "tolerance": 1e-09,
+      "agrees": true,
+      "note": "oracle O4 cross-check"
+    },
+    "polarstereo_candidates": {
+      "2*tan(45-phi/2), no k0": 0.35265396141692995,
+      "(1+sin71)*tan(45-phi/2)": 0.34304741634766106,
+      "2*k0*tan(45-phi/2) at phi=55": 0.6134196506280296,
+      "rho at phi=-75 south, sp=-71": 0.25613237958032276
+    },
+    "lcc_x_at_35N_75W": {
+      "measured": 0.29667845994250674,
+      "handover_quoted": 0.2966785,
+      "tolerance": 5e-06,
+      "agrees": true,
+      "note": "Snyder 1987 p.296 worked example, R = 1"
+    },
+    "lcc_y_at_35N_75W": {
+      "measured": 0.24621122933162676,
+      "handover_quoted": 0.2462112,
+      "tolerance": 5e-06,
+      "agrees": true,
+      "note": "Snyder 1987 p.296 worked example, R = 1"
+    },
+    "lcc_x_at_35N_75W_PROJ": {
+      "measured": 0.2966784599425068,
+      "handover_quoted": 0.29667845994250674,
+      "tolerance": 1e-09,
+      "agrees": true,
+      "note": "oracle O4 cross-check"
+    },
+    "lcc_y_at_35N_75W_PROJ": {
+      "measured": 0.24621122933162698,
+      "handover_quoted": 0.24621122933162676,
+      "tolerance": 1e-09,
+      "agrees": true,
+      "note": "oracle O4 cross-check"
+    },
+    "robinson_X_at_lat50": {
+      "measured": 0.8679,
+      "handover_quoted": 0.9427,
+      "tolerance": 1e-12,
+      "agrees": false,
+      "note": "handover quotes 0.9427 as the X scale at lat 50"
+    },
+    "robinson_Y_at_lat50": {
+      "measured": 0.6176,
+      "handover_quoted": 0.5722,
+      "tolerance": 1e-12,
+      "agrees": false,
+      "note": "handover quotes 0.5722 as the Y value at lat 50"
+    },
+    "robinson_where_quoted_numbers_live": {
+      "0.9427": [
+        "X table at lat 35"
+      ],
+      "0.5722": [
+        "X table at lat 85"
+      ]
+    },
+    "robinson_pchip_node_reproduction": {
+      "measured": 1.1102230246251565e-16,
+      "handover_quoted": 0.0,
+      "tolerance": 1e-12,
+      "agrees": true,
+      "note": "PCHIP must reproduce its own table nodes exactly"
+    },
+    "robinson_y_earth_radii_at_lat50": {
+      "measured": 0.8351804800000001,
+      "handover_quoted": null,
+      "tolerance": 0,
+      "agrees": true,
+      "note": "= 1.3523 * Y(50); the correct form of the handover claim"
+    },
+    "robinson_x_at_lon359": {
+      "measured": -0.014744471358612166,
+      "handover_quoted": null,
+      "tolerance": 0,
+      "agrees": true,
+      "note": "F2: must be negative and small; v1 returned about +3.0"
+    },
+    "equal_area_integral": {
+      "mollweide": {
+        "total": 12.56514222604525,
+        "rel_error_vs_4pi": 9.775203609854869e-05
+      },
+      "hammer": {
+        "total": 12.565732634774324,
+        "rel_error_vs_4pi": 5.076880226014718e-05
+      },
+      "sinusoidal": {
+        "total": 12.566051618053777,
+        "rel_error_vs_4pi": 2.538491941587745e-05
+      }
+    },
+    "equal_area_worst_relative_error": {
+      "measured": 9.775203609854869e-05,
+      "handover_quoted": null,
+      "tolerance": 0.0,
+      "agrees": true,
+      "note": "handover asserts 1e-3; this measures what is achievable at 1.0 deg quad discretisation"
+    },
+    "hammer_x_limit_at_equator": {
+      "measured": 2.8284147833777706,
+      "handover_quoted": 2.8284271247461903,
+      "tolerance": 0.0001,
+      "agrees": true,
+      "note": "x -> 2*sqrt(2) as lon -> 180 at the equator"
+    },
+    "round_trips": {
+      "equirectangular": {
+        "n_in_domain": 10000,
+        "max_deg_error": 5.684341886080802e-14,
+        "proj_max_abs_diff": 6.661338147750939e-16,
+        "proj_n_compared": 10000
+      },
+      "mercator": {
+        "n_in_domain": 10000,
+        "max_deg_error": 5.684341886080802e-14,
+        "proj_max_abs_diff": 2.6645352591003757e-15,
+        "proj_n_compared": 10000
+      },
+      "transversemercator": {
+        "n_in_domain": 10000,
+        "max_deg_error": 5.968558980384842e-13,
+        "proj_max_abs_diff": 5.631710375819665e-13,
+        "proj_n_compared": 10000
+      },
+      "robinson": {
+        "n_in_domain": 10000,
+        "max_deg_error": 1.4210854715202004e-13,
+        "proj_max_abs_diff": 0.0008901717142029142,
+        "proj_n_compared": 10000
+      },
+      "mollweide": {
+        "n_in_domain": 10000,
+        "max_deg_error": 3.808509063674137e-12,
+        "proj_max_abs_diff": 4.063416270128073e-14,
+        "proj_n_compared": 10000
+      },
+      "hammer": {
+        "n_in_domain": 10000,
+        "max_deg_error": 2.8421709430404007e-12,
+        "proj_max_abs_diff": 1.3322676295501878e-15,
+        "proj_n_compared": 10000
+      },
+      "winkeltripel": {
+        "n_in_domain": 9921,
+        "max_deg_error": 4.547473508864641e-13,
+        "proj_max_abs_diff": 8.881784197001252e-16,
+        "proj_n_compared": 10000
+      },
+      "sinusoidal": {
+        "n_in_domain": 10000,
+        "max_deg_error": 5.684341886080802e-14,
+        "proj_max_abs_diff": 6.661338147750939e-16,
+        "proj_n_compared": 10000
+      },
+      "lambert": {
+        "n_in_domain": 10000,
+        "max_deg_error": 4.577032086672261e-09,
+        "proj_max_abs_diff": 8.29780688604842e-13,
+        "proj_n_compared": 10000
+      },
+      "stereographic": {
+        "n_in_domain": 9599,
+        "max_deg_error": 1.3642420526593924e-12,
+        "proj_max_abs_diff": 7.993605777301127e-15,
+        "proj_n_compared": 9599
+      },
+      "orthographic": {
+        "n_in_domain": 5027,
+        "max_deg_error": 9.07718344933528e-11,
+        "proj_max_abs_diff": 3.885780586188048e-16,
+        "proj_n_compared": 5027
+      },
+      "azimuthalequidistant": {
+        "n_in_domain": 9998,
+        "max_deg_error": 1.2448708730516955e-11,
+        "proj_max_abs_diff": 3.8680170177940454e-13,
+        "proj_n_compared": 9998
+      },
+      "gnomonic": {
+        "n_in_domain": 4619,
+        "max_deg_error": 6.679101716144942e-13,
+        "proj_max_abs_diff": 2.398081733190338e-14,
+        "proj_n_compared": 4619
+      },
+      "polarstereographic": {
+        "n_in_domain": 10000,
+        "max_deg_error": 5.684341886080802e-14,
+        "proj_max_abs_diff": 8.881784197001252e-16,
+        "proj_n_compared": 10000
+      },
+      "lambertconformal": {
+        "n_in_domain": 10000,
+        "max_deg_error": 1.4210854715202004e-13,
+        "proj_max_abs_diff": 2.1316282072803006e-14,
+        "proj_n_compared": 10000
+      },
+      "albers": {
+        "n_in_domain": 10000,
+        "max_deg_error": 3.439026841078885e-12,
+        "proj_max_abs_diff": 1.9984014443252818e-15,
+        "proj_n_compared": 10000
+      }
+    },
+    "paris_nyc_spherical_km": {
+      "measured": 5837.24750061355,
+      "handover_quoted": 5837.0,
+      "tolerance": 15.0,
+      "agrees": true,
+      "note": "handover quotes 5837 km +/- 15 with the authalic radius"
+    },
+    "paris_nyc_geodesic_wgs84_km": {
+      "measured": 5852.935291766766,
+      "handover_quoted": null,
+      "tolerance": 0,
+      "agrees": true,
+      "note": "oracle O4 pyproj.Geod; quantifies the spherical error"
+    },
+    "paris_nyc_spherical_vs_geodesic_pct": {
+      "measured": -0.26803288215544363,
+      "handover_quoted": null,
+      "tolerance": 0,
+      "agrees": true,
+      "note": "handover D-001 claims the spherical model costs <= 0.3%"
+    },
+    "mercator_k_equals_sec_lat_maxerr": {
+      "measured": 5.0495145842432976e-09,
+      "handover_quoted": 0.0,
+      "tolerance": 1e-06,
+      "agrees": true,
+      "note": "handover asserts 1e-6 at lat 0, 30, 60"
+    },
+    "mollweide_area_scale_err": {
+      "measured": 7.193588835718856e-09,
+      "handover_quoted": 0.0,
+      "tolerance": 1e-06,
+      "agrees": true,
+      "note": "handover asserts equal-area projections give AreaScale == 1 to 1e-6"
+    },
+    "hammer_area_scale_err": {
+      "measured": 8.400210638193073e-09,
+      "handover_quoted": 0.0,
+      "tolerance": 1e-06,
+      "agrees": true,
+      "note": "handover asserts equal-area projections give AreaScale == 1 to 1e-6"
+    },
+    "sinusoidal_area_scale_err": {
+      "measured": 1.1175321446010855e-08,
+      "handover_quoted": 0.0,
+      "tolerance": 1e-06,
+      "agrees": true,
+      "note": "handover asserts equal-area projections give AreaScale == 1 to 1e-6"
+    },
+    "lambert_area_scale_err": {
+      "measured": 2.4348973615140324e-08,
+      "handover_quoted": 0.0,
+      "tolerance": 1e-06,
+      "agrees": true,
+      "note": "handover asserts equal-area projections give AreaScale == 1 to 1e-6"
+    },
+    "albers_area_scale_err": {
+      "measured": 1.7065766688695305e-08,
+      "handover_quoted": 0.0,
+      "tolerance": 1e-06,
+      "agrees": true,
+      "note": "handover asserts equal-area projections give AreaScale == 1 to 1e-6"
+    },
+    "mercator_h_minus_k": {
+      "measured": 1.2722219056016115e-08,
+      "handover_quoted": 0.0,
+      "tolerance": 1e-06,
+      "agrees": true,
+      "note": "handover asserts conformal projections give h == k to 1e-6"
+    },
+    "stereographic_h_minus_k": {
+      "measured": 9.444223536547725e-08,
+      "handover_quoted": 0.0,
+      "tolerance": 1e-06,
+      "agrees": true,
+      "note": "handover asserts conformal projections give h == k to 1e-6"
+    },
+    "lambertconformal_h_minus_k": {
+      "measured": 3.308112517252937e-08,
+      "handover_quoted": 0.0,
+      "tolerance": 1e-06,
+      "agrees": true,
+      "note": "handover asserts conformal projections give h == k to 1e-6"
+    },
+    "lcc_k_on_standard_parallels_err": {
+      "measured": 2.5247571810993463e-09,
+      "handover_quoted": 0.0,
+      "tolerance": 1e-06,
+      "agrees": true,
+      "note": "handover asserts k == 1 on both standard parallels to 1e-6"
+    },
+    "scale_factors": {
+      "mercator_k_err": 5.0495145842432976e-09,
+      "mollweide_area_scale_err": 7.193588835718856e-09,
+      "hammer_area_scale_err": 8.400210638193073e-09,
+      "sinusoidal_area_scale_err": 1.1175321446010855e-08,
+      "lambert_area_scale_err": 2.4348973615140324e-08,
+      "albers_area_scale_err": 1.7065766688695305e-08,
+      "mercator_h_minus_k": 1.2722219056016115e-08,
+      "stereographic_h_minus_k": 9.444223536547725e-08,
+      "lambertconformal_h_minus_k": 3.308112517252937e-08,
+      "lcc_k_on_standard_parallels_err": 2.5247571810993463e-09
+    },
+    "scale_variation_max_over_min": {
+      "equirectangular": {
+        "global": 11.473713174034213,
+        "regional_10deg": 1.414213562373095,
+        "regional_30deg": 1.9999999999999996,
+        "continental_60deg": 2.9238044001630867
+      },
+      "mercator": {
+        "global": 1.000000003298206,
+        "regional_10deg": 1.1584559494437803,
+        "regional_30deg": 1.7320508185866421,
+        "continental_60deg": 2.747477442382571
+      },
+      "robinson": {
+        "global": 6.565258653649922,
+        "regional_10deg": 1.1395255251688041,
+        "regional_30deg": 1.5341733468782393,
+        "continental_60deg": 2.1502259884431263
+      },
+      "mollweide": {
+        "global": 4.890661046833073,
+        "regional_10deg": 1.0607069683505599,
+        "regional_30deg": 1.3323198987073634,
+        "continental_60deg": 1.5500638517738832
+      },
+      "hammer": {
+        "global": 7.784847439658219,
+        "regional_10deg": 1.1691248179977982,
+        "regional_30deg": 1.2882319977954113,
+        "continental_60deg": 1.294760083414392
+      },
+      "winkeltripel": {
+        "global": 4.5430954283775025,
+        "regional_10deg": 1.0916231489553365,
+        "regional_30deg": 1.3914146203636593,
+        "continental_60deg": 1.8502810749115028
+      },
+      "sinusoidal": {
+        "global": 3.2524120823884495,
+        "regional_10deg": 1.001902050092423,
+        "regional_30deg": 1.0253800224398926,
+        "continental_60deg": 1.1144889216286857
+      },
+      "lambert": {
+        "global": 6.610608720039785,
+        "regional_10deg": 1.0008625611572093,
+        "regional_30deg": 1.0167139626034107,
+        "continental_60deg": 1.0052068910941314
+      },
+      "stereographic": {
+        "global": 6.028815685935313,
+        "regional_10deg": 1.003106199807229,
+        "regional_30deg": 1.0361007759878103,
+        "continental_60deg": 1.0902664596478868
+      },
+      "orthographic": {
+        "global": 1.741432844874721,
+        "regional_10deg": 1.003968680614308,
+        "regional_30deg": 1.0552809129865628,
+        "continental_60deg": 1.092951506939945
+      },
+      "azimuthalequidistant": {
+        "global": 3.3297218205744215,
+        "regional_10deg": 1.0013229165362274,
+        "regional_30deg": 1.0182491421749413,
+        "continental_60deg": 1.0322538772666718
+      },
+      "lambertconformal": {
+        "global": 82.62185788500571,
+        "regional_10deg": 1.0053840799804694,
+        "regional_30deg": 1.0745988198575112,
+        "continental_60deg": 1.206662032116066
+      },
+      "albers": {
+        "global": 336.00124279147155,
+        "regional_10deg": 1.0183869250282969,
+        "regional_30deg": 1.2283080148721892,
+        "continental_60deg": 1.8658104161329454
+      },
+      "transversemercator": {
+        "global": 1.0000046693252866,
+        "regional_10deg": 1.0025583218993241,
+        "regional_30deg": 1.0261082331038338,
+        "continental_60deg": 1.1328258336401522
+      }
+    }
+  },
+  "findings": [
+    {
+      "label": "lcc_33_45_cone_constant",
+      "quoted": 0.6304962,
+      "measured": 0.6304776973154274,
+      "abs_error": 1.8502684572596628e-05,
+      "tolerance": 1e-06,
+      "note": "Snyder 1987 p.296 example; handover Part 7.3 / accuracy table"
+    },
+    {
+      "label": "polarstereo_rho_lat70_sp71",
+      "quoted": 0.6116372,
+      "measured": 0.34304741634766106,
+      "abs_error": 0.26858978365233893,
+      "tolerance": 2e-06,
+      "note": "Snyder 1987 eq. 21-8 spherical, k0 = (1 + sin 71)/2"
+    },
+    {
+      "label": "robinson_X_at_lat50",
+      "quoted": 0.9427,
+      "measured": 0.8679,
+      "abs_error": 0.07479999999999998,
+      "tolerance": 1e-12,
+      "note": "handover quotes 0.9427 as the X scale at lat 50"
+    },
+    {
+      "label": "robinson_Y_at_lat50",
+      "quoted": 0.5722,
+      "measured": 0.6176,
+      "abs_error": 0.045399999999999996,
+      "tolerance": 1e-12,
+      "note": "handover quotes 0.5722 as the Y value at lat 50"
+    }
+  ]
+}

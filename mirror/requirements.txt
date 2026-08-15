@@ -1,0 +1,8 @@
+# geoMap v2 mirror dependencies.
+# Pinned lower bounds, not exact pins: the mirror is a measuring
+# instrument, and a version change that moves a measurement is a finding
+# worth seeing rather than one worth preventing. The oracle version is
+# printed by CI on every run so a drift can be attributed.
+numpy>=1.26
+scipy>=1.11
+pyproj>=3.6
