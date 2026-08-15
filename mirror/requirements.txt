@@ -6,3 +6,12 @@
 numpy>=1.26
 scipy>=1.11
 pyproj>=3.6
+
+# Oracles O7 and O8 (GDAL). rasterio is here for TWO reasons, and the
+# second one is the load-bearing one:
+#   1. it writes and reads the GeoTIFFs the GDAL utilities operate on;
+#   2. its wheel BUNDLES a complete libgdal, which is the only way to
+#      reach gdaldem and gdalwarp in an environment without root. CI has
+#      root and installs gdal-bin, so CI takes the CLI route; the two
+#      routes are recorded per measurement and can be compared.
+rasterio>=1.3

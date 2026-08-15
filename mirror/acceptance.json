@@ -19,9 +19,9 @@
     "does not have to guess whether a number is published, measured or",
     "analytic."
   ],
-  "generated": "2026-08-13",
-  "oracle": "pyproj 3.7.2 / PROJ 9.5.1",
-  "expected_value_count": 37,
+  "generated": "2026-08-15",
+  "oracle": "pyproj 3.7.2 / PROJ 9.5.1; GDAL 3.10.3 for O7/O8",
+  "expected_value_count": 43,
   "point_values": {
     "mercator_y_at_lat35": {
       "expected": 0.6528365797197981,
@@ -137,5 +137,42 @@
       "must_be_true": "agrees",
       "meaning": "F3: latitudes outside crs.Domain.LatLimit return NaN. v1 clamped to +/-85 and drew the data at the wrong place."
     }
+  },
+  "stage03_max": {
+    "_comment": [
+      "Added by Stage 0.3, when oracle rows O7 and O8 were filled. Each is",
+      "an upper bound on a MEASURED quantity, set about a decade above what",
+      "the run reads, so drift is visible before it is harmful.",
+      "",
+      "The path is dotted: a key 'a.b.c' reads values['a']['b']['c'].",
+      "",
+      "regrid_mass_closure_floor.measured discharges handover debt V7. The",
+      "handover guessed 1e-12; the measured floor at 2161x4321 -> 181x361,",
+      "over the worst of three summation orders, is 2.15e-14. TolMass is",
+      "set one decade above that, at 1e-13 - which is TIGHTER than the",
+      "guess, not looser.",
+      "",
+      "hillshade_vs_O8_gdal.hillshade_max_abs_error_dn is bounded at 0, not",
+      "at 1: the mirror reproduces gdaldem's uint8 output EXACTLY over the",
+      "compared interior. Bounding it at the quantisation step would have",
+      "thrown away a decade of evidence that was actually there."
+    ],
+    "regrid_mass_closure_floor.measured": 1e-13,
+    "regrid_analytic_affine_field.max_abs_error": 1e-13,
+    "hillshade_flat_terrain.max_abs_error": 1e-14,
+    "hillshade_metric_ratio_lat60_over_lat0.rel_error": 1e-05,
+    "hillshade_vs_O8_gdal.slope_max_abs_error_deg": 0.001,
+    "hillshade_vs_O8_gdal.aspect_max_abs_error_deg": 0.01,
+    "hillshade_vs_O8_gdal.hillshade_max_abs_error_dn": 0.0
+  },
+  "stage03_true": {
+    "_comment": [
+      "Boolean criteria. 'discriminates' is the one that matters: it",
+      "asserts the analytic regrid check has been SEEN to reject a wrong",
+      "algorithm (latitude weighted in degrees rather than in sin lat), not",
+      "merely to accept the right one. A check never seen to fail is not",
+      "evidence (BEST_PRACTICE 5.8)."
+    ],
+    "regrid_analytic_affine_field.discriminates": true
   }
 }

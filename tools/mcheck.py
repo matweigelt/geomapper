@@ -20,7 +20,10 @@ What it CANNOT check, and therefore does not claim
   - Semantics of any kind. A file can be perfectly balanced and wrong.
   - Whether a called function exists.
   - Anything about runtime behaviour.
-These are why the deliverable is marked PROVISIONAL until MATLAB runs it.
+These are why a clean run here is necessary and not sufficient: the MATLAB
+suite is the gate that can see behaviour. Under Tier A that suite runs in
+the same session, so a deliverable is no longer PROVISIONAL on arrival -
+it is proved before it is committed.
 
 geoMap v2.0 | 13-Aug-2026 | Claude Opus 5 (Anthropic)
 """
@@ -65,8 +68,21 @@ def strip_code(line: str) -> str:
         if c == '"':
             in_d = True; out.append(" "); i += 1; continue
         if c == "'":
-            # transpose if the previous non-space char can end an operand
-            prev = next((ch for ch in reversed(out) if ch != " "), "")
+            # Transpose only if the IMMEDIATELY preceding character can end
+            # an operand. The immediately preceding one, not the last
+            # non-space one, and the difference is load-bearing: a quote
+            # with whitespace before it is a string, because a transpose
+            # never has a space before it.
+            #
+            # Measured, not reasoned. The previous rule skipped spaces, so
+            #     err.identifier ']. Run the mirror first.'
+            # read as a transpose after `identifier`, the ']' inside the
+            # string was counted as a real bracket, and the file's bracket
+            # depth ran at -1 from that line onward. Every `x(end+1)`
+            # after it then had its `end` counted as a block terminator,
+            # and the checker reported "unmatched 'end'" 228 lines away
+            # from the actual cause - in a function that was correct.
+            prev = out[-1] if out else ""
             if prev and (prev.isalnum() or prev in ")]}._'"):
                 out.append("'"); i += 1; continue
             in_s = True; out.append(" "); i += 1; continue
@@ -160,12 +176,27 @@ def selftest() -> bool:
     bad_unclosed = "function y = f(x)\n%F  One line.\n%\n%   DESCRIPTION\n%   See also G.\nif x > 0\n    y = 1;\nend\n"
     bad_extra = good + "end\n"
     no_help = "function y = f(x)\ny = x;\nend\n"
+    # A quote preceded by a SPACE after an identifier is a string, not a
+    # transpose. Reading it as a transpose leaks the bracket inside the
+    # literal into the bracket count and poisons every `x(end+1)` after
+    # it. Both halves are fixtured: the string case must stay silent, and
+    # a genuine transpose in the same shape must not become a string.
+    quoted_bracket = ("function f(err)\n%F  One line.\n%\n%   DESCRIPTION\n"
+                      "%     d\n%\n%   See also G.\n"
+                      "error('geo:x:Y', ['bad [' err.identifier "
+                      "']. Run it first.']);\nv = [1 2 3];\nw = v(end);\n"
+                      "u = v ';\nend\n")
+    transpose_ok = ("function y = f(x)\n%F  One line.\n%\n%   DESCRIPTION\n"
+                    "%     d\n%\n%   See also G.\n"
+                    "y = x';\ny = y(end);\nend\n")
     with tempfile.TemporaryDirectory() as d:
         d = pathlib.Path(d)
         cases = [("good.m", good, False, False),
                  ("unclosed.m", bad_unclosed, True, False),
                  ("extra.m", bad_extra, True, False),
-                 ("nohelp.m", no_help, False, True)]
+                 ("nohelp.m", no_help, False, True),
+                 ("quoted_bracket.m", quoted_bracket, False, False),
+                 ("transpose_ok.m", transpose_ok, False, False)]
         for name, txt, want_bal, want_help in cases:
             p = d / name
             p.write_text(txt)
@@ -216,7 +247,7 @@ def main():
         return 1
     print("  problems      : 0")
     print("\n  NOTE: structural only. This says nothing about semantics,")
-    print("  and the deliverable stays PROVISIONAL until MATLAB runs it.")
+    print("  Necessary, not sufficient: only the MATLAB suite sees behaviour.")
     return 0
 
 

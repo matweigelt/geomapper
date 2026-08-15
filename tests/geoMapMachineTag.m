@@ -16,7 +16,6 @@ function tag = geoMapMachineTag()
 %
 %   ---------------------------------------------------------------------
 %   geoMap v2.0 | 13-Aug-2026 | Claude Opus 5 (Anthropic)
-%   PROVISIONAL: not verified until its first green run.
 
 persistent cached
 if isempty(cached)

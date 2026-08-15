@@ -1,0 +1,47 @@
+# Line endings.
+#
+# Git for Windows defaults core.autocrlf to true, so a shell script
+# committed with LF is CHECKED OUT with CRLF - and bash then fails on the
+# shebang line with "set: pipefail: invalid option name", which names
+# neither the file nor the cause.
+#
+# Measured, not anticipated: tools/gates.sh, the local gate WORKFLOW.md
+# tells every contributor to run to zero before pushing, could not run at
+# all from the Windows working copy. It ran in CI, so the failure was
+# invisible from the side that matters least. A gate that only the server
+# can run is not a local gate.
+#
+# * text=auto normalises on the way in; the eol=lf lines below pin what
+#   comes back out for the files where the ending is executable content
+#   rather than presentation.
+
+* text=auto
+
+*.sh        text eol=lf
+*.py        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.cff       text eol=lf
+Makefile    text eol=lf
+
+# MATLAB and Markdown are read and written on Windows far more often than
+# on Linux here, and nothing executes their line endings, so they follow
+# the platform.
+*.m         text
+*.md        text
+*.txt       text
+
+# MANIFEST.txt records a SHA-256 per file. Its own hashes are computed
+# over the text as MATLAB reads it, so it must not be renormalised
+# differently from the files it describes.
+MANIFEST.txt text eol=lf
+
+# Binary, and never to be touched.
+*.mat       binary
+*.mltbx     binary
+*.png       binary
+*.pdf       binary
+*.b         binary
+*.shp       binary
+*.dbf       binary
+*.shx       binary

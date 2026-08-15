@@ -58,8 +58,6 @@ classdef GeoMapTestCase < matlab.unittest.TestCase
 %
 %   ---------------------------------------------------------------------
 %   geoMap v2.0 | 13-Aug-2026 | Claude Opus 5 (Anthropic)
-%   PROVISIONAL: written without a MATLAB interpreter. Not verified until
-%   its first green run. Reviewed by a human before release.
 
     properties (Constant)
         % Round-trip forward->inverse, degrees. Measured in the mirror at
@@ -167,14 +165,21 @@ classdef GeoMapTestCase < matlab.unittest.TestCase
             catch
                 ref = [];
             end
-            if isempty(ref)
+            if isempty(ref) || ~isfield(ref, 'tolerance')
                 error('geo:test:ToleranceNotMeasured', ...
                     ['TolMass has not been measured. The mirror must ' ...
                      'measure the achievable double-precision mass-closure ' ...
                      'floor at production grid size (handover debt V7) ' ...
                      'before any test asserts it.']);
             end
-            tol = ref.measured;
+            % Read the TOLERANCE, not the floor. They are different
+            % numbers on purpose: the floor measured at 2161x4321 ->
+            % 181x361 over the worst of three summation orders is
+            % 2.15e-14, and the asserted tolerance sits one decade above
+            % it. A tolerance set exactly at the floor fails on the first
+            % machine whose BLAS blocks a reduction differently, and that
+            % failure would carry no information about the code.
+            tol = ref.tolerance;
         end
 
         function v = loadMirrorReference(tc, key, required)

@@ -31,6 +31,21 @@ become false is a finding.
 | sha256OfText | speed | Not on any hot path. |
 | sha256OfText | precision | Exact by construction. |
 | sha256OfText | vectorisation | Single char-vector interface. |
+| geoMapAudit | precision | No numerical claim; its criterion is behavioural and is asserted under contract and reference. |
+| geoMapAudit | vectorisation | Operates on one tree. There is no batched form to compare against. |
+| geoMapAudit | speed | Its cost is dominated by file I/O and by MATLAB's Code Analyzer, neither of which this project owns; a ratio would measure the filesystem cache and the analyser's version. |
+| geoMapAuditFixtures | precision | Writes text. No numerical claim exists to bound. |
+| geoMapAuditFixtures | vectorisation | Builds one tree per call by construction; a batched form would defeat the one-defect-per-fixture rule. |
+| geoMapAuditFixtures | speed | Not on any hot path; it runs once per audit invocation. |
+| geoMapAuditFixtures | metamorphic | Its observable is a directory of files with one planted defect. No invariance applies. |
+| v1_defect_probes | precision | Its numbers come from v1, which is the subject, not a claim of this project. The tolerances that matter are asserted in Stage B against the oracles. |
+| v1_defect_probes | vectorisation | Eighteen distinct probes, each with its own call. There is no batched form. |
+| v1_defect_probes | speed | Measures a tree that will be deleted at Stage F. A budget would outlive its subject. |
+| v1_defect_probes | metamorphic | The probes assert what v1 does at named points; there is no invariance of v1's behaviour to assert. |
+| v1_option_inventory | precision | Extracts names. No numerical claim. |
+| v1_option_inventory | vectorisation | Reads five files once. No batched form. |
+| v1_option_inventory | speed | Runs once per stage boundary at most. |
+| v1_option_inventory | metamorphic | Its observable is a name mapping; permuting the input files changes only the recorded order of the Fronts column, which is meaningful and therefore not an invariance. |
 
 ## Reserved rows, to be filled at their stage
 

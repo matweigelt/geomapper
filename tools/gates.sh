@@ -17,11 +17,16 @@ run () { echo; echo "=== $1 ==="; shift; "$@" || { echo ">>> GATE FAILED"; fail=
 
 run "1/4 structural check"        python3 tools/mcheck.py .
 run "2/4 provenance audit"       python3 tools/provenance_audit.py .
-run "3/4 mirror"                  bash -c "cd mirror && python3 -m geomap_mirror.references && python3 check_acceptance.py"
+run "3/4 mirror"                  bash -c "cd mirror && python3 -m geomap_mirror.gdal_oracle && python3 -m geomap_mirror.references && python3 check_acceptance.py"
 
 echo; echo "=== 4/4 MATLAB suite ==="
 if command -v matlab >/dev/null 2>&1; then
-  matlab -batch "addpath(pwd,fullfile(pwd,'tests'),fullfile(pwd,'tools')); makeManifest; ok=rungeoMapTests(\"all\"); exit(~ok)" || { echo ">>> GATE FAILED"; fail=1; }
+  # geoMapAudit runs FIRST and with its self-test on. It is the only gate
+  # here that proves every one of its checks against a planted defect
+  # before reporting, and a red audit then costs seconds rather than a
+  # full suite run.
+  matlab -batch "addpath(pwd,fullfile(pwd,'tests'),fullfile(pwd,'tools'),fullfile(pwd,'records')); ok=geoMapAudit(); exit(~ok)" || { echo ">>> GATE FAILED"; fail=1; }
+  matlab -batch "addpath(pwd,fullfile(pwd,'tests'),fullfile(pwd,'tools'),fullfile(pwd,'records')); makeManifest; ok=rungeoMapTests(\"all\"); exit(~ok)" || { echo ">>> GATE FAILED"; fail=1; }
 else
   echo ">>> SKIPPED: no 'matlab' on PATH."
   echo ">>> This gate did NOT run. Do not read the summary below as if it did."

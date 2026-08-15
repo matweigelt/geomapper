@@ -62,8 +62,6 @@ function ok = rungeoMapTests(selector, opts)
 %
 %   ---------------------------------------------------------------------
 %   geoMap v2.0 | 13-Aug-2026 | Claude Opus 5 (Anthropic)
-%   PROVISIONAL: written without a MATLAB interpreter. Not verified until
-%   its first green run. Reviewed by a human before release.
 
 arguments
     selector (1,1) string = "default"
@@ -72,7 +70,8 @@ arguments
 end
 
 root = geoMapRoot();
-addpath(root, fullfile(root, 'tests'), fullfile(root, 'tools'));
+addpath(root, fullfile(root, 'tests'), fullfile(root, 'tools'), ...
+        fullfile(root, 'records'));
 
 fprintf('\n=============================================================\n');
 fprintf(' geoMap v2 test runner   %s\n', string(datetime("now")));
@@ -212,6 +211,24 @@ fprintf(' TEST-CATEGORY COVERAGE BY FUNCTION\n');
 fprintf('-------------------------------------------------------------\n');
 covOk = reportCategoryCoverage(root, suite);
 
+fprintf('\n-------------------------------------------------------------\n');
+fprintf(' STATIC AUDIT\n');
+fprintf('-------------------------------------------------------------\n');
+% Part of the green gate by definition (handover 2.6.1), so it is read
+% here and not only in the shell script. SelfTest is off: the audit's
+% fixtures are already exercised as test points by TestStage03_audit, and
+% running them twice would double the cost for no new information.
+[auditOk, auditFindings] = geoMapAudit(root, SelfTest = false, ...
+    Verbose = false);
+if auditOk
+    fprintf('  geoMapAudit: 0 findings\n');
+else
+    for i = 1:numel(auditFindings)
+        fprintf('  ! [%s] %s: %s\n', auditFindings(i).check, ...
+            auditFindings(i).file, auditFindings(i).message);
+    end
+end
+
 % --- 5. The gate -----------------------------------------------------
 nFail = sum([result.Failed]);
 nInc  = sum([result.Incomplete]);
@@ -229,13 +246,14 @@ fprintf(['  Compare these against the count you predicted BEFORE the\n' ...
          '  signal that the change was not the change you thought you\n' ...
          '  made. Do not write the number into any document.\n']);
 
-ok = (nFail == 0) && manifestOk && warnOk && speedOk && covOk;
+ok = (nFail == 0) && manifestOk && warnOk && speedOk && covOk && auditOk;
 fprintf('\n GREEN GATE: %s\n', ternary(ok, 'PASS', 'FAIL'));
 fprintf('   zero failures      %s\n', tick(nFail == 0));
 fprintf('   manifest verified  %s\n', tick(manifestOk));
 fprintf('   warning inventory  %s\n', tick(warnOk));
 fprintf('   speed budgets      %s\n', tick(speedOk));
 fprintf('   category coverage  %s\n', tick(covOk));
+fprintf('   static audit       %s\n', tick(auditOk));
 fprintf('=============================================================\n\n');
 end
 
