@@ -289,19 +289,44 @@ classdef TestStage0_instruments < GeoMapTestCase
             % so they are not even in one memory regime. Solve f + v and
             % f + 4v from two points and check f before writing a growth
             % budget: that is the whole lesson here (finding PV-016).
-            n = 4e6;
+            %
+            % N IS NOW MEASURED ON THE MACHINE THAT IS RUNNING, not taken
+            % from the ladder above. The ladder is a measurement of one
+            % machine, and hard-coding n = 4e6 from it made the accuracy
+            % claim true on that machine and false elsewhere: on a GitHub
+            % runner tagged "glnxa64 | R2026a | 1 threads" the constructed
+            % 4.0 read 5.536 with a band of 4.70..6.03, against 3.84..3.94
+            % with a band of 3.67..4.15 on the baseline box. A 38% miss
+            % with a band that wide is the machine speaking, not the code.
+            %
+            % Loosening the tolerance was not available - a criterion
+            % widened until green is an instrument destroyed in place
+            % (BEST_PRACTICE 4.6). So the fixture calibrates instead: walk
+            % the ladder, solve f + v and f + 4v at each rung, and take the
+            % first size where the FIXED term is under 5% of the small
+            % point. That is the same rule PV-016 stated, applied at run
+            % time rather than once on one desk.
+            [n, calib] = calibrateGrowthFixture(tc);
             a = rand(1, 4*n);
             b = rand(1, n);
             n0 = geoMapTestRecord('count');   % delta, never reset
             rec = tc.assertRatioBudget(@() sum(a.^2), @() sum(b.^2), ...
-                6.0, 4.0, "self-test: sum of 4N squares / N squares, N=4e6");
+                6.0, 4.0, sprintf(...
+                    "self-test: sum of 4N squares / N squares, N=%.3g", n));
             % The ACCURACY claim: recovery within 10%, because 15 repeats
             % measured 10.2% spread in the source study and a tighter
             % figure would assert below the instrument's own noise.
             tc.verifyEqual(rec.ratio, 4.0, 'RelTol', 0.10, ...
                 sprintf(['Constructed ratio not recovered. band %.3g..%.3g, ' ...
-                         'batch %d, machine %s'], rec.band(1), rec.band(2), ...
-                         rec.innerBatch, rec.machine));
+                         'batch %d, machine %s\n' ...
+                         'CALIBRATION: N=%.3g chosen from the ladder; ' ...
+                         'fixed term %.4g s = %.1f%% of the small point, ' ...
+                         'per-element %.3g s. If the fixed fraction is ' ...
+                         'large the ratio is measuring call overhead, ' ...
+                         'not growth.'], ...
+                         rec.band(1), rec.band(2), rec.innerBatch, ...
+                         rec.machine, n, calib.fixed, ...
+                         100 * calib.fixedFraction, calib.perElement));
             tc.verifyEqual(mod(rec.repeats, 2), 0, ...
                 'Repeat count must be even so rotation is balanced.');
             tc.verifyGreaterThanOrEqual(rec.repeats, 15);
@@ -371,5 +396,57 @@ function writeText(f, txt)
 fid = fopen(f, 'w');
 c = onCleanup(@() fclose(fid));
 fprintf(fid, '%s', txt);
+end
+
+function [n, calib] = calibrateGrowthFixture(tc)
+%CALIBRATEGROWTHFIXTURE  Pick N by measuring, on the machine that is running.
+%
+%   A growth ratio is only a measurement of growth when the FIXED cost is
+%   small against the smaller of the two points. Otherwise it measures
+%   call overhead, and it does so quietly: a constructed 4x ladder once
+%   PASSED at 0.95x and 1.08x where linear predicted 2.00x, because 99% of
+%   the small point was the call.
+%
+%   Method, per rung: time the N and the 4N workloads, solve
+%       t_small = f + v*N        t_large = f + v*4N
+%   for the fixed term f and the per-element cost v, and accept the first
+%   rung where f is under 5% of t_small. 5% is not arbitrary: at 5% the
+%   fixed term can shift the measured ratio by at most about 4%, which
+%   sits comfortably inside the instrument's own 10% noise floor, so the
+%   accuracy claim is not being asserted against the fixture's arithmetic.
+%
+%   The ladder stops at 1.6e7 because the next rung would allocate about
+%   1 GB across the two points and a runner that swaps is measuring the
+%   page cache. If no rung qualifies, the test FILTERS - loudly, naming
+%   the measurement - rather than asserting a number the machine cannot
+%   support. A skipped gate that says so is honest; one that passes
+%   quietly is not.
+ladder = [1e6 4e6 1.6e7];
+best = struct('n', NaN, 'fixed', NaN, 'perElement', NaN, ...
+              'fixedFraction', Inf);
+for n = ladder
+    a = rand(1, 4*n);
+    b = rand(1, n);
+    sum(a.^2); sum(b.^2);                 %#ok<VUNUS> warm-up, untimed
+    tS = timeit(@() sum(b.^2));
+    tL = timeit(@() sum(a.^2));
+    v = (tL - tS) / (3 * n);              % from f+4vN minus f+vN
+    f = tS - v * n;
+    frac = f / tS;
+    if frac < best.fixedFraction
+        best = struct('n', n, 'fixed', f, 'perElement', v, ...
+                      'fixedFraction', frac);
+    end
+    if frac >= 0 && frac < 0.05
+        break
+    end
+end
+calib = best;
+n = best.n;
+% The number this test chose is itself a measurement, so it is recorded
+% rather than only printed on failure (handover 2.6.3). A calibration
+% that leaves no trace is a calibration nobody can question later.
+tc.verifyAndRecord(best.fixedFraction, 0.05, ...
+    "growth fixture: fixed cost as a fraction of the small point", "", "<");
 end
 
