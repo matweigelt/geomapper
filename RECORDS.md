@@ -414,4 +414,96 @@ the discipline that is usually skipped is the half that paid.
 
 ---
 
-*Entries R-006 onward are written at each stage's green gate.*
+## R-006 — Stage A, 15-Aug-2026, tier A
+
+**Scope.** L0 data model and longitude topology, in three checkpoints, each
+with its own confirming run. Delivered `+geo/{crs,wrapLongitude,
+splitAntimeridian,grid,track,points,region,greatCircle,splitTracks}.m` and
+`+geo/+internal/{projectionNames,mustBeCrs,mustBeIdentity,mustBeSeries,
+countGaps}.m`, with `TestA1_crs`, `TestA2_structs`, `TestA3_region`.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`.
+**Predicted 113 before the run; suite size 113, per-class sum 113, 113
+passed, 0 failed, 0 incomplete.** Green gate on all six conditions.
+Mirror 74 frozen criteria, 0 breaches; `mcheck` and `provenance_audit`
+clean. Checkpoint counts along the way: A.1 → 63, A.2 → 88, A.3 → 113,
+each predicted correctly before its run.
+
+**Numbers measured this round.**
+
+| quantity | measured | bound |
+|---|---|---|
+| LCC 33/45 cone constant vs mirror | **0** (exact) | 1e-12 |
+| Albers 29.5/45.5 cone constant vs mirror | **0** (exact) | 1e-12 |
+| Paris–NY spherical distance vs mirror | **0** (exact) | 1e-6 km |
+| Paris–NY initial bearing vs mirror | **0** (exact) | 1e-9° |
+| Spherical vs WGS84 geodesic, Paris–NY | **0.268%** | 0.3% (D-001) |
+| `greatCircle` destination round-trip | 1.14e-13° | 1e-9° |
+| Antimeridian crossing latitude error | **0** | 1e-12° |
+| `wrapLongitude` / `mod(x,360)`, N=1e7 | 1.03 | 5 |
+| `splitAntimeridian` / scan, N=1e6, 15 crossings | 11.3 | 15 |
+| `splitTracks` / scan, N=1e6, 100 passes | 12.8 | 20 |
+| `geo.grid` / one pass over Z, 2161×4321 | 0.071 | 0.1 |
+
+**D-001 now rests on a measurement.** Its "at most about 0.3%" is asserted
+as **0.268%** against oracle O4's WGS84 geodesic, in a test, on every run.
+
+**Pre-validation findings — six, before any code.**
+
+| id | Finding |
+|---|---|
+| PV-038 | **The declared projection domains are v1's magic literals with the decimals shaved off.** v1's `cosc` thresholds mean 154.158°, 84.261°, 178.015° and 90.000°; the handover declared 154, 84, 178, 90, each rounded INWARD. And only **orthographic** is a real limit: gnomonic diverges at 90 not 84, stereographic at 180 not 154, and azimuthal equidistant has no forward singularity at all. F12's complaint was that v1's literals served as mathematical guard AND cosmetic clip with nothing saying which; declaring the same numbers in a tidier struct reproduces that with better manners. **`Domain` now carries `MaxAngularDistanceDeg`, `SingularityDeg` and `ClipIsCosmetic`** (D-017). The clip values stay v1's so no existing figure silently changes. |
+| PV-039 | **Conic degeneracy is EXACT, not approximate.** `p1 = -p2` gives identically zero for both conics at every pair measured; LCC returns negative zero, so the guard reads `abs(n)`. |
+| PV-040 | **The wrap formulation is load-bearing.** `mod(lon-lon0+180,360)-180+lon0` is bitwise exact at every point tested; the tidier form folding the offset into one term returns **0.09999999999999432** for `lon = lon0 = 0.1`. Pinned as a frozen criterion so a later tidy-up cannot reintroduce it. |
+| PV-041 | **The crossing parameter must use the WRAPPED longitude delta.** The naive delta puts the 179→−179 crossing at latitude **9.97** instead of 15.0 — barely off the start, and entirely plausible on a plot. |
+| PV-042 | **The handover's `geo.greatCircle(lon1,lat1,lon2,lat2)` breaks the toolbox's own arity rule.** Four positional arguments against a cap of three, written because v1's `geoNorthArrow` took fifteen (F7). Resolved by pairing coordinates as Nx2 (D-018) rather than exempting the first function to find the rule inconvenient. |
+| PV-043 | **A DISABLED WARNING STILL SETS `lastwarn`.** Measured. The runner's warning inventory reads `lastwarn` around each method, so a test that provokes a documented warning and suppresses it *exactly as handover §2.5 prescribes* still fails the warning gate with the identifier reported as new. §2.5 names `geo:splitTracks:TracksDropped` as one such identifier, so the situation was anticipated and the prescribed mechanism did not cover it. `suppressWarning` now restores `lastwarn` as well as the enable flags. **Found the first time any geoMap code raised a warning at all.** |
+
+**Findings from the run — ten, and eight of them were caught by this
+project's own instruments on their first contact with real library code.**
+
+| id | Finding |
+|---|---|
+| PV-044 | **MATLAB's `switch` takes a CELL of alternatives, not a string array.** `case ["a" "b"]` matches nothing and falls silently to `otherwise`, so every conic was classified azimuthal, its cone constant was never computed, and `geo.crs("lambertconformal", ...)` returned `ConeConstant = NaN` without complaint. |
+| PV-045 | **Jump DETECTION uses the raw step; only the interpolation uses the wrapped one.** The first draft wrapped first, which makes every crossing a small step by construction, so nothing was ever split. PV-041 and this are the same distinction read in opposite directions. |
+| PV-046 | **`geoMapAudit` rejected my own `%#ok<AGROW>` inside `+geo`** — F13, in the first function of the stage. Fixed by preallocating, not by silencing. It then fired on the COMMENT explaining the ban, so the check now requires code on the line and ships a fixture for that false positive. |
+| PV-047 | **`provenance_audit` rejected a test file for citing the refuted cone constant without its correction beside it.** Correct, and fixed. |
+| PV-048 | **`check_acceptance`'s dotted paths split keys in the middle of a number**, reporting seven present criteria as absent. Stage A criteria use LIST paths: §2.7 forbids parsing a composed value back apart, and this is that rule earning its place inside the instrument that enforces it. |
+| PV-049 | **A composed error identifier is invisible to every static reader.** `mustBeSeries` built `[prefix ':NotAVector']`, so the identifier existed nowhere in the source as a literal and the audit reported it as documented-but-never-raised while it worked perfectly. Callers now pass the complete identifier. Generalises D-011: a value assembled out of sight is not a documented contract. |
+| PV-050 | **`identifierAgreement` could only see literals handed to `error()`.** Two legitimate patterns break that — a shared validator raising on its caller's behalf, and an identifier arriving through a variable. Now package-wide over the two sets; the superseded per-file form is frozen in place. |
+| PV-051 | **The rewritten identifier scan read the comment-stripped code, which blanks string literals too** — and an error identifier IS a string literal, so it found nothing. Caught by the healthy control within seconds. `codeKeepingStrings` is the complement of `stripComments`; both are needed. |
+| PV-052 | **`error()` rejects a non-scalar formatted argument**, so `geo.region`'s invalid-box rejection raised `MATLAB:error:nonScalarInput` instead of its own identifier — the rejection path failing to reject. Found by the contract test on its first run, which is the entire reason error branches get tests rather than a reading. |
+| PV-053 | **The handover's `geo.grid` speed budget is refuted.** §2.4.3 specifies "at 4× elements / at 1×", expected ~1.0, budget 1.5, claiming validation cost must not depend on `numel(Z)`. The claim is right and the experiment cannot test it: `numel(Z) = nLon·nLat`, so quadrupling Z means doubling BOTH axes, and validation is O(nLon + nLat). Measured **1.82** — a correct implementation reading what the specified comparison actually measures. Replaced by `geo.grid` against **one pass over Z**, which reads 0.071 against 0.1. Corroborated: `struct()` assembly costs 1.54e-06 s at both 18.7 MB and 74.7 MB, ratio 0.99. |
+
+**Binding items a later stage could be wrong for not reading:**
+
+1. **`crs.Domain` has three fields, not one.** `MaxAngularDistanceDeg` is
+   what Stage B's `geo.project` must clip at; `SingularityDeg` is where
+   the mathematics fails; `ClipIsCosmetic` says whether they differ.
+   `MaxAngularDistanceFrom` is `"centre"` for the azimuthals and
+   **`"centralMeridian"` for transverse Mercator**, whose limit is a
+   distance from a LINE.
+2. **`geo.greatCircle` takes Nx2 pairs**, and the destination form takes
+   `Bearing` and `Distance` by name. Stage D's scalebar calls it that way.
+3. **`geo.splitTracks`' `SpatialJumpThreshold` is in KILOMETRES**, via
+   `geo.greatCircle`, not v1's degree-space `hypot`. A degree of longitude
+   at 70 N is a third of one at the equator, so v1's option needed a
+   different value per latitude band. **This changes the meaning of a
+   carried-over option name** and is D-019.
+4. **`geo.region` refuses filenames with `geo:region:FileInputNotYetAvailable`.**
+   Stage C **converts** that contract test into a success test; it does
+   not delete it and write a new one.
+5. **`suppressWarning` restores `lastwarn`.** Any future test that
+   provokes a documented warning must use it, and must not simply call
+   `warning('off',...)` — that silences the display and still fails the
+   gate.
+6. **Grid orientation is canonicalised** (Lon row, Lat column); tracks and
+   point sets preserve theirs. That asymmetry is deliberate and is the
+   only place in the toolbox where an input's shape is not returned.
+7. **`IsGlobalLon`'s 1.5-step allowance separates one-cell-short from
+   two-cells-short**, for every step size. That is why it is 1.5 and not
+   1 or 2.
+
+---
+
+*Entries R-007 onward are written at each stage's green gate.*

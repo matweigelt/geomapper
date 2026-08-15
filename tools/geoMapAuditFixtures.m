@@ -162,6 +162,10 @@ switch name
         appendToBody(fullfile(d, '+geo', 'healthy.m'), ...
             "clim = [0 1];" + newline + "y = y * clim(2);");
     case "agrow"
+        % A REAL pragma, on a line that carries code. The control tree
+        % separately contains a COMMENT naming the same pragma, so this
+        % fixture proves the check tells the two apart rather than
+        % matching the string wherever it appears.
         appendToBody(fullfile(d, '+geo', 'healthy.m'), ...
             "for k = 1:3" + newline + ...
             "    y(end+1) = k; %#ok<AGROW>" + newline + "end");
@@ -248,6 +252,10 @@ s = join([
 "    x (1,:) double"
 "    options.Scale (1,1) double = 2"
 "end"
+"% This comment names %#ok<AGROW> deliberately. Prose about a banned"
+"% pragma is documentation, not a pragma, and a check that cannot tell"
+"% them apart fires on the file explaining why the ban exists - which is"
+"% exactly what happened to +geo/splitAntimeridian.m on its first run."
 "if isempty(x)"
 "    error('geo:healthy:Empty', 'x must not be empty.');"
 "end"

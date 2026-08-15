@@ -29,19 +29,31 @@ REF = HERE / "geomap_mirror" / "out" / "reference_values.json"
 ACC = HERE / "acceptance.json"
 
 
-def _walk(d, dotted):
-    """Resolve a dotted path through nested dicts. None if any step misses.
+def _walk_path(d, parts):
+    """Resolve a path given as a LIST of keys. None if any step misses.
 
     None means ABSENT, and absent is a breach at the call site rather than
     a skip: a criterion that quietly disappears is indistinguishable from
     one that passes, which is the failure this whole script exists for.
     """
     cur = d
-    for part in dotted.split("."):
+    for part in parts:
         if not isinstance(cur, dict) or part not in cur:
             return None
         cur = cur[part]
     return cur
+
+
+def _walk(d, dotted):
+    """Resolve a DOTTED path. Only safe where no key contains a dot.
+
+    Kept for the Stage 0.3 sections, whose keys are plain identifiers.
+    New sections use _walk_path with an explicit list, because a key that
+    records a measurement AT a longitude contains dots of its own and this
+    function would split it in the middle of a number - which it did, on
+    the first Stage A run, reporting seven present criteria as absent.
+    """
+    return _walk_path(d, dotted.split("."))
 
 
 def die(code, msg):
@@ -206,6 +218,25 @@ def main():
         print(f"  {'ok ' if ok else 'BAD'} {key:52s} {got}")
         if not ok:
             breaches.append(f"stage03 {key}: {got}, expected {want}")
+
+    # --- 8c. Stage A: the L0 claims ------------------------------------
+    # Paths are LISTS here, not dotted strings: these keys record
+    # measurements at longitudes, so they contain dots of their own and a
+    # dotted path would be split in the middle of a number.
+    print("\n[stage A: crs domains, degenerate conic, wrap formulation]")
+    for row in acc.get("stageA_true", {}).get("criteria", []):
+        path, want = row["path"], row["expect"]
+        label = " / ".join(path)
+        got = _walk_path(vals, path)
+        if got is None:
+            breaches.append(f"stageA {label}: absent from this run")
+            continue
+        ok = bool(got) == bool(want)
+        checked += 1
+        print(f"  {'ok ' if ok else 'BAD'} {label:64s} {got}")
+        if not ok:
+            breaches.append(
+                f"stageA {label}: {got}, expected {want} ({row['why']})")
 
     # --- 9. Verdict -----------------------------------------------------
     print("\n" + "=" * 68)

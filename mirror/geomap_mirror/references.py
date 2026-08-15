@@ -23,6 +23,7 @@ from . import hillshade as H
 from . import kernels as K
 from . import oracle as O
 from . import regrid as RG
+from . import stage_a as SA
 
 OUT = pathlib.Path(__file__).parent / "out"
 OUT.mkdir(exist_ok=True)
@@ -448,6 +449,10 @@ def main():
     # is proved on an analytically known plane before anything cites it.
     values.update(RG.measure())
     values.update(H.measure())
+    # Stage A pre-validation: the domains, the degenerate conic, the wrap
+    # formulation and the crossing parameter. Run in CI so a later change
+    # to any of them is caught by the same gate as the rest.
+    values.update(SA.measure())
 
     payload = {
         "generated": "2026-08-15",

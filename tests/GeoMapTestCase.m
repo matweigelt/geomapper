@@ -119,12 +119,34 @@ classdef GeoMapTestCase < matlab.unittest.TestCase
             %   Do NOT call this where the identifier cannot fire: an
             %   unnecessary suppression teaches the next reader that the
             %   identifier is unavoidable.
+            %
+            %   LASTWARN IS RESTORED TOO, and that is not tidiness. A
+            %   DISABLED WARNING STILL SETS LASTWARN - measured, not
+            %   assumed - and the runner's warning inventory is built by
+            %   reading lastwarn around each test method (the instrument
+            %   PV-013 already recorded as approximate). So a test that
+            %   provoked a documented warning on purpose and suppressed
+            %   it exactly as handover 2.5 prescribes STILL failed the
+            %   warning gate, with the identifier reported as new.
+            %
+            %   Found the first time any geoMap code raised a warning at
+            %   all: geo:splitTracks:TracksDropped, at Stage A.3. The
+            %   handover names that identifier in 2.5 as one tests will
+            %   provoke, so the situation was anticipated and the
+            %   prescribed mechanism did not cover it. Finding PV-043.
+            %
+            %   Restoring lastwarn is the honest repair rather than
+            %   teaching the plugin to ignore identifiers: the test
+            %   asked for this warning, handled it, and should leave the
+            %   world as it found it. A warning nobody asked for still
+            %   reaches the inventory and still fails the gate.
             arguments
                 tc
                 id (1,1) string
             end
             st = warning('off', id);
-            tc.addTeardown(@() warning(st));
+            [priorMsg, priorId] = lastwarn();
+            tc.addTeardown(@() restoreWarningState(st, priorMsg, priorId));
         end
 
         function tf = canUseParallelPool(~)
@@ -474,6 +496,14 @@ end
 % ----------------------------------------------------------------------
 function closeIfValid(f)
 if isvalid(f), close(f); end
+end
+
+function restoreWarningState(st, priorMsg, priorId)
+%RESTOREWARNINGSTATE  Put back both halves of the warning state.
+%   The enable/disable flags AND lastwarn. See SUPPRESSWARNING for why
+%   the second half is load-bearing (finding PV-043).
+warning(st);
+lastwarn(priorMsg, priorId);
 end
 
 function t = timeBatch(fcn, nb)
