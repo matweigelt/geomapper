@@ -47,7 +47,7 @@
 | Stage | Deliverable | Depends on | Tier | Status | Green gate date | Records entry |
 |---|---|---|---|---|---|---|
 | **0** | Harness, mirror, audit, runner, oracle register seeding, v1 probes | — | **A** (bridge) | **◐ in progress** — 0.1 (mirror) executed; **0.2 (MATLAB harness) EXECUTED AND GREEN on the target machine, pushed to `claude/v2000-stage0-harness`**; 0.3 (audit, v1 probes) open | 0.2 green 15-Aug-2026 | R-002, R-003, R-004 |
-| **A** | L0 data model + longitude topology (10 files) | 0 | B | ☐ not started | — | — |
+| **A** | L0 data model + longitude topology (14 files) | 0 | **A** (bridge) | **☑ done** — three checkpoints, each with its own confirming run (63 → 88 → 113 points, every count predicted correctly before its run) | **15-Aug-2026** | R-006 |
 | **B** | L1 core math (9 files) | 0, A | B | ☐ not started | — | — |
 | **C** | L2 I/O and caching (3 files + edit) | 0, A, B | B | ☐ not started | — | — |
 | **D** | L3 cartographic elements (14 files) | 0, A–C | B | ☐ not started | — | — |
@@ -421,6 +421,9 @@ Gaps show as empty rows rather than as an absence nobody notices. **A stage may 
 | D-014 | 15-Aug-2026 | **Claude branches, commits, pushes and opens the PR. Only Matthias merges.** | Claude opening nothing (D-013), or Claude merging as well | D-013's own trigger fired. `gh pr create` works through the credential helper with **no token visible to Claude**, which is the thing D-013 was protecting; extracting a credential from a keychain remains out of the question. The merge stays with Matthias because that division is what makes the loop trustworthy, and it is not a consequence of tooling | Claude is ever asked to merge, **or** a change reaches `main` without a human having read it |
 | D-015 | 15-Aug-2026 | **Oracle O7 is corroboration, not authority.** Conservative-regrid weights are certified against an analytic affine-field oracle, carrying a degree-weighted counterfactual that proves the check discriminates | Accepting `gdalwarp -r average` as the O7 the register named | Measured: it differs from a conservative remap by **21% of signal RMS globally**. An oracle that disagrees with the truth by a fifth of the signal certifies nothing, and adopting it would have made every later regrid agreement meaningless | `cdo remapcon` becomes installable, **or** a second independent conservative implementation appears |
 | D-016 | 15-Aug-2026 | **A constructed speed fixture compares two sides doing the same work on the SAME array**, sized so one pass clears a measured floor | Two array sizes (4N against N), as the harness first had | PV-035: two sizes are two memory regimes as soon as one leaves cache. The identical commit read 5.536 and 4.885 on a 1-core runner against 3.84 on the 16-thread box, and the twin CI triggers disagreed with each other. **Modelling the confound failed** — the fixed term is a difference of two nearly equal times, so its relative size is badly conditioned and read +0.98% here and −70.3% there (PV-036). Removing the confound worked | A budget genuinely needs two different sizes — then the memory regime must be measured and stated, never assumed |
+| D-017 | 15-Aug-2026 | **`crs.Domain` carries the cosmetic clip AND the mathematical singularity, with a flag saying whether they differ.** The clip values stay v1's | One number, as §7.3 listed; or dropping the clip and declaring only the singularity | PV-038: three of the four clips are 6° to 26° inside the singularity, and F12's complaint was never that v1 clipped — it was that nothing said which limits were mathematics and which were taste. One number reproduces that defect with better manners. Keeping v1's clip VALUES means a v2 figure covers the same extent as the v1 figure it replaces | A user needs the rim a cosmetic clip hides, **or** Stage B measures a distortion criterion that can replace an inherited number with a derived one |
+| D-018 | 15-Aug-2026 | **`geo.greatCircle` takes Nx2 `[lon lat]` pairs**; the destination form takes `Bearing` and `Distance` by name | §7.3's `geo.greatCircle(lon1,lat1,lon2,lat2,…)` | PV-042: four positional arguments breaks the arity cap of three, written because `geoNorthArrow` took fifteen (F7). A rule with an exception written for the first function to find it inconvenient is not a rule. Pairing also makes the two arguments symmetric and unswappable-by-accident, which four loose numbers are not | The arity rule itself is revisited, **or** a caller reports the paired form as awkward in practice |
+| D-019 | 15-Aug-2026 | **`geo.splitTracks`' `SpatialJumpThreshold` is in kilometres**, measured with `geo.greatCircle` | v1's `hypot(diff(lon), diff(lat))` in degrees, carried over unchanged with its option name | A degree of longitude at 70 N is a third of one at the equator, so v1's threshold needed a different value per latitude band and silently meant different things at different latitudes. **This changes the meaning of a carried-over option name**, which is exactly the kind of change §2.7 says must be declared rather than slipped in | A user's v1 script is found to depend on the degree-space figure — then the change needs a migration note in the Stage F README, not a reversal |
 
 ---
 
@@ -1001,7 +1004,7 @@ Every figure below is **a claim from this document, and V1 says it is unmeasured
 | Stage | Rounds | Findings from pre-validation | Findings from the run | Defects found later in shipped code |
 |---|---|---|---|---|
 | 0 | 4 | 15 | 21 | 3 (PV-035/036/037 — all in Stage 0.2 code, found at 0.3) |
-| A | | | | |
+| A | 3 | 6 | 10 | 1 (PV-043, in the Stage 0.2 harness, found the first time any code raised a warning) |
 | B | | | | |
 | C | | | | |
 | D | | | | |
@@ -1057,6 +1060,15 @@ Every figure below is **a claim from this document, and V1 says it is unmeasured
 | C-037 | 15-Aug-2026 | **`tools/mcheck.py` transpose rule corrected**: a quote preceded by whitespace is a string, not a transpose | PV-037. It reported "unmatched `end`" **228 lines from the cause**, in a function that was correct. Two fixtures added, and the pre-fix parser was shown to fire on one of them |
 | C-038 | 15-Aug-2026 | **`WORKFLOW.md` loop rewritten**: Claude branches, pushes and opens the PR; Matthias merges. Three of the four rows in its capability table had become false | D-014 |
 | C-039 | 15-Aug-2026 | **`Contents.m` created as the single version authority** (`2.0.0-alpha.0`), audited against README, CHANGELOG, CITATION.cff, `geoMap.prj` and `info.xml` | §2.7, one authority per fact. Until it existed the audit had to report its own version check as *deferred* — a gate with no subject |
+| C-040 | 15-Aug-2026 | **Stage A delivered and executed, in three checkpoints.** 113 points predicted, 113 run, 113 passed; green gate on all six conditions | R-006. `+geo` exists |
+| C-041 | 15-Aug-2026 | **`crs.Domain` gains `SingularityDeg` and `ClipIsCosmetic`**, a deviation from §7.3's field list | D-017, PV-038. Declaring v1's rounded literals in a tidier struct would have reproduced F12 rather than fixed it |
+| C-042 | 15-Aug-2026 | **`geo.greatCircle` signature changed to Nx2 pairs** | D-018, PV-042. §7.3's four positional arguments break the arity cap the same document sets |
+| C-043 | 15-Aug-2026 | **`SpatialJumpThreshold` changed from degrees to kilometres** | D-019. v1's degree-space measure meant different distances at different latitudes |
+| C-044 | 15-Aug-2026 | **The `geo.grid` speed budget row in §2.4.3 is refuted and replaced** | PV-053. Quadrupling `numel(Z)` requires doubling both axes, and validation is O(nLon + nLat), so the specified comparison must read ~2. The replacement asserts the actual claim: `geo.grid` against one pass over Z, 0.071 against 0.1 |
+| C-045 | 15-Aug-2026 | **`suppressWarning` now restores `lastwarn` as well as the enable flags** | PV-043. A disabled warning still sets `lastwarn`, so §2.5's prescribed mechanism failed the warning gate the first time any code raised a warning |
+| C-046 | 15-Aug-2026 | **Error identifiers are passed to shared validators in full, never composed from a prefix** | PV-049. A composed identifier exists nowhere in the source as a literal, so no static reader can find it, and the audit correctly read the help as lying. Generalises D-011 |
+| C-047 | 15-Aug-2026 | **`identifierAgreement` is package-wide**; the superseded per-file form is frozen in place | PV-050, PV-051. Per-file precision is unachievable once a shared validator legitimately raises on a caller's behalf |
+| C-048 | 15-Aug-2026 | **Frozen acceptance criteria whose keys contain dots use LIST paths** | PV-048. A dotted path split a key in the middle of a number and reported seven present criteria as absent — §2.7 inside the instrument that enforces §2.7 |
 
 ---
 
