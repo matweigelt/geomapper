@@ -290,43 +290,55 @@ classdef TestStage0_instruments < GeoMapTestCase
             % f + 4v from two points and check f before writing a growth
             % budget: that is the whole lesson here (finding PV-016).
             %
-            % N IS NOW MEASURED ON THE MACHINE THAT IS RUNNING, not taken
-            % from the ladder above. The ladder is a measurement of one
-            % machine, and hard-coding n = 4e6 from it made the accuracy
-            % claim true on that machine and false elsewhere: on a GitHub
-            % runner tagged "glnxa64 | R2026a | 1 threads" the constructed
-            % 4.0 read 5.536 with a band of 4.70..6.03, against 3.84..3.94
-            % with a band of 3.67..4.15 on the baseline box. A 38% miss
-            % with a band that wide is the machine speaking, not the code.
+            % THE FIXTURE ABOVE WAS THE WRONG SHAPE, and the ladder is the
+            % record of how much work went into calibrating around that.
+            % Two DIFFERENT arrays, 4N and N, are two different memory
+            % regimes as soon as one of them leaves cache - which is
+            % exactly what BEST_PRACTICE 3.4.3 says to check first, and
+            % exactly what "two sides doing the same work on the same
+            % arrays" exists to avoid. Measured on a GitHub 1-core runner:
+            % the constructed 4.0 read 5.536 (band 4.70..6.03) and, on a
+            % re-run of the identical commit, 4.885 - while the baseline
+            % box read 3.84 (band 3.67..4.15). The twin CI triggers
+            % disagreed on the same commit, which is what they are for.
             %
-            % Loosening the tolerance was not available - a criterion
-            % widened until green is an instrument destroyed in place
-            % (BEST_PRACTICE 4.6). So the fixture calibrates instead: walk
-            % the ladder, solve f + v and f + 4v at each rung, and take the
-            % first size where the FIXED term is under 5% of the small
-            % point. That is the same rule PV-016 stated, applied at run
-            % time rather than once on one desk.
-            [n, calib] = calibrateGrowthFixture(tc);
-            a = rand(1, 4*n);
-            b = rand(1, n);
+            % Estimating the fixed term to calibrate around it did not
+            % work either, and the failure is instructive: f is solved as
+            % a difference of two nearly equal times, so its RELATIVE size
+            % is badly conditioned. It read +0.98% on one local run and
+            % -70.3% on the runner, and a first draft happily SELECTED the
+            % -70.3% rung because it minimised the signed fraction.
+            %
+            % The repair is to remove the confound rather than to model
+            % it: ONE array, and the numerator does four passes over it
+            % where the denominator does one. The true ratio is then
+            % exactly 4 by construction, in one memory regime by
+            % construction, on any machine. The only thing left to
+            % calibrate is that a single pass clears the timer, which is a
+            % well-conditioned measurement.
+            %
+            % The tolerance did not move. A criterion widened until green
+            % is an instrument destroyed in place (BEST_PRACTICE 4.6).
+            [x, calib] = calibrateGrowthFixture(tc);
             n0 = geoMapTestRecord('count');   % delta, never reset
-            rec = tc.assertRatioBudget(@() sum(a.^2), @() sum(b.^2), ...
+            rec = tc.assertRatioBudget( ...
+                @() localRepeatedSum(x, 4), @() localRepeatedSum(x, 1), ...
                 6.0, 4.0, sprintf(...
-                    "self-test: sum of 4N squares / N squares, N=%.3g", n));
+                    "self-test: 4 passes / 1 pass over one array, N=%.3g", ...
+                    numel(x)));
             % The ACCURACY claim: recovery within 10%, because 15 repeats
             % measured 10.2% spread in the source study and a tighter
             % figure would assert below the instrument's own noise.
             tc.verifyEqual(rec.ratio, 4.0, 'RelTol', 0.10, ...
                 sprintf(['Constructed ratio not recovered. band %.3g..%.3g, ' ...
                          'batch %d, machine %s\n' ...
-                         'CALIBRATION: N=%.3g chosen from the ladder; ' ...
-                         'fixed term %.4g s = %.1f%% of the small point, ' ...
-                         'per-element %.3g s. If the fixed fraction is ' ...
-                         'large the ratio is measuring call overhead, ' ...
-                         'not growth.'], ...
+                         'CALIBRATION: N=%.3g, one pass measured %.4g s ' ...
+                         '(floor %.4g s). Both points read the SAME ' ...
+                         'array, so a memory-regime explanation is ' ...
+                         'excluded by construction and this is a ' ...
+                         'statement about assertRatioBudget itself.'], ...
                          rec.band(1), rec.band(2), rec.innerBatch, ...
-                         rec.machine, n, calib.fixed, ...
-                         100 * calib.fixedFraction, calib.perElement));
+                         rec.machine, calib.n, calib.onePass, calib.floor));
             tc.verifyEqual(mod(rec.repeats, 2), 0, ...
                 'Repeat count must be even so rotation is balanced.');
             tc.verifyGreaterThanOrEqual(rec.repeats, 15);
@@ -398,55 +410,82 @@ c = onCleanup(@() fclose(fid));
 fprintf(fid, '%s', txt);
 end
 
-function [n, calib] = calibrateGrowthFixture(tc)
-%CALIBRATEGROWTHFIXTURE  Pick N by measuring, on the machine that is running.
+function s = localRepeatedSum(x, k)
+%LOCALREPEATEDSUM  k identical passes over ONE array.
+%   The constructed workload whose true cost ratio between k=4 and k=1 is
+%   exactly 4, on any machine, because both calls read the same bytes in
+%   the same order. That is the property the previous fixture - 4N
+%   elements against N elements - did not have.
+s = 0;
+for i = 1:k
+    s = s + sum(x .^ 2);
+end
+end
+
+function [x, calib] = calibrateGrowthFixture(tc)
+%CALIBRATEGROWTHFIXTURE  Size the array so one pass clears the timer.
 %
-%   A growth ratio is only a measurement of growth when the FIXED cost is
-%   small against the smaller of the two points. Otherwise it measures
-%   call overhead, and it does so quietly: a constructed 4x ladder once
-%   PASSED at 0.95x and 1.08x where linear predicted 2.00x, because 99% of
-%   the small point was the call.
+%   This is all the calibration the fixture needs now. With both points
+%   reading one array, memory regime cannot differ between them, and the
+%   only remaining confound is the per-call overhead the two share: the
+%   measured ratio is (f + 4w)/(f + w), which approaches 4 as w grows
+%   against f. So the requirement is simply that ONE PASS is large against
+%   the call, and that is a well-conditioned thing to measure - unlike the
+%   fixed term itself, which is a difference of two nearly equal times and
+%   read +0.98% on one machine and -70.3% on another.
 %
-%   Method, per rung: time the N and the 4N workloads, solve
-%       t_small = f + v*N        t_large = f + v*4N
-%   for the fixed term f and the per-element cost v, and accept the first
-%   rung where f is under 5% of t_small. 5% is not arbitrary: at 5% the
-%   fixed term can shift the measured ratio by at most about 4%, which
-%   sits comfortably inside the instrument's own 10% noise floor, so the
-%   accuracy claim is not being asserted against the fixture's arithmetic.
+%   Floor: 200x the timer's own resolution, and at least 2 ms. At 2 ms
+%   against a call overhead measured in microseconds, f/w is below 1e-2,
+%   which moves the ratio by under 1% - an order inside the instrument's
+%   own 10% noise floor, so the accuracy claim is not being asserted
+%   against the fixture's arithmetic.
 %
-%   The ladder stops at 1.6e7 because the next rung would allocate about
-%   1 GB across the two points and a runner that swaps is measuring the
-%   page cache. If no rung qualifies, the test FILTERS - loudly, naming
-%   the measurement - rather than asserting a number the machine cannot
-%   support. A skipped gate that says so is honest; one that passes
-%   quietly is not.
-ladder = [1e6 4e6 1.6e7];
-best = struct('n', NaN, 'fixed', NaN, 'perElement', NaN, ...
-              'fixedFraction', Inf);
-for n = ladder
-    a = rand(1, 4*n);
-    b = rand(1, n);
-    sum(a.^2); sum(b.^2);                 %#ok<VUNUS> warm-up, untimed
-    tS = timeit(@() sum(b.^2));
-    tL = timeit(@() sum(a.^2));
-    v = (tL - tS) / (3 * n);              % from f+4vN minus f+vN
-    f = tS - v * n;
-    frac = f / tS;
-    if frac < best.fixedFraction
-        best = struct('n', n, 'fixed', f, 'perElement', v, ...
-                      'fixedFraction', frac);
-    end
-    if frac >= 0 && frac < 0.05
+%   The ladder stops at 3.2e7 elements, about 256 MB, because a runner
+%   that swaps is measuring the page cache. If no size clears the floor,
+%   the test FILTERS - loudly, naming the measurement - rather than
+%   asserting a number the machine cannot support. A skipped gate that
+%   says so is honest; one that passes quietly is not.
+floorSec = max(2e-3, 200 * timerResolution());
+report = strings(0, 1);
+x = [];
+calib = struct('n', NaN, 'onePass', NaN, 'floor', floorSec);
+for n = [1e6 4e6 1.6e7 3.2e7]
+    x = rand(1, n);
+    localRepeatedSum(x, 1);               % warm-up, untimed
+    t = timeit(@() localRepeatedSum(x, 1));
+    report(end+1, 1) = sprintf('      N=%9.3g  one pass %9.3g s', n, t); %#ok<AGROW>
+    calib = struct('n', n, 'onePass', t, 'floor', floorSec);
+    if t >= floorSec
         break
     end
 end
-calib = best;
-n = best.n;
-% The number this test chose is itself a measurement, so it is recorded
+
+if calib.onePass < floorSec
+    tc.assumeFail(sprintf([ ...
+        'No array size up to 3.2e7 elements makes one pass reach the ' ...
+        '%.4g s floor on this machine, so the instrument''s 10%%%% ' ...
+        'accuracy claim cannot be asserted here. This is a property of ' ...
+        'the machine, not a defect in assertRatioBudget, and the ' ...
+        'tolerance was NOT widened to make it pass.\n' ...
+        '   machine: %s\n   measured:\n%s'], ...
+        floorSec, geoMapMachineTag(), strjoin(report, newline)));
+end
+
+% The size this test chose is itself a measurement, so it is recorded
 % rather than only printed on failure (handover 2.6.3). A calibration
 % that leaves no trace is a calibration nobody can question later.
-tc.verifyAndRecord(best.fixedFraction, 0.05, ...
-    "growth fixture: fixed cost as a fraction of the small point", "", "<");
+tc.verifyAndRecord(calib.onePass, floorSec, ...
+    "growth fixture: one pass over the shared array", "s", ">=");
+end
+
+function r = timerResolution()
+%TIMERRESOLUTION  Measured, not assumed. Smallest non-zero tic/toc delta.
+d = inf;
+for k = 1:20
+    t0 = tic;
+    q = toc(t0); %#ok<NASGU>
+    d = min(d, toc(t0));
+end
+r = max(d, eps);
 end
 
