@@ -417,7 +417,10 @@ Gaps show as empty rows rather than as an absence nobody notices. **A stage may 
 | D-010 | 13-Aug-2026 | The mirror keeps **two separate modules**: `kernels.py` (Snyder formulas, mirroring the MATLAB) and `oracle.py` (pyproj/PROJ, independent) | Revision 2.0 §2.2's "thin wrappers over pyproj" | PV-001. Wrapping PROJ collapses two jobs: a MATLAB disagreement could not then distinguish "MATLAB's iteration is wrong" from "the algorithms differ", and the round-trip suite would check PROJ against itself | PROJ gains a documented spherical Snyder-equivalent mode, **or** maintaining two kernels produces a drift defect — either forces a re-read |
 | D-011 | 13-Aug-2026 | Every parameter the oracle consumes is **written explicitly** into the PROJ string; no PROJ default is relied upon | Relying on documented defaults | PV-003: `+proj=wintri` silently defaults `+lat_1` to 0, making it a different projection. The symptom was a clean `0.18·λ` offset that looked exactly like a kernel bug | Never — this is a consequence of a paid-for finding |
 | D-012 | 15-Aug-2026 | **Files transfer one at a time, verified on arrival by byte count AND byte-sum.** Bulk archive transfer is banned | A base64 tarball in 60 kB chunks | A chunk arrived as 55,317 of 60,000 bytes with a PNG terminator glued on — content never in the payload. Untarred, that would have produced a corrupt tree and a round spent hunting a phantom bug. Byte count alone is insufficient: it cannot see a substitution | The transfer channel changes, **or** a `git` path between the two machines becomes available — which would make transfer verification redundant |
-| D-013 | 15-Aug-2026 | **Claude pushes branches; a human opens the PR and merges.** No credential is ever handled by Claude | Extracting the token from Git Credential Manager to call the GitHub API | A credential in a keychain is not Claude's to take out, whatever the convenience. `git push` uses it without exposing it; PR creation does not | `gh` is installed and authenticated by the owner — then `gh pr create` works with no credential visible to Claude, and the loop closes |
+| D-013 | 15-Aug-2026 | **Claude pushes branches; a human opens the PR and merges.** No credential is ever handled by Claude | Extracting the token from Git Credential Manager to call the GitHub API | A credential in a keychain is not Claude's to take out, whatever the convenience. `git push` uses it without exposing it; PR creation does not | ~~`gh` is installed and authenticated by the owner~~ **TRIGGER FIRED 15-Aug-2026, same day.** `gh` 2.97.0 was installed and authenticated by the owner. **Closed, superseded by D-014.** This is the decision log working as designed: the condition was written down, it changed, and the re-read happened because it was written down |
+| D-014 | 15-Aug-2026 | **Claude branches, commits, pushes and opens the PR. Only Matthias merges.** | Claude opening nothing (D-013), or Claude merging as well | D-013's own trigger fired. `gh pr create` works through the credential helper with **no token visible to Claude**, which is the thing D-013 was protecting; extracting a credential from a keychain remains out of the question. The merge stays with Matthias because that division is what makes the loop trustworthy, and it is not a consequence of tooling | Claude is ever asked to merge, **or** a change reaches `main` without a human having read it |
+| D-015 | 15-Aug-2026 | **Oracle O7 is corroboration, not authority.** Conservative-regrid weights are certified against an analytic affine-field oracle, carrying a degree-weighted counterfactual that proves the check discriminates | Accepting `gdalwarp -r average` as the O7 the register named | Measured: it differs from a conservative remap by **21% of signal RMS globally**. An oracle that disagrees with the truth by a fifth of the signal certifies nothing, and adopting it would have made every later regrid agreement meaningless | `cdo remapcon` becomes installable, **or** a second independent conservative implementation appears |
+| D-016 | 15-Aug-2026 | **A constructed speed fixture compares two sides doing the same work on the SAME array**, sized so one pass clears a measured floor | Two array sizes (4N against N), as the harness first had | PV-035: two sizes are two memory regimes as soon as one leaves cache. The identical commit read 5.536 and 4.885 on a 1-core runner against 3.84 on the 16-thread box, and the twin CI triggers disagreed with each other. **Modelling the confound failed** — the fixed term is a difference of two nearly equal times, so its relative size is badly conditioned and read +0.98% here and −70.3% there (PV-036). Removing the confound worked | A budget genuinely needs two different sizes — then the memory regime must be measured and stated, never assumed |
 
 ---
 
@@ -444,7 +447,7 @@ Gaps show as empty rows rather than as an absence nobody notices. **A stage may 
 | F13 | Coastline readers grow arrays in the record loop — O(N²) | 🟡 | timing ladder at 2 record counts | Stage 0 audit: `%#ok<AGROW>` ban in `+geo`; Stage C `speed` |
 | F14 | No caching: coastlines re-read and re-projected every call | 🟡 | timing two identical v1 calls | Stage C `speed`: cold/warm ratio ≥ 10 |
 | F15 | `appdata` + manual `SizeChangedFcn` chaining — global mutable state | 🟡 | structural | Stage 0 audit: no `setappdata`/`getappdata` in `+geo`; Stage D listener-based layout |
-| F16 | `geoNiceGraticuleStep` snaps to nearest — can give 3 or 11 lines for a 6 target | 🟡 | v1 call at span 120 | Stage B `contract`: ceiling policy, asserting both rejected neighbours |
+| F16 | `geoNiceGraticuleStep` snaps to nearest, overshooting the target. **Measured 15-Aug-2026: differs from the ceiling policy at 4 of 13 spans; worst is 10 lines against a target of 6, at span 45°.** The earlier wording "3 or 11 lines" was an illustration nobody had measured and is withdrawn (C-033) | 🟡 | v1 call over a span **ladder**, not one span — at span 120 the two policies happen to agree exactly, and testing only there refuted the defect (PV-030) | Stage B `contract`: ceiling policy, asserting both rejected neighbours |
 | F17 | GSHHG Antarctica pole closure unhandled | 🟡 | needs O6 | Stage C `reference`, blocked on V3 |
 | F18 | Tests are smoke tests: no reference values, no round-trips, no property tests, no budgets | 🔴 | read `test_geoImagesc.m` | This entire document's Part 2.3 |
 
@@ -997,13 +1000,15 @@ Every figure below is **a claim from this document, and V1 says it is unmeasured
 
 | Stage | Rounds | Findings from pre-validation | Findings from the run | Defects found later in shipped code |
 |---|---|---|---|---|
-| 0 | | | | |
+| 0 | 4 | 15 | 21 | 3 (PV-035/036/037 — all in Stage 0.2 code, found at 0.3) |
 | A | | | | |
 | B | | | | |
 | C | | | | |
 | D | | | | |
 | E | | | | |
 | F | | | | |
+
+**Reading after Stage 0, offered rather than asserted.** Pre-validation is still paying, but the split has moved. At checkpoint 0.1 every finding came from pre-validation; at 0.3 **thirteen of sixteen came from execution**, and three of those came only from CI running on a machine unlike the author's. The instrument that earned its place this round is not the mirror but the **second machine**: a 1-core Linux runner disagreed with a 16-thread Windows box about a constructed ratio, and the twin triggers disagreed with each other on the same commit. If that holds at Stage A, it is an argument for treating CI as a measuring instrument rather than as a gate — and the row above is what will say so.
 
 ---
 
@@ -1041,7 +1046,17 @@ Every figure below is **a claim from this document, and V1 says it is unmeasured
 | C-026 | 15-Aug-2026 | **Speed-fixture sizes must be measured, not chosen** | PV-016. A constructed 4× workload read **1.434** at N=2e5 with fixed cost at 85% of the small point and the two arrays straddling L3. The measured ladder (2e5→1.434, 1e6→3.491, 4e6→4.111, 1.6e7→3.942) is now a comment in the test |
 | C-027 | 15-Aug-2026 | **No test may reset the record store**; the one test that proves `reset` works saves and restores | PV-020, PV-021. The report read "0 ratio records" while three speed tests passed — the exact silence §5.3 exists to prevent |
 | C-028 | 15-Aug-2026 | Three stale `%#ok<AGROW>` pragmas removed | Found by MATLAB's Code Analyzer; the project's own static checker was blind to them. An unnecessary suppression teaches the next reader the pattern is dangerous when it is not |
-| C-029 | 15-Aug-2026 | **`mlint_lite.py` from shAnalysis is to be adopted**, not re-derived | It catches `(expression).method` parse errors and package-function-dot runtime errors that `tools/mcheck.py` cannot see. Deferred to its own round rather than mixed into unrelated work (§6.6) |
+| C-029 | 15-Aug-2026 | **`mlint_lite.py` from shAnalysis is to be adopted**, not re-derived | It catches `(expression).method` parse errors and package-function-dot runtime errors that `tools/mcheck.py` cannot see. Deferred to its own round rather than mixed into unrelated work (§6.6). **Still open after Stage 0.3** |
+| C-030 | 15-Aug-2026 | **Revision 2.3: Stage 0.3 delivered and executed. Stage 0 is DONE.** Static audit with 13 fault-injection fixtures, oracle rows O7/O8, v1 probes, option inventory. Debts V4, V7 and V9 discharged | R-005. Green on the target machine and on CI, both twin triggers |
+| C-031 | 15-Aug-2026 | **`TolMass` set to 1e-13 from measurement**, replacing the 1e-12 guess | V7. The measured floor is 2.15e-14, so the new tolerance is *tighter* than the one it replaces — the only direction a measurement is allowed to move a guess |
+| C-032 | 15-Aug-2026 | **Oracle O7 demoted from authority to corroboration**; conservative regrid certified analytically instead | D-015, limit L11. Measured 21% of signal RMS globally |
+| C-033 | 15-Aug-2026 | **Part 5's F16 illustration corrected**: measured worst is 10 lines at span 45°, not "3 or 11" | PV-030. The defect reproduces; the illustration did not. A rationale carrying a number nobody measured is exactly what V1 exists to prevent, and this one survived three revisions |
+| C-034 | 15-Aug-2026 | **Constructed speed fixtures must use one array** (D-016, OB-9); the harness's own accuracy fixture rebuilt on that shape | PV-035, PV-036. **The tolerance never moved** — only the fixture did |
+| C-035 | 15-Aug-2026 | **Eleven `PROVISIONAL` stamps removed** | R-004 binding item 1. A debt marker that outlives its debt teaches the next reader to ignore markers |
+| C-036 | 15-Aug-2026 | **`.gitattributes` added**; `tools/gates.sh` had never been runnable from a Windows working copy | PV-029. Git for Windows checks an LF script out as CRLF and bash dies on the shebang line. The local gate WORKFLOW.md tells every contributor to run before pushing had never once run locally, and it passed in CI, so the failure was invisible from the side that matters least |
+| C-037 | 15-Aug-2026 | **`tools/mcheck.py` transpose rule corrected**: a quote preceded by whitespace is a string, not a transpose | PV-037. It reported "unmatched `end`" **228 lines from the cause**, in a function that was correct. Two fixtures added, and the pre-fix parser was shown to fire on one of them |
+| C-038 | 15-Aug-2026 | **`WORKFLOW.md` loop rewritten**: Claude branches, pushes and opens the PR; Matthias merges. Three of the four rows in its capability table had become false | D-014 |
+| C-039 | 15-Aug-2026 | **`Contents.m` created as the single version authority** (`2.0.0-alpha.0`), audited against README, CHANGELOG, CITATION.cff, `geoMap.prj` and `info.xml` | §2.7, one authority per fact. Until it existed the audit had to report its own version check as *deferred* — a gate with no subject |
 
 ---
 
@@ -1147,4 +1162,6 @@ This is the section the next session actually reads.
 
 ---
 
-*geoMap v2 HANDOVER, revision 2.0 · 13-Aug-2026 · prepared with the assistance of Claude Opus 5 (Anthropic). Every number in this document is model-derived and unverified — see Part 0, debt V1. Reviewed by a human before use.*
+*geoMap v2 HANDOVER, revision 2.3 · 15-Aug-2026 · prepared with the assistance of Claude Opus 5 (Anthropic). Many numbers in this document are now measured and carry their evidence; the rest are still model-derived — Part 0 says which is which, and debt V1 stays open until the last of them is measured at its own stage. Reviewed by a human before use.*
+
+*Developed by Matthias Weigelt with the help of Claude.*
