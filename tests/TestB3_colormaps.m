@@ -48,15 +48,33 @@ classdef TestB3_colormaps < GeoMapTestCase
             end
         end
 
-        function theDroppedV1PresetsFailWithAnExplanation(tc)
-            % viridis, magma and cividis are third-party tabulated data
-            % and are deliberately not reproduced here. The error says so
-            % and says what to do instead, because a caller porting a v1
-            % script will hit exactly this.
-            for nm = ["viridis" "magma" "cividis"]
-                tc.verifyError(@() geo.colormaps("get", nm), ...
-                    'geo:colormaps:UnknownPreset', nm);
+        function everyV1PresetNameStillWorks(tc)
+            % All six of v1's survive, so a ported script keeps its
+            % ColormapName. The three CVD tables are CC0 and attributed
+            % in LICENSE; the other three come from base MATLAB.
+            for nm = ["viridis" "magma" "cividis" "parula" "jet" "turbo"]
+                c = geo.colormaps("get", nm, 32);
+                tc.verifyEqual(size(c), [32 3], nm);
             end
+            tc.verifyError(@() geo.colormaps("get", "atlantis"), ...
+                'geo:colormaps:UnknownPreset');
+        end
+
+        function theCvdTablesAreVerbatimAtTheirNativeSize(tc)
+            % 256 rows is the table itself, with no interpolation, so a
+            % caller asking for the standard size gets the published
+            % numbers unaltered.
+            for nm = ["viridis" "magma" "cividis"]
+                c = geo.colormaps("get", nm, 256);
+                tc.verifyEqual(size(c), [256 3]);
+                tc.verifyTrue(all(c(:) >= 0 & c(:) <= 1));
+            end
+            % Published first and last rows, as a fingerprint on the file.
+            v = geo.colormaps("get", "viridis", 256);
+            tc.verifyEqual(v(1,:), [0.267004 0.004874 0.329415], ...
+                'AbsTol', 5e-7);
+            cv = geo.colormaps("get", "cividis", 256);
+            tc.verifyEqual(cv(1,:), [0 0.135112 0.304751], 'AbsTol', 5e-7);
         end
 
         function badColormapsAreRejected(tc)
@@ -114,6 +132,29 @@ classdef TestB3_colormaps < GeoMapTestCase
             L = mean(geo.colormaps("get", "sequential", 128), 2);
             tc.verifyTrue(all(diff(L) <= 1e-12), ...
                 'a sequential ramp that is not monotone misreads as data');
+        end
+
+        function theCvdRampsRiseMonotonicallyInLightness(tc)
+            % The property they were designed for, and the reason this
+            % project uses the published tables rather than a substitute.
+            %
+            % THE QUANTITY IS CIELAB L*, NOT REC.601 LUMA, and the first
+            % version of this test got that wrong. Rec.601 weights are a
+            % broadcast-engineering approximation of luminance; these
+            % colormaps are constructed uniform in PERCEPTUAL LIGHTNESS,
+            % which is L* in CIELAB after the sRGB transfer function is
+            % undone. Measured against Rec.601 luma, viridis reads a
+            % maximum DECREASE of 1.70e-3 - it is genuinely not monotone
+            % in that quantity, and the test failed correctly. Asserting
+            % the right quantity is the repair; loosening the bound would
+            % have been the instrument destroyed in place (§4.6).
+            for nm = ["viridis" "magma" "cividis"]
+                L = tc.cielabLightness(geo.colormaps("get", nm, 256));
+                tc.verifyAndRecord(max(-diff(L)), 0, ...
+                    "CIELAB L* monotonicity, " + nm, "L*");
+                tc.verifyGreaterThan(L(end) - L(1), 50, ...
+                    sprintf('%s must span most of the L* range', nm));
+            end
         end
     end
 
@@ -233,6 +274,26 @@ classdef TestB3_colormaps < GeoMapTestCase
             twice = geo.colormaps("discretize", once, 8);
             tc.verifyTrue(isequal(twice, once), ...
                 'quantising an already quantised ramp is a no-op');
+        end
+    end
+
+    % ==================================================================
+    methods (Access = private)
+        function L = cielabLightness(~, rgb)
+            %CIELABLIGHTNESS  L* from sRGB, without a toolbox.
+            %   Undo the sRGB transfer function, take the D65 Y
+            %   coordinate, then the CIELAB lightness curve. Written out
+            %   rather than called from Image Processing, which this
+            %   project does not depend on (defect F1's whole subject).
+            c = rgb;
+            lin = c / 12.92;
+            hi = c > 0.04045;
+            lin(hi) = ((c(hi) + 0.055) / 1.055).^2.4;
+            Y = lin * [0.2126; 0.7152; 0.0722];      % D65 luminance
+            f = Y.^(1/3);
+            low = Y <= (6/29)^3;
+            f(low) = Y(low) * (29/6)^2 / 3 + 4/29;
+            L = 116 * f - 16;
         end
     end
 
