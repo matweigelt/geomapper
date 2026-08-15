@@ -585,4 +585,73 @@ be written.
 
 ---
 
-*Entries R-008 onward are written at each stage's green gate.*
+## R-008 — Stage C, 15-Aug-2026, tier A
+
+**Scope.** L2 I/O and caching, plus the CVD colormap reinstatement.
+`geo.{readCoastline, readGrid, cache}`, `geo.internal.cvdColormap`,
+`data/cvd_colormaps.txt`, `tools/extract_cvd_colormaps.py`, the closed
+`geo.region` file hook, and `TestC1_io`.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+205; suite size 205, per-class sum 205, 205 passed, 0 failed.** Green gate
+on all six conditions. **68 value records and 13 ratio records.**
+
+**DEBT V3 IS DISCHARGED, and it is the oldest debt in the project.** The
+GSHHG reader was inherited from v1 with an honest CONFIDENCE NOTE saying
+it had never seen a real GSHHG file. That note was four years old. Real
+files arrived at `E:\DATAPOOL\Borders` and the reader was checked against
+them:
+
+| oracle | file | result |
+|---|---|---|
+| **O6** | `gshhs_c.b` L1 | 7 286 pts / 746 parts, lon within ±180, lat −55.67..83.53 |
+| **O6** | `gshhs_i.b` L1 | 340 364 pts / 32 835 parts |
+| **O6** | `gshhs_c.b` L5/6 | southernmost vertex at **exactly −90** — defect F17 |
+| **O5** | `ne_10m_coastline.shp` | 410 957 pts / 4 133 parts |
+| **O5** | `ne_10m_ocean.shp` | 446 789 pts / 6 822 parts |
+
+Shapefile coordinates are exact doubles (residual **0**, asserted with
+ISEQUAL rather than a tolerance, because anything looser would hide an
+endianness error). GSHHG quantisation residual 2.98e-8 microdegrees
+against the format's own 1e-6 floor. `Provenance` is now PER FORMAT and
+reads `"verified"` for both paths — one claim per code path, because the
+GSHHG and shapefile readers share no code and were verified by different
+files.
+
+**Cache: cold read / warm cache measures 665× against a budget of ≥10.**
+Direction reversed, because this budget asserts a speedup. Defect F14 was
+that v1 re-read and re-projected on every call and had no cache at all —
+"persistent" appears zero times in its 36 files.
+
+**The Stage A hook is CONVERTED, not deleted.** `geo.region` on a filename
+raised its own "not yet available" identifier from Stage A with a contract
+test already written against it; Stage C routed the path to
+`geo.readCoastline` and turned that failing test into a passing one. The
+identifier is now gone entirely.
+
+**Findings — five.**
+
+| id | Finding |
+|---|---|
+| PV-063 | **The three CVD colormaps should never have been dropped.** B.3 reasoned that reproducing third-party tables is copying. Half right: copying WITHOUT PERMISSION would be, but viridis and magma are CC0 via BIDS/colormap and cividis is CC0 via PLOS open access, so no restriction exists. The stronger point is the opposite of the original one: a GENERATED substitute would have been a lie, because these ramps encode a measured perceptual property and this project has no instrument that measures perception. Reinstated with attribution in LICENSE. |
+| PV-064 | **viridis is NOT monotone in Rec.601 luma** — measured maximum decrease 1.70e-3, and the first version of the test failed correctly. Rec.601 is a broadcast approximation of luminance; these ramps are uniform in CIELAB L\*, a different quantity. Asserting the right one was the repair. Measured in L\*: all three strictly monotone (max decrease −0.28, −0.076, −0.20, i.e. no decrease anywhere). |
+| PV-065 | The audit rejected `%#ok<AGROW>` in the GSHHG pole-closure branch — F13 again, for two vertices. A ban with an exception for small cases is not a ban; restructured to assign into new variables. |
+| PV-066 | **Naming a retired identifier in a help block brings it back to life.** The audit reported `geo:region:FileInputNotYetAvailable` as documented-but-never-raised after the hook closed — because the prose EXPLAINING its retirement quoted it in full. The check cannot tell a documented identifier from a described one, and that is a real limit of a text-scanning gate. Repaired by describing the retired identifier without spelling it. |
+| PV-067 | `geo.readGrid`'s GeoTIFF and worldfile paths are DEFERRED to their own round, with a named identifier and a contract test shipped now, on the §6.6 grounds that a binary TIFF tag parser does not belong rushed in beside three other readers. Same pattern the region hook just closed. |
+
+**Binding items a later stage could be wrong for not reading:**
+
+1. **`Provenance` is per format, not per function.** Stage D's coastline
+   element should surface it, and a text-file coastline still reads
+   `"unverified"` because no canonical real file of that kind exists.
+2. **Nothing is cached until the value exists.** A reader that throws
+   half way must leave no entry, and the test that proves it is
+   `aFailedParseLeavesNoPoisonedEntry`.
+3. **Cache keys are structs, hashed whole.** Never compose a key string
+   and split it back apart.
+4. **GeoTIFF/worldfile remains open**, with its identifier and test in
+   place for the round that closes it.
+
+---
+
+*Entries R-009 onward are written at each stage's green gate.*

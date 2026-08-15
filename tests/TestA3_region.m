@@ -73,15 +73,16 @@ classdef TestA3_region < GeoMapTestCase
                 'geo:region:EmptyOutline');
         end
 
-        function fileInputIsDeferredWithADateNotAShrug(tc)
-            % STAGE C CONVERTS THIS TEST, it does not delete it. The
-            % identifier and the message exist now so the capability
-            % arrives against a written contract rather than being
-            % invented at the time.
-            tc.verifyError(@() geo.region("amazon_basin.shp"), ...
-                'geo:region:FileInputNotYetAvailable');
-            tc.verifyError(@() geo.region("coast.b"), ...
-                'geo:region:FileInputNotYetAvailable');
+        function fileInputReachesTheReader(tc)
+            % CONVERTED AT STAGE C, as promised, rather than deleted and
+            % rewritten. Between Stage A and Stage C this asserted
+            % geo:region:FileInputNotYetAvailable; now the same call
+            % reaches geo.readCoastline, so a missing file surfaces the
+            % READER's identifier and the capability is real.
+            tc.verifyError(@() geo.region("no_such_basin.shp"), ...
+                'geo:readCoastline:FileNotFound');
+            tc.verifyError(@() geo.region("no_such_coast.b"), ...
+                'geo:readCoastline:FileNotFound');
         end
 
         function theGreatCircleFormIsChosenUnambiguously(tc)
