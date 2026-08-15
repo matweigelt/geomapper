@@ -15,19 +15,35 @@ function out = colormaps(cmd, a, b, options)
 %     applied, so under/over colours landed on the wrong side of a level
 %     boundary.
 %
-%     WHICH PRESETS EXIST, AND WHY THREE OF V1'S ARE GONE. v1 offered
-%     viridis, magma, cividis, turbo, parula and jet. Four of those are
-%     available in base MATLAB and are DELEGATED to it: parula, jet, turbo
-%     and gray come from MATLAB itself, so this toolbox neither copies nor
-%     maintains them.
+%     WHICH PRESETS EXIST. All six of v1's survive. parula, jet, turbo
+%     and gray are DELEGATED to base MATLAB, so this toolbox neither
+%     copies nor maintains them. viridis, magma and cividis are included
+%     as tables in data/cvd_colormaps.txt.
 %
-%     VIRIDIS, MAGMA AND CIVIDIS ARE NOT PORTED. They exist only as
-%     third-party tabulated data, and reproducing those tables here would
-%     be copying somebody else's work into this repository - which the
-%     handover forbids in the same breath as it asks for an original
-%     ramp. Callers who need them can pass their own Nx3 array anywhere a
-%     preset name is accepted, so nothing is lost except the spelling.
-%     Recorded as a deliberate change to v1's option surface.
+%     THE THREE TABLES ARE CC0 AND ARE HERE ON PURPOSE. B.3 first dropped
+%     them, reasoning that reproducing third-party tables is copying.
+%     That was half right: copying WITHOUT PERMISSION would be, but all
+%     three are CC0 1.0 public-domain dedications and carry no legal
+%     restriction whatever. Attribution is in LICENSE because their
+%     authors ask for credit, not because anything compels it.
+%
+%     The stronger reason to include them is that a generated substitute
+%     would be a lie. These ramps encode a MEASURED perceptual property -
+%     monotone perceived lightness, and readability under the common
+%     forms of colour vision deficiency, with cividis optimised for it
+%     against a simulation model in a peer-reviewed paper. This project
+%     has no instrument that measures perception, so a ramp built here by
+%     construction could not honestly be called CVD-safe. Asserting a
+%     perceptual claim with no oracle behind it is precisely what every
+%     other part of this toolbox refuses to do.
+%
+%     FOR COLOUR-VISION-DEFICIENCY-SAFE WORK: use "cividis" for
+%     sequential data - it is the one designed for it - or "viridis",
+%     which is also CVD-safe and greyscale-safe. Of the diverging
+%     choices, "divergent" is blue-to-red, which stays legible under
+%     red-green deficiency; a red-to-green diverging ramp would not, and
+%     none is offered. "jet" and "turbo" are NEITHER perceptually uniform
+%     nor CVD-safe and are kept only so v1 figures reproduce.
 %
 %     THE DIVERGING RAMP IS ORIGINAL, generated here, not a reproduction
 %     of anybody's table. It runs blue-white-red through a
@@ -128,7 +144,8 @@ end
 % ======================================================================
 function names = presetNames()
 %PRESETNAMES  One authority on what exists.
-names = ["divergent" "sequential" "parula" "jet" "turbo" "gray"];
+names = ["divergent" "sequential" "viridis" "magma" "cividis" ...
+         "parula" "jet" "turbo" "gray"];
 end
 
 function cmap = preset(name, n)
@@ -137,6 +154,8 @@ switch lower(name)
         cmap = divergingRamp(n);
     case "sequential"
         cmap = sequentialRamp(n);
+    case {"viridis", "magma", "cividis"}
+        cmap = geo.internal.cvdColormap(lower(name), n);
     case "parula"
         cmap = parula(n);
     case "jet"
@@ -147,12 +166,9 @@ switch lower(name)
         cmap = gray(n);
     otherwise
         error('geo:colormaps:UnknownPreset', ...
-            ['"%s" is not a preset. The presets are: %s. viridis, magma ' ...
-             'and cividis were in v1 and are NOT ported: they exist only ' ...
-             'as third-party tabulated data, and this toolbox generates ' ...
-             'rather than copies. Pass your own Nx3 array instead - ' ...
-             'anywhere a name is accepted, an array is too.'], ...
-            name, strjoin(presetNames(), ', '));
+            ['"%s" is not a preset. The presets are: %s. An Nx3 array is ' ...
+             'accepted anywhere a name is, so an unlisted colormap needs ' ...
+             'no change here.'], name, strjoin(presetNames(), ', '));
 end
 end
 

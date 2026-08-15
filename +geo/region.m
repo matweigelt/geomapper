@@ -26,12 +26,12 @@ function R = region(spec, options)
 %     by name need no hashing, and a struct array is the simplest thing
 %     that works. Handover §7.3 deliverable 6 asked for exactly this.
 %
-%     FILE INPUT IS DEFERRED TO STAGE C, and deliberately fails loudly
-%     rather than being absent. Reading a boundary from a shapefile needs
-%     GEO.READCOASTLINE, which does not exist yet; raising a named error
-%     that says so - with the contract test for it shipped now - means
-%     Stage C converts a failing test into a passing one rather than
-%     inventing the behaviour from scratch.
+%     FILE INPUT WORKS FROM STAGE C. It routes to GEO.READCOASTLINE and
+%     then through the SAME padding path a hand-passed outline takes, so
+%     the two cannot drift apart. Between Stage A and Stage C this raised
+%     a named "not yet available" error with a contract test already
+%     written against it, so closing the hook converted a failing test
+%     into a passing one rather than inventing the behaviour.
 %
 %   INPUTS
 %     spec  one of:
@@ -75,10 +75,14 @@ function R = region(spec, options)
 %       geo:region:InvalidBoundingBox  - a 1x4 with max <= min
 %       geo:region:InvalidSpec         - none of the accepted forms
 %       geo:region:EmptyOutline        - an outline with no finite points
-%     Deferred capability:
-%       geo:region:FileInputNotYetAvailable - a filename was given; this
-%                                        arrives with GEO.READCOASTLINE
-%                                        at Stage C
+%     A filename is now read by GEO.READCOASTLINE, so it raises that
+%     function's identifiers rather than one of its own. Between Stage A
+%     and Stage C this path raised a "file input not yet available"
+%     identifier of its own - a deferred capability with a date rather
+%     than a limitation. The date arrived and that identifier is gone
+%     entirely, which is what retiring a name means: it is not spelled
+%     out here, because naming it in a help block is how a dead
+%     identifier comes back to life as documentation.
 %     Identity:
 %       geo:region:NotARegion          - the idempotent form was given a
 %                                        struct that is not a geo.region
@@ -168,15 +172,14 @@ end
 
 [~, ~, ext] = fileparts(name);
 if ext ~= ""
-    % TODO(Stage C): route to geo.readCoastline and apply Padding to the
-    % derived box exactly as the outline path does. The contract test for
-    % this identifier already exists and Stage C converts it into a
-    % success test rather than writing one from scratch.
-    error('geo:region:FileInputNotYetAvailable', ...
-        ['Reading a region outline from "%s" needs geo.readCoastline, ' ...
-         'which arrives at Stage C. Load the outline yourself for now ' ...
-         'and pass the Nx2 array. This is a deferred capability with a ' ...
-         'date, not a limitation.'], name);
+    % CLOSED AT STAGE C, as promised. The outline is read by
+    % geo.readCoastline and its box padded exactly as a hand-passed
+    % outline's is - the same code path below, not a parallel one, so the
+    % two cannot drift.
+    outline = geo.readCoastline(name);
+    [lonLim, latLim] = boxFromOutline(outline, padding);
+    R = makeRegion("", lonLim, latLim, outline, padding, false);
+    return
 end
 
 error('geo:region:UnknownPreset', ...
