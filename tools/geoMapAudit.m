@@ -287,6 +287,41 @@ for i = 1:numel(code)
 end
 end
 
+function out = codeKeepingStrings(lines)
+%CODEKEEPINGSTRINGS  Drop comments, KEEP string literals.
+%   The complement of STRIPCOMMENTS, and both are needed. Block-depth
+%   counting must not see text inside quotes; identifier scanning must see
+%   nothing else, because an error identifier is a string literal.
+out = lines;
+for i = 1:numel(out)
+    s = char(out(i));
+    quote = char(0);
+    cut = numel(s) + 1;
+    j = 1;
+    while j <= numel(s)
+        c = s(j);
+        if quote ~= 0
+            if c == quote
+                if j + 1 <= numel(s) && s(j+1) == quote
+                    j = j + 2; continue
+                end
+                quote = char(0);
+            end
+        elseif c == '%'
+            cut = j; break
+        elseif c == '"'
+            quote = '"';
+        elseif c == '''' && ~(j > 1 && (isletter(s(j-1)) ...
+                || isstrprop(s(j-1), 'digit') ...
+                || any(s(j-1) == ')]}._''')))
+            quote = '''';
+        end
+        j = j + 1;
+    end
+    out(i) = string(s(1:cut-1));
+end
+end
+
 function f = emptyFinding()
 f = struct('check', {}, 'file', {}, 'line', {}, 'message', {});
 end
@@ -411,10 +446,81 @@ end
 end
 
 function f = checkIdentifiers(files)
-%CHECKIDENTIFIERS  The documented identifier must equal the raised one.
-%   Both directions. An identifier raised but not documented makes the
-%   help a lie; one documented but not raised makes a test that can never
-%   fail, which is worse because it looks like coverage.
+%CHECKIDENTIFIERS  Every identifier is documented, and every documented
+%   identifier exists. Both directions, PACKAGE-WIDE.
+%
+%   An identifier that appears in code but in no help block makes the
+%   documentation a lie. One that appears in a help block but nowhere in
+%   code makes a test that can never fail, which is worse, because it
+%   reads as coverage.
+%
+%   WHY PACKAGE-WIDE RATHER THAN PER FILE, and this was learned the hard
+%   way. The first version required each file to document exactly the
+%   identifiers IT raised, matching only literals handed to error() or
+%   warning(). Two legitimate patterns break that:
+%
+%     - a shared validator raises on its caller's behalf, so
+%       geo:grid:NotAGrid is raised inside +internal/mustBeIdentity.m and
+%       documented in grid.m, where a user will look for it;
+%     - the identifier reaches error() through a VARIABLE, because the
+%       caller passed it in - which is itself a repair for an earlier
+%       version that composed identifiers out of a prefix and made them
+%       invisible to any static reader.
+%
+%   Both were reported as "documented but never raised" while working
+%   perfectly. The check now reads every identifier literal in the code
+%   of +geo, wherever it sits in an argument list, and every identifier
+%   in every help block, and requires the two SETS to match. It gives up
+%   knowing which file owns which identifier; it keeps the two properties
+%   that matter.
+codeIds = strings(0, 1);
+helpIds = strings(0, 1);
+owner = dictionary(string.empty, string.empty);
+for i = 1:numel(files)
+    if ~files(i).inGeo, continue, end
+    % NOT files(i).code: that has string literals blanked out along with
+    % the comments, and an error identifier IS a string literal, so
+    % scanning it finds nothing at all. The healthy control caught this
+    % immediately - it reported its own documented identifier as never
+    % raised, while the raise sat three lines below.
+    ids = string(regexp(strjoin(codeKeepingStrings(files(i).lines), ...
+        newline), 'geo:[\w]+:[\w]+', 'match'));
+    codeIds = [codeIds; ids(:)]; %#ok<AGROW> one append per file
+    hids = string(regexp(strjoin(extractHelp(files(i).lines), newline), ...
+        'geo:[\w]+:[\w]+', 'match'));
+    helpIds = [helpIds; hids(:)]; %#ok<AGROW>
+    for k = 1:numel(hids)
+        if ~isKey(owner, hids(k))
+            owner(hids(k)) = files(i).rel;
+        end
+    end
+end
+
+f = emptyFinding();
+codeSet = unique(codeIds);
+helpSet = unique(helpIds);
+
+undocumented = setdiff(codeSet, helpSet);
+for j = 1:numel(undocumented)
+    f(end+1) = finding("identifierAgreement", "+geo", 0, ...
+        ['%s is raised somewhere in +geo but documented in no ERRORS ' ...
+         'block. Help that omits an error is help that lies by ' ...
+         'silence.'], undocumented(j)); %#ok<AGROW>
+end
+unraised = setdiff(helpSet, codeSet);
+for j = 1:numel(unraised)
+    f(end+1) = finding("identifierAgreement", owner(unraised(j)), 0, ...
+        ['%s is documented but appears nowhere in the code of +geo. A ' ...
+         'test asserting it can never fail, which reads as coverage ' ...
+         'and is not.'], unraised(j)); %#ok<AGROW>
+end
+end
+
+function f = checkIdentifiersUnused(files) %#ok<DEFNU>
+%CHECKIDENTIFIERSUNUSED  Superseded per-file form, kept unreachable.
+%   Frozen rather than deleted: it is the record of what the check was
+%   before delegation broke it, and the reason the current one is
+%   package-wide (handover 2.2, superseded scripts are frozen).
 f = emptyFinding();
 for i = 1:numel(files)
     if ~files(i).inGeo, continue, end
