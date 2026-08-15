@@ -25,7 +25,7 @@
 | # | Debt | Why it is unverified | Discharged by | Severity |
 |---|---|---|---|---|
 | V1 | ~~Every number in this document is model-derived.~~ **PARTIALLY DISCHARGED 13-Aug-2026.** 37 values measured by the mirror; 4 handover claims refuted, 33 confirmed. Corrections applied to Part 7.4. **Remaining:** the speed ratios (see V5) and the tolerances for Stages C–F, which no mirror can reach. | Mirror run, `mirror/geomap_mirror/out/reference_values.json`. | V5 for speed; Stage C–F numbers measured at their own stages. **Standing rule survives: no stage asserts a number this document supplies until it has been measured.** | Medium |
-| V2 | ~~v1's 16 projections were never checked against an independent implementation.~~ **DISCHARGED for the mathematics 13-Aug-2026.** All 16 spherical kernels now agree with PROJ 9.5.1 to ≤ 6e-13 (Robinson ≤ 8.9e-4, see L5), and all 16 round-trip to ≤ 4.6e-9. **Remaining:** the MATLAB implementations are still unwritten and unchecked; the oracle now exists to check them. | Mirror vs oracle O4. | Stage B, comparing MATLAB against `reference_values.json`. | Medium |
+| V2 | ~~v1's 16 projections were never checked against an independent implementation.~~ **DISCHARGED for the mathematics 13-Aug-2026.** All 16 spherical kernels now agree with PROJ 9.5.1 to ≤ 6e-13 (Robinson ≤ 8.9e-4, see L5), and all 16 round-trip to ≤ 4.6e-9. ~~**Remaining:** the MATLAB implementations are still unwritten and unchecked; the oracle now exists to check them.~~ **FULLY DISCHARGED 15-Aug-2026.** All sixteen are written and checked. Published point values reproduce to **0** (LCC Snyder p.296, polar stereographic ρ(70), Robinson table nodes) and 1.1e-16 (Mercator y(35)); round trips measure ≤ 4.5e-12° for thirteen of sixteen, 1.63e-11° for orthographic and 2.07e-09° for Lambert azimuthal — the last inside its own 1e-8 exception and better than the mirror's 4.6e-9. The analytic invariants hold at 5.0e-9 … 3.9e-8 against 1e-6 tolerances. R-007. | Mirror vs oracle O4; MATLAB vs mirror. | — closed | — |
 | V3 | **The GSHHG reader has never seen a real GSHHG file.** Inherited from v1, which carried an honest CONFIDENCE NOTE saying so. It is now four years old and still true. | No GSHHG file available in any authoring session to date. | Matthias supplies one real `.b` file (any resolution) → Stage C oracle O6. Until then the reader ships with the note intact and a `provenance` tag of `unverified`. | **High** |
 | V4 | **The v1 defect list F1–F18 is a reading, not a measurement.** F1 (`range()` is a Statistics Toolbox function) and F2 (Robinson wrap) are near-certain; F4 (regrid seam), F9 (renderer dependence) and F12 (magic thresholds) were inferred from source without executing v1. | v1 was never run during the review. | Stage 0 delivers `records/v1_defect_probes.m`, one runnable probe per finding, run against the v1 tree. Findings that fail to reproduce are **removed from the design rationale**, not quietly kept. | **Medium** |
 | V5 | ~~No baseline machine is recorded, and the entire MATLAB harness is unexecuted.~~ **DISCHARGED 15-Aug-2026.** Baseline machine: `win64 | R2026a | 16 threads`. The harness ran: 20 points, 18 pass, 2 filtered loudly, green gate on all five conditions. Every `PROVISIONAL` stamp in the eleven shipped files is now false and must be removed in the next commit. **Remaining:** the Stage A–F speed budgets in §2.4.3 are still predictions; only the three harness self-test ratios are measured. Every speed budget in Part 7 is a predicted ratio with no measurement behind it. | Nothing has run. | Stage 0's first green run records the machine and the baseline operation timings in `RECORDS.md`; Stage B onward asserts against them. Until then every speed budget is marked *predicted* in its own test. | **Medium** |
@@ -48,7 +48,7 @@
 |---|---|---|---|---|---|---|
 | **0** | Harness, mirror, audit, runner, oracle register seeding, v1 probes | — | **A** (bridge) | **◐ in progress** — 0.1 (mirror) executed; **0.2 (MATLAB harness) EXECUTED AND GREEN on the target machine, pushed to `claude/v2000-stage0-harness`**; 0.3 (audit, v1 probes) open | 0.2 green 15-Aug-2026 | R-002, R-003, R-004 |
 | **A** | L0 data model + longitude topology (14 files) | 0 | **A** (bridge) | **☑ done** — three checkpoints, each with its own confirming run (63 → 88 → 113 points, every count predicted correctly before its run) | **15-Aug-2026** | R-006 |
-| **B** | L1 core math (9 files) | 0, A | B | ☐ not started | — | — |
+| **B** | L1 core math (12 files) | 0, A | **A** (bridge) | **☑ done** — three checkpoints, each with its own confirming run (138 → 164 → 182 points, every count predicted correctly before its run) | **15-Aug-2026** | R-007 |
 | **C** | L2 I/O and caching (3 files + edit) | 0, A, B | B | ☐ not started | — | — |
 | **D** | L3 cartographic elements (14 files) | 0, A–C | B | ☐ not started | — | — |
 | **E** | L4 fronts (6 files) | 0, A–D | B | ☐ not started | — | — |
@@ -64,9 +64,9 @@ Stages B and D are delivered in checkpoints — consecutive turns within one cha
 
 | Stage | Checkpoint | Contents | Status |
 |---|---|---|---|
-| B | B.1 | `project`, `unproject`, `scaleFactors` | ☐ |
-| B | B.2 | `quantile`, `symmetricLimits`, `niceTicks`, `regrid`, `hillshade` | ☐ |
-| B | B.3 | `colormaps` | ☐ |
+| B | B.1 | `project`, `unproject`, `scaleFactors` | ☑ 138 points |
+| B | B.2 | `quantile`, `symmetricLimits`, `niceTicks`, `regrid`, `hillshade` | ☑ 164 points |
+| B | B.3 | `colormaps` | ☑ 182 points |
 | D | D.1 | `internal.layout`, `basemap`, `graticule`, `frame` | ☐ |
 | D | D.2 | `coastline`, `scalebar`, `northarrow`, `colorbar`, `inset` | ☐ |
 | D | D.3 | overlays: `track`, `points`, `contours`, `polygons`, `stipple` | ☐ |
@@ -1005,7 +1005,7 @@ Every figure below is **a claim from this document, and V1 says it is unmeasured
 |---|---|---|---|---|
 | 0 | 4 | 15 | 21 | 3 (PV-035/036/037 — all in Stage 0.2 code, found at 0.3) |
 | A | 3 | 6 | 10 | 1 (PV-043, in the Stage 0.2 harness, found the first time any code raised a warning) |
-| B | | | | |
+| B | 3 | 0 | 12 | 1 (PV-057, a documentation/code disagreement in the Stage 0.3 mirror) |
 | C | | | | |
 | D | | | | |
 | E | | | | |
@@ -1069,6 +1069,12 @@ Every figure below is **a claim from this document, and V1 says it is unmeasured
 | C-046 | 15-Aug-2026 | **Error identifiers are passed to shared validators in full, never composed from a prefix** | PV-049. A composed identifier exists nowhere in the source as a literal, so no static reader can find it, and the audit correctly read the help as lying. Generalises D-011 |
 | C-047 | 15-Aug-2026 | **`identifierAgreement` is package-wide**; the superseded per-file form is frozen in place | PV-050, PV-051. Per-file precision is unachievable once a shared validator legitimately raises on a caller's behalf |
 | C-048 | 15-Aug-2026 | **Frozen acceptance criteria whose keys contain dots use LIST paths** | PV-048. A dotted path split a key in the middle of a number and reported seven present criteria as absent — §2.7 inside the instrument that enforces §2.7 |
+| C-049 | 15-Aug-2026 | **Stage B delivered and executed, in three checkpoints.** 182 points predicted, 182 run, 182 passed. **V2 discharged**: all sixteen projections now exist in MATLAB and agree with the mirror and its oracles | R-007 |
+| C-050 | 15-Aug-2026 | **`TolMass` corrected from 1e-12 to 1e-13**, the value four documents already claimed | PV-057. The mirror computed `10^ceil(log10(worst)+1)`, which returns a whole decade higher than `10^(floor(log10(worst))+1)`. No check could see it: every check compared the measurement against the wrong tolerance and passed. Debt V1's failure mode, inside the instrument built to prevent it |
+| C-051 | 15-Aug-2026 | **The Mollweide early exit in §7.4 is reversed** | PV-055. A break on the array maximum makes each element's iteration count depend on its neighbours, so a batched result differs from a scalar one and the `vectorisation` contract fails. Fifteen unconditional iterations instead |
+| C-052 | 15-Aug-2026 | **`crs.Domain` is consumed by `geo.project` exactly as declared**, and no bare `cosc` literal appears in the file | F12 closed in code, and enforced statically by the audit |
+| C-053 | 15-Aug-2026 | **Three v1 colormap presets dropped**: `viridis`, `magma`, `cividis` | PV-060. They exist only as third-party tabulated data, and this toolbox generates rather than copies. `parula`, `jet`, `turbo` and `gray` are delegated to base MATLAB. An Nx3 array is accepted anywhere a name is, which is the migration path |
+| C-054 | 15-Aug-2026 | **The diverging colormap is ORIGINAL**, generated lightness-monotone on each limb | §7.4 B.3.1 asked for exactly this, and the help says it is original rather than implying provenance it does not have |
 
 ---
 

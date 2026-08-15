@@ -506,4 +506,83 @@ project's own instruments on their first contact with real library code.**
 
 ---
 
-*Entries R-007 onward are written at each stage's green gate.*
+## R-007 — Stage B, 15-Aug-2026, tier A
+
+**Scope.** L1 core math, in three checkpoints. `geo.{project, unproject,
+scaleFactors, quantile, symmetricLimits, niceTicks, regrid, hillshade,
+colormaps}` plus `geo.internal.{robinson, mollweideTheta,
+pairCoordinates}`, with `TestB1_projection`, `TestB2_fields`,
+`TestB3_colormaps`.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+182; suite size 182, per-class sum 182, 182 passed, 0 failed.** Green gate
+on all six conditions. Checkpoints 138 → 164 → 182, each predicted
+correctly before its run. **61 value records and 12 ratio records** left
+behind by passing assertions.
+
+**The numbers this stage exists to produce.**
+
+| claim | measured | bound | oracle |
+|---|---|---|---|
+| Mercator y(35°) | 1.1e-16 | 1e-12 | O1 via mirror |
+| LCC at (35N, 75W), Snyder p.296 | **0** | 1e-12 | O1 |
+| Polar stereographic ρ(70°), SP 71 | **0** | 1e-12 | O4 (the value PV-002 refuted) |
+| Robinson PCHIP vs its own table nodes | **0** | 1e-12 | O2 |
+| Round trip, 13 of 16 projections | ≤ 4.5e-12° | 1e-9° | O3 |
+| Round trip, orthographic | 1.63e-11° | 1e-9° | O3 |
+| Round trip, Lambert azimuthal | 2.07e-09° | **1e-8°** | PV-010's exception, and better than the mirror's 4.6e-9 |
+| Mercator k = sec φ | 5.0e-9 | 1e-6 | O3 |
+| Equal-area AreaScale = 1, worst of five | 1.86e-8 | 1e-6 | O3 |
+| Conformal h = k, worst of three | 3.91e-8 | 1e-6 | O3 |
+| LCC k = 1 on both standard parallels | 2.52e-9 | 1e-6 | O3 |
+| Conservative regrid mass closure | 2.60e-14 | 1e-13 | V7's measured floor |
+| F4 seam, longitudes −0.5 **and 179.5** | **0** | 1e-12 | analytic |
+| Flat-terrain shade | **0** | 1e-14 | analytic |
+| Hillshade metric ratio, lat 60 / lat 0 | 6.09e-6 relative | 1e-5 | analytic (no oracle exists — L10) |
+| truecolor Shade = 0.5 composition | **0** | **0** | exact by specification |
+
+**Pinned v1 regressions, all three measured on the installed v1 first.**
+F2: `project(359, 10, robinson)` gives −0.0147 where v1 gave **+5.29**.
+F3: `project(0, 87, mercator)` is NaN where v1 returned the value for 85°.
+F10: `quantile([1 2], 50)` is **1.5** where v1 gave 1.
+F16: the ceiling policy at span 45°, where v1's nearest-snap gives ten
+lines against a target of six.
+F4: the seam, exact at **both** ends.
+F5: an inverse exists at all, which is why the round-trip table above can
+be written.
+
+**Findings — twelve, and the important ones are about MATLAB itself.**
+
+| id | Finding |
+|---|---|
+| PV-054 | **MATLAB's MIN and MAX with a scalar bound IGNORE NaN.** `max(NaN, 0)` returns 0. Every guard written the obvious way therefore converts a missing value into a plausible one, silently. **Five sites in one checkpoint**: the conic radicands, the azimuthal denominators, the Tissot sine and both Tissot semi-axes. Repaired with an explicit NaN-in-NaN-out contract at the end of `project` and `unproject`, and a named `clampKeepingNaN` in `scaleFactors`. Every instance was found by a test; none by reading. |
+| PV-055 | **The Mollweide early exit the handover asks for breaks the vectorisation contract.** A break on `max(|step|)` over the array makes each element's ITERATION COUNT depend on its neighbours, so a batched result differs from a scalar one in the last ulp. Fifteen unconditional iterations instead — deterministic, and independent of how the caller batched their data. §7.4's instruction is reversed, deliberately. |
+| PV-056 | **`geo.scaleFactors` on a domain boundary is HALF defined**, more precisely than mirror limit L7 recorded: `h` is NaN because its central difference steps outside the limit, `k` is finite because its difference does not. A caller testing only `k` sees nothing wrong. This is why `geo.scalebar` must sample strictly INSIDE its extent rather than test for NaN. |
+| PV-057 | **`TolMass` was computed as 1e-12, not the 1e-13 documented everywhere.** The mirror used `10^ceil(log10(worst)+1)`, which for a floor of 2.15e-14 returns 1e-12 with 46× headroom — **equal to the handover's guess**, not tighter than it. `regrid.py`'s own comment, debt row V7, change-log C-031 and `geo.regrid`'s ACCURACY block all said 1e-13. **No check could have found this**: every check was comparing the measurement against the wrong tolerance and passing comfortably. It was caught by reading the bound printed beside the measurement in a GREEN run. This is debt V1's failure mode committed inside the instrument built to prevent it. Formula corrected to `10^(floor(log10(worst))+1)`. |
+| PV-058 | **MATLAB's `switch` takes a CELL of alternatives, not a string array** (carried from Stage A, and it recurred here in the projection dispatch draft). |
+| PV-059 | `griddedInterpolant` calls bilinear interpolation `'linear'`. The public option stays `"bilinear"`, which is what it is called on a 2-D grid and what v1's users will look for; the translation happens once, inside `geo.regrid`. |
+| PV-060 | **Three of v1's six colormap presets are not ported.** `viridis`, `magma` and `cividis` exist only as third-party tabulated data, and reproducing those tables here would be copying somebody else's work into this repository — which the handover forbids in the same breath as it asks for an original ramp. `parula`, `jet`, `turbo` and `gray` are delegated to base MATLAB, so this toolbox neither copies nor maintains them. The error message names the three and says to pass an Nx3 array instead. **A change to v1's option surface**, recorded rather than slipped in. |
+| PV-061 | The audit flagged four more documented-but-never-raised identifiers across the stage, each one an `arguments`-block validator whose real identifier is MATLAB's. Documented as MATLAB identifiers instead of coining `geo:*` twins — a deprecated alias for an error is still an alias. |
+| PV-062 | `geo.region`'s invalid-box rejection raised `MATLAB:error:nonScalarInput` because `error()` refuses a non-scalar formatted argument: the rejection path failing to reject. Carried from Stage A; noted here because the same shape recurs wherever a message quotes a vector. |
+
+**Binding items a later stage could be wrong for not reading:**
+
+1. **Never write `min(max(x, lo), hi)` on data that may contain NaN.** Use
+   `clampKeepingNaN` or restore the mask afterwards. Stage D's mask
+   handling and Stage C's readers are both full of clamps.
+2. **`geo.project` and `geo.unproject` guarantee NaN in BOTH coordinates**
+   when either input is NaN. Consumers may test one.
+3. **`geo.scaleFactors` returns a half-defined result on a boundary**, so
+   `geo.scalebar` samples strictly inside its extent (D-006, L7, PV-056).
+4. **`geo.colormaps` accepts an Nx3 array anywhere it accepts a name**,
+   which is the migration path for the three dropped presets.
+5. **Shade composition is exactly `rgb .* Shade`** with no gamma and no
+   clamp. The Ambient floor that stops shadows going black lives in
+   `geo.hillshade`, and Stage D must not add a second one.
+6. **`geo.regrid`'s conservative path requires uniform axes** and says so
+   with its own identifier; Stage C's readers must not hand it a
+   non-uniform grid silently.
+
+---
+
+*Entries R-008 onward are written at each stage's green gate.*
