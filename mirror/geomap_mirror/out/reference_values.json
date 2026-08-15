@@ -513,6 +513,314 @@
       "hillshade_max_abs_error_dn": 0.0,
       "hillshade_quantisation_dn": 1.0,
       "note": "slope/aspect are Float32 and certify the Horn kernel; hillshade is uint8 and certifies only to 1 DN = 1/254"
+    },
+    "stage_a_declared_domains": {
+      "stereographic": {
+        "v1_literal_cosc": -0.9,
+        "exact_acos_deg": 154.15806723683286,
+        "handover_declared_deg": 154.0,
+        "declared_minus_exact_deg": -0.1580672368328635,
+        "declared_is_inside_exact": true
+      },
+      "gnomonic": {
+        "v1_literal_cosc": 0.1,
+        "exact_acos_deg": 84.26082952273322,
+        "handover_declared_deg": 84.0,
+        "declared_minus_exact_deg": -0.2608295227332178,
+        "declared_is_inside_exact": true
+      },
+      "azimuthalequidistant": {
+        "v1_literal_cosc": -0.9994,
+        "exact_acos_deg": 178.01511672388062,
+        "handover_declared_deg": 178.0,
+        "declared_minus_exact_deg": -0.015116723880623795,
+        "declared_is_inside_exact": true
+      },
+      "orthographic": {
+        "v1_literal_cosc": 0.0,
+        "exact_acos_deg": 90.0,
+        "handover_declared_deg": 90.0,
+        "declared_minus_exact_deg": 0.0,
+        "declared_is_inside_exact": true
+      },
+      "_mathematical_limits": {
+        "orthographic": {
+          "hard_limit_deg": 90.0,
+          "why": "the far hemisphere is not visible at all; beyond 90 deg the point is behind the globe. A true limit."
+        },
+        "gnomonic": {
+          "hard_limit_deg": 90.0,
+          "why": "tan(c) diverges at exactly 90 deg. The declared 84 deg is a COSMETIC clip well inside the singularity, chosen because the projection is unusable long before it."
+        },
+        "stereographic": {
+          "hard_limit_deg": 180.0,
+          "why": "only the antipode itself is singular. The declared 154 deg is cosmetic."
+        },
+        "azimuthalequidistant": {
+          "hard_limit_deg": 180.0,
+          "why": "the antipode is a whole circle, so the inverse is ill-posed there, but the forward is finite. The declared 178 deg is a conditioning guard."
+        }
+      }
+    },
+    "stage_a_degenerate_conic": {
+      "p1=10.0, p2=-10.0": {
+        "lcc_n": -0.0,
+        "lcc_exactly_zero": true,
+        "albers_n": 0.0,
+        "albers_exactly_zero": true
+      },
+      "p1=30.0, p2=-30.0": {
+        "lcc_n": -0.0,
+        "lcc_exactly_zero": true,
+        "albers_n": 0.0,
+        "albers_exactly_zero": true
+      },
+      "p1=33.0, p2=-33.0": {
+        "lcc_n": -0.0,
+        "lcc_exactly_zero": true,
+        "albers_n": 0.0,
+        "albers_exactly_zero": true
+      },
+      "p1=45.0, p2=-45.0": {
+        "lcc_n": -0.0,
+        "lcc_exactly_zero": true,
+        "albers_n": 0.0,
+        "albers_exactly_zero": true
+      },
+      "p1=60.0, p2=-60.0": {
+        "lcc_n": -0.0,
+        "lcc_exactly_zero": true,
+        "albers_n": 0.0,
+        "albers_exactly_zero": true
+      },
+      "tangent_case_p1_equals_p2": {
+        "n_at_45": 0.7071067811865475,
+        "expected_sin45": 0.7071067811865475
+      },
+      "near_degenerate_ladder": [
+        {
+          "asymmetry_deg": 1e-06,
+          "n": 9.901188654028418e-09,
+          "would_be_rejected": false
+        },
+        {
+          "asymmetry_deg": 1e-08,
+          "n": 9.901189816850322e-11,
+          "would_be_rejected": false
+        },
+        {
+          "asymmetry_deg": 1e-10,
+          "n": 9.900856007136133e-13,
+          "would_be_rejected": true
+        },
+        {
+          "asymmetry_deg": 1e-12,
+          "n": 9.888259498198952e-15,
+          "would_be_rejected": true
+        }
+      ]
+    },
+    "stage_a_wrap_exactness": {
+      "lon=180.0, lon0=0.0": {
+        "expected": -180.0,
+        "formula_A": -180.0,
+        "A_bitwise": true,
+        "formula_B": -180.0,
+        "B_bitwise": true
+      },
+      "lon=-180.0, lon0=0.0": {
+        "expected": -180.0,
+        "formula_A": -180.0,
+        "A_bitwise": true,
+        "formula_B": -180.0,
+        "B_bitwise": true
+      },
+      "lon=539.5, lon0=0.0": {
+        "expected": 179.5,
+        "formula_A": 179.5,
+        "A_bitwise": true,
+        "formula_B": 179.5,
+        "B_bitwise": true
+      },
+      "lon=0.0, lon0=0.0": {
+        "expected": 0.0,
+        "formula_A": 0.0,
+        "A_bitwise": true,
+        "formula_B": 0.0,
+        "B_bitwise": true
+      },
+      "lon=-0.0, lon0=0.0": {
+        "expected": 0.0,
+        "formula_A": 0.0,
+        "A_bitwise": true,
+        "formula_B": 0.0,
+        "B_bitwise": true
+      },
+      "_shifted_windows": {
+        "lon0=40.0": {
+          "lon=220.0": {
+            "expected": -140.0,
+            "A": -140.0,
+            "A_bitwise": true,
+            "B": -140.0,
+            "B_bitwise": true
+          },
+          "lon=-140.0": {
+            "expected": -140.0,
+            "A": -140.0,
+            "A_bitwise": true,
+            "B": -140.0,
+            "B_bitwise": true
+          },
+          "lon=40.0": {
+            "expected": 40.0,
+            "A": 40.0,
+            "A_bitwise": true,
+            "B": 40.0,
+            "B_bitwise": true
+          }
+        },
+        "lon0=-96.0": {
+          "lon=84.0": {
+            "expected": -276.0,
+            "A": -276.0,
+            "A_bitwise": true,
+            "B": -276.0,
+            "B_bitwise": true
+          },
+          "lon=-276.0": {
+            "expected": -276.0,
+            "A": -276.0,
+            "A_bitwise": true,
+            "B": -276.0,
+            "B_bitwise": true
+          },
+          "lon=-96.0": {
+            "expected": -96.0,
+            "A": -96.0,
+            "A_bitwise": true,
+            "B": -96.0,
+            "B_bitwise": true
+          }
+        },
+        "lon0=180.0": {
+          "lon=360.0": {
+            "expected": 0.0,
+            "A": 0.0,
+            "A_bitwise": true,
+            "B": 0.0,
+            "B_bitwise": true
+          },
+          "lon=0.0": {
+            "expected": 0.0,
+            "A": 0.0,
+            "A_bitwise": true,
+            "B": 0.0,
+            "B_bitwise": true
+          },
+          "lon=180.0": {
+            "expected": 180.0,
+            "A": 180.0,
+            "A_bitwise": true,
+            "B": 180.0,
+            "B_bitwise": true
+          }
+        },
+        "lon0=0.1": {
+          "lon=180.1": {
+            "expected": -179.9,
+            "A": -179.9,
+            "A_bitwise": true,
+            "B": -179.9,
+            "B_bitwise": true
+          },
+          "lon=-179.9": {
+            "expected": -179.9,
+            "A": -179.9,
+            "A_bitwise": true,
+            "B": -179.9,
+            "B_bitwise": true
+          },
+          "lon=0.1": {
+            "expected": 0.1,
+            "A": 0.1,
+            "A_bitwise": true,
+            "B": 0.09999999999999432,
+            "B_bitwise": false
+          }
+        }
+      },
+      "idempotent_A_lon0=0.0": {
+        "max_abs_diff": 0.0,
+        "bitwise": true
+      },
+      "idempotent_A_lon0=40.0": {
+        "max_abs_diff": 0.0,
+        "bitwise": true
+      },
+      "idempotent_A_lon0=-96.0": {
+        "max_abs_diff": 0.0,
+        "bitwise": true
+      },
+      "idempotent_B_lon0=0.0": {
+        "max_abs_diff": 0.0,
+        "bitwise": true
+      },
+      "idempotent_B_lon0=40.0": {
+        "max_abs_diff": 0.0,
+        "bitwise": true
+      },
+      "idempotent_B_lon0=-96.0": {
+        "max_abs_diff": 0.0,
+        "bitwise": true
+      },
+      "inwindow_A_lon0=0.0": {
+        "min": -179.98908955528168,
+        "max": 179.9980537310621,
+        "all_in_half_open": true
+      },
+      "inwindow_A_lon0=40.0": {
+        "min": -139.99836317761856,
+        "max": 219.9995600341681,
+        "all_in_half_open": true
+      },
+      "inwindow_A_lon0=-96.0": {
+        "min": -275.998546828484,
+        "max": 83.99647552788338,
+        "all_in_half_open": true
+      },
+      "inwindow_B_lon0=0.0": {
+        "min": -179.98908955528168,
+        "max": 179.9980537310621,
+        "all_in_half_open": true
+      },
+      "inwindow_B_lon0=40.0": {
+        "min": -139.99836317761856,
+        "max": 219.9995600341681,
+        "all_in_half_open": true
+      },
+      "inwindow_B_lon0=-96.0": {
+        "min": -275.998546828484,
+        "max": 83.99647552788338,
+        "all_in_half_open": true
+      }
+    },
+    "stage_a_crossing_interpolation": {
+      "delta_wrapped": 2.0,
+      "delta_naive": -358.0,
+      "t_wrapped": 0.5,
+      "t_naive": -0.002793296089385475,
+      "lat_at_crossing_wrapped": 15.0,
+      "lat_at_crossing_naive": 9.972067039106145,
+      "note": "the wrapped delta gives lat 15.0 at the crossing, which is the midpoint of a 2-degree step and obviously right. The naive delta gives a latitude barely moved from the start, and would look plausible on a plot"
+    },
+    "stage_a_great_circle": {
+      "spherical_km": 5837.24750061355,
+      "geodesic_wgs84_km": 5852.935291766766,
+      "difference_pct": -0.26803288215544363,
+      "initial_bearing_spherical_deg": 291.7938627483058,
+      "initial_bearing_geodesic_deg": 291.826083196198,
+      "bearing_difference_deg": -0.032220447892200355
     }
   },
   "findings": [

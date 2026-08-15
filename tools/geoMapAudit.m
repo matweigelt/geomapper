@@ -359,11 +359,22 @@ function f = checkArrayGrowth(files)
 %   Scoped to +geo deliberately (RECORDS R-003 note 6): the tooling in
 %   tests/ and tools/ uses cell accumulators, which are O(1) amortised and
 %   are the recommended form, not the banned one.
+%
+%   A PRAGMA FOLLOWS A STATEMENT; PROSE DOES NOT. The first version
+%   searched raw lines for the literal, so the comment in
+%   +geo/splitAntimeridian.m that EXPLAINS why the pragma is banned
+%   tripped the ban. That is the same mistake in the other direction as
+%   the forbidden-function check's: a word inside a comment is
+%   documentation, not a call. The line must carry code before its
+%   comment character for the pragma to be real.
 f = emptyFinding();
 for i = 1:numel(files)
     if ~files(i).inGeo, continue, end
     idx = find(contains(files(i).lines, "%#ok<AGROW>"));
     for k = idx(:)'
+        if strlength(strtrim(files(i).code(k))) == 0
+            continue        % a comment about the pragma, not a pragma
+        end
         f(end+1) = finding("arrayGrowth", files(i).rel, k, ...
             ['%%#ok<AGROW> inside +geo. F13: v1''s readers grew arrays ' ...
              'in the record loop, which is O(N^2) on a 180 MB file. ' ...

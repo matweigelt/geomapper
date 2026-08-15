@@ -21,7 +21,7 @@
   ],
   "generated": "2026-08-15",
   "oracle": "pyproj 3.7.2 / PROJ 9.5.1; GDAL 3.10.3 for O7/O8",
-  "expected_value_count": 43,
+  "expected_value_count": 48,
   "point_values": {
     "mercator_y_at_lat35": {
       "expected": 0.6528365797197981,
@@ -164,6 +164,49 @@
     "hillshade_vs_O8_gdal.slope_max_abs_error_deg": 0.001,
     "hillshade_vs_O8_gdal.aspect_max_abs_error_deg": 0.01,
     "hillshade_vs_O8_gdal.hillshade_max_abs_error_dn": 0.0
+  },
+  "stageA_true": {
+    "_comment": [
+      "Stage A pre-validation, frozen. Each is a boolean because each is a",
+      "yes-or-no property rather than a quantity.",
+      "",
+      "PATHS ARE LISTS, NOT DOTTED STRINGS, and that is not a style",
+      "choice. The Stage 0.3 sections above use dotted keys, which works",
+      "only because none of their sub-keys contains a dot. These keys",
+      "record measurements AT longitudes - 'lon=180.0, lon0=0.0' - so a",
+      "dotted key would be split in the middle of a number and every",
+      "criterion would report itself absent. It did, on the first run:",
+      "seven of nine breached as 'absent from this run' while the values",
+      "were sitting in the file. Handover 2.7 forbids recovering a fact by",
+      "parsing a composed value back apart; this is that rule earning its",
+      "place inside the instrument that enforces it.",
+      "",
+      "The wrap formulation is pinned at the ONE point where the two",
+      "algebraically identical forms disagree: lon = lon0 = 0.1, where the",
+      "form that folds the offset into a single term returns",
+      "0.09999999999999432 (finding PV-040). If a later refactor 'tidies'",
+      "geo.wrapLongitude into that form, this criterion is what says no."
+    ],
+    "criteria": [
+      {"path": ["stage_a_wrap_exactness", "lon=180.0, lon0=0.0", "A_bitwise"],
+       "expect": true, "why": "the antimeridian must be exactly -180"},
+      {"path": ["stage_a_wrap_exactness", "lon=-180.0, lon0=0.0", "A_bitwise"],
+       "expect": true, "why": "and -180 must stay put"},
+      {"path": ["stage_a_wrap_exactness", "_shifted_windows", "lon0=0.1", "lon=0.1", "A_bitwise"],
+       "expect": true, "why": "PV-040: the window centre, where formulation B loses precision"},
+      {"path": ["stage_a_wrap_exactness", "idempotent_A_lon0=40.0", "bitwise"],
+       "expect": true, "why": "wrapping twice must change nothing, bitwise"},
+      {"path": ["stage_a_wrap_exactness", "inwindow_A_lon0=-96.0", "all_in_half_open"],
+       "expect": true, "why": "half-open at both ends, on a shifted window"},
+      {"path": ["stage_a_degenerate_conic", "p1=45.0, p2=-45.0", "lcc_exactly_zero"],
+       "expect": true, "why": "PV-039: degeneracy is exact, not approximate"},
+      {"path": ["stage_a_degenerate_conic", "p1=45.0, p2=-45.0", "albers_exactly_zero"],
+       "expect": true, "why": "same, for the other conic"},
+      {"path": ["stage_a_declared_domains", "gnomonic", "declared_is_inside_exact"],
+       "expect": true, "why": "the declared clip must not exceed the angle v1's literal meant"},
+      {"path": ["stage_a_declared_domains", "stereographic", "declared_is_inside_exact"],
+       "expect": true, "why": "same"}
+    ]
   },
   "stage03_true": {
     "_comment": [
