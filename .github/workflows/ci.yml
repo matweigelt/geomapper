@@ -1,0 +1,173 @@
+# GeoMapper CI.
+#
+# Licensing:
+#   public repo  - nothing to do: setup-matlab licenses base MATLAB
+#                  automatically on GitHub-hosted runners
+#   private repo - request a MATLAB batch licensing token and store it as
+#                  the secret MLM_LICENSE_TOKEN
+#   self-hosted  - change runs-on; no token needed
+#
+# Structure follows the shAnalysis CI (v2.6.0), which is proven in
+# service: static gates before runtime provisioning, a tight cap on the
+# MATLAB setup step, and repo-layout assertions before the suite so a
+# wrong working directory fails loudly instead of running nothing.
+#
+# geoMap v2.0 | 14-Aug-2026 | Claude Opus 5 (Anthropic)
+
+name: gates
+
+# Deliberately BOTH triggers. The twin run looks redundant and is an
+# instrument: when a runner step hangs, the only way to tell platform
+# trouble from a genuine hang is to compare the step's duration against
+# its twin from the other trigger. That comparison settled four hang
+# diagnoses in one session of a reference project.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # Cancel superseded runs on the same ref, but never on main: a cancelled
+  # main run loses the baseline durations the twin comparison needs.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+
+  # ------------------------------------------------------------------
+  # STATIC GATES FIRST. No language runtime, so a structural or
+  # documentation defect fails in seconds instead of after minutes of
+  # environment provisioning.
+  # ------------------------------------------------------------------
+  static:
+    name: static gates (no runtime)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Structural check of all MATLAB sources
+        # mcheck refuses to report a clean tree unless its own
+        # fault-injection self-test passes in the same invocation.
+        run: python3 tools/mcheck.py .
+
+      - name: Provenance and honesty audit
+        run: python3 tools/provenance_audit.py .
+
+  # ------------------------------------------------------------------
+  # The mirror, and the frozen numerical criteria.
+  # ------------------------------------------------------------------
+  mirror:
+    name: mirror + frozen acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install mirror dependencies
+        run: python3 -m pip install --upgrade pip -r mirror/requirements.txt
+
+      - name: Record the oracle version
+        # A measurement without its oracle version is not reproducible.
+        run: |
+          python3 -c "import pyproj, numpy, scipy; \
+            print('pyproj', pyproj.__version__, '| PROJ', pyproj.proj_version_str); \
+            print('numpy', numpy.__version__, '| scipy', scipy.__version__)"
+
+      - name: Run the mirror
+        working-directory: mirror
+        run: python3 -m geomap_mirror.references
+
+      - name: Frozen acceptance criteria
+        # The scientific instrument: a numerical criterion that can reject
+        # a wrong algorithm before any human reads the diff. Fails on a
+        # missing fixture (exit 2) as loudly as on a breach (exit 1) -
+        # a run that cannot find its fixture must never pass quietly.
+        working-directory: mirror
+        run: python3 check_acceptance.py
+
+      - name: Upload measured values
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mirror-reference-values
+          path: mirror/geomap_mirror/out/reference_values.json
+
+  # ------------------------------------------------------------------
+  # MATLAB. Public project, so setup-matlab licenses the products with
+  # no token. Runs only after the static gates pass.
+  # ------------------------------------------------------------------
+  matlab:
+    name: MATLAB suite
+    needs: static
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v3
+        # Explicit step-level timeout. The nominal duration of this step is
+        # a couple of minutes; the pathological case runs five to ten and
+        # looks like a slow success while it burns the queue.
+        # 8 minutes, not a round guess: in the shAnalysis project this step
+        # hung four times in one session, running 5-10 minutes against a
+        # nominal 1.2. A tight cap makes a retry cost eight minutes instead
+        # of the whole job budget.
+        timeout-minutes: 8
+        with:
+          # Pin the release the toolbox targets. If this release is not yet
+          # offered by the action, that is the FIRST thing to check when
+          # this step fails - not the test code.
+          release: R2026a
+          cache: true
+
+      - name: Run the gates
+        uses: matlab-actions/run-command@v3
+        with:
+          # xvfb is provided by the action's display handling; every suite
+          # creates figures with 'Visible','off' regardless, so nothing
+          # here depends on a display being present.
+          #
+          # The manifest is regenerated and then verified. Under CI this
+          # exercises the manifest code path rather than relying on it:
+          # git's content addressing is the transfer integrity mechanism
+          # here. The manifest exists for the Tier-B chat handoff, where
+          # there is no git.
+          command: |
+            fprintf('pwd: %s\n', pwd);
+            assert(isfolder('tests'), 'repo layout: tests missing in %s', pwd);
+            assert(isfolder('tools'), 'repo layout: tools missing in %s', pwd);
+            n = numel(dir(fullfile('tests','*.m')));
+            fprintf('files in tests: %d\n', n);
+            assert(n >= 6, 'repo layout: only %d files in tests', n);
+            addpath(pwd, fullfile(pwd,'tests'), fullfile(pwd,'tools'));
+            makeManifest;
+            ok = rungeoMapTests("all");
+            assert(ok, 'geo:ci:GateFailed', ...
+                ['The green gate is not the pass count. Read the log: ' ...
+                 'manifest, files loaded, warning inventory, speed ' ...
+                 'budgets and category coverage each gate independently.']);
+
+      - name: Upload MATLAB logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: matlab-logs
+          path: |
+            *.log
+            test-results/
+          if-no-files-found: ignore
