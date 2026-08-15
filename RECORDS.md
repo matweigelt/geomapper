@@ -336,6 +336,33 @@ every static check in the project.**
 | PV-033 | `references.py::scale_factors` carries a dead assignment (`area = cross / coslat * coslat` immediately overwritten by `area = cross`). Harmless — the surviving line is correct — but recorded rather than silently tidied, since §6.6 forbids mixing an unrelated repair into this round. | Reading, not running |
 | PV-034 | **Operator error: `git rm --cached -r . && git reset --hard`, run to renormalise line endings, destroyed every uncommitted edit to tracked files.** Eleven files' changes were lost and had to be redone from the session record; the ~3 600 lines of *new* files survived only because `reset --hard` does not touch untracked ones. **Rule earned: commit before any command that rewrites the index.** The safety commit that should have come first came second. | Nothing in the project could have caught this; it is recorded because a process defect that goes unrecorded recurs |
 
+**Confirming run, CI.** Four rounds were needed and all four failures are
+recorded below rather than squashed away. Final state, both twin triggers
+green on `94b53bd`:
+
+| job | result |
+|---|---|
+| static gates | `mcheck` 17 files 0 problems; `provenance_audit` 0 problems |
+| mirror + frozen acceptance | 65 criteria, 0 breaches, on **GDAL 3.8.4 via the CLI** |
+| MATLAB suite | `glnxa64 \| R2026a \| 1 threads`: 34 passed, 0 failed, **2 filtered loudly** (the v1 tests, where the tree is deliberately absent). Green gate on all six conditions |
+
+**The cross-route certification worked, and is the strongest single result
+here.** The sandbox reaches GDAL **3.10.3 through `ctypes`** on a wheel's
+bundled libgdal; CI reaches GDAL **3.8.4 through the command line**.
+Different version, different call path, and both reproduce the analytic
+plane's slope to **3.57997724620418e-06** and aspect to
+**5.918609105037831e-06** — the same digits. An oracle agreeing with
+itself across two implementations of itself is evidence; one route alone
+would have been an assumption (limit L12).
+
+**Findings from CI — three more, none visible from the desk.**
+
+| id | Finding | Why the local run could not see it |
+|---|---|---|
+| PV-035 | **The growth fixture compared two different arrays**, 4N elements against N, which is two memory regimes as soon as one leaves cache — the first thing §3.4.3 says to check. On a 1-core runner the constructed 4.0 read **5.536** (band 4.70..6.03) and, on a re-run of the *identical commit*, **4.885**, against 3.84 (band 3.67..4.15) on the 16-thread box. **The twin CI triggers disagreed on the same commit**, which is precisely the comparison they exist to make. Repaired by changing the fixture's shape to one array, four passes against one — true ratio exactly 4 by construction, one memory regime by construction. Measured after: 3.929 / 3.955 / 3.955 locally, **4.07 (band 3.49..4.36)** on the runner. **The tolerance never moved.** | A 16-thread machine keeps both arrays fast enough that the regime split does not show |
+| PV-036 | **Calibrating around the fixed term does not work: `f` is a difference of two nearly equal times, so its relative size is badly conditioned.** It read **+0.98%** locally and **−70.3%** on the runner. Worse, the first calibration *selected* the −70.3% rung, because it minimised the **signed** fraction and negative is smaller than small — while a large negative `f` is not a small fixed cost but the regime violation itself. Modelling the confound failed; removing it worked. | Requires a machine where the regime actually splits |
+| PV-037 | **`tools/mcheck.py` reported "unmatched `end`" 228 lines away from the cause, in a function that is correct.** Its comment stripper chose transpose-or-string by the last **non-space** character, so `err.identifier '].  Run the Python mirror first.']);` read as a transpose after `identifier`; the `]` inside the string literal was counted as a real bracket; the file's bracket depth ran at −1 from that line onward; and with depth negative the guard that ignores `end` inside brackets stopped firing, so every `x(end+1)` after it was counted as a block terminator. Repaired by testing the **immediately preceding** character — a transpose never has a space before it, which is how MATLAB itself disambiguates. Two fixtures added, and **the pre-fix parser was shown to fire on the new one**: a fixture that passes before and after a change proves nothing. | Latent since Stage 0.2; exposed only when a later function used `x(end+1)` past line 251 |
+
 **Instrument integrity.** `geoMapAudit` refuses to report a clean tree
 unless its self-test has passed in the same invocation: **13 fixtures, one
 planted defect per check plus a healthy control on which nothing may
@@ -373,6 +400,17 @@ the discipline that is usually skipped is the half that paid.
    (`2.0.0-alpha.0`). `README`, `CHANGELOG`, `CITATION.cff`, `geoMap.prj`
    and `info.xml` are checked against it and never independently
    maintained.
+10. **A constructed speed fixture must compare two sides doing the same
+    work on the SAME array.** Different array sizes are different memory
+    regimes, and the difference shows on a small machine and hides on a
+    large one. Stage A's four speed budgets should be read against this
+    before they are written.
+11. **The baseline machine is `win64 | R2026a | 16 threads`; CI is
+    `glnxa64 | R2026a | 1 threads`.** They are different instruments. A
+    budget that must hold on both has to be constructed so that it is
+    machine-independent, not tuned until both happen to pass.
+12. **Do not run a command that rewrites the git index without committing
+    first.** See PV-034.
 
 ---
 
