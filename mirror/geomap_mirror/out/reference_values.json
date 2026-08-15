@@ -1,7 +1,21 @@
 {
-  "generated": "2026-08-13",
+  "generated": "2026-08-15",
   "model": "sphere, R = 1 (authalic 6371.0072 km for distances)",
   "oracle": "pyproj 3.7.2 / PROJ 9.5.1",
+  "oracle_gdal": {
+    "oracle": "O7/O8 GDAL",
+    "route": "ctypes",
+    "version": "3.10.3"
+  },
+  "oracle_gdal_self_test": {
+    "route": "ctypes",
+    "version": "3.10.3",
+    "ok": true,
+    "slope_expected_deg": 78.69006752597979,
+    "slope_max_abs_error_deg": 3.57997724620418e-06,
+    "aspect_expected_deg": 216.86989764584402,
+    "aspect_max_abs_error_deg": 5.918609105037831e-06
+  },
   "values": {
     "lcc_33_45_cone_constant": {
       "measured": 0.6304776973154274,
@@ -135,12 +149,12 @@
         "rel_error_vs_4pi": 9.775203609854869e-05
       },
       "hammer": {
-        "total": 12.565732634774324,
-        "rel_error_vs_4pi": 5.076880226014718e-05
+        "total": 12.565732634774328,
+        "rel_error_vs_4pi": 5.076880225986447e-05
       },
       "sinusoidal": {
-        "total": 12.566051618053777,
-        "rel_error_vs_4pi": 2.538491941587745e-05
+        "total": 12.566051618053779,
+        "rel_error_vs_4pi": 2.5384919415736093e-05
       }
     },
     "equal_area_worst_relative_error": {
@@ -443,6 +457,62 @@
         "regional_30deg": 1.0261082331038338,
         "continental_60deg": 1.1328258336401522
       }
+    },
+    "regrid_mass_closure_floor": {
+      "grid": "2161x4321 -> 181x361",
+      "relative_closure_by_summation_order": {
+        "pairwise": 2.1501970982541102e-14,
+        "naive": 1.649622112417153e-14,
+        "exact": 6.484721407432972e-15
+      },
+      "measured": 2.1501970982541102e-14,
+      "tolerance": 1e-12,
+      "handover_guess": 1e-12,
+      "agrees_with_guess": true,
+      "note": "TolMass is set from the WORST order measured here, not from the handover's guess and not from the best order; the asserted tolerance is one decade above the floor"
+    },
+    "regrid_analytic_affine_field": {
+      "max_abs_error": 7.105427357601002e-15,
+      "degree_weighted_counterfactual_error": 0.0040984471586398286,
+      "discriminates": true
+    },
+    "regrid_vs_O7_gdalwarp_average": {
+      "oracle": "O7/O8 GDAL",
+      "route": "ctypes",
+      "version": "3.10.3",
+      "band_lat_-10_to_10": {
+        "max_abs_diff": 0.0020807092268462224,
+        "rms_diff": 0.0005543749480760304,
+        "field_rms": 0.9831747305111189
+      },
+      "global": {
+        "max_abs_diff": 1.290437881032662,
+        "rms_diff": 0.20671125520804703,
+        "field_rms": 0.9998377856358598
+      },
+      "verdict": "gdalwarp -r average is an unweighted pixel-centre mean and is NOT a conservative remap; it is recorded as corroboration in a near-constant-area band and is not an authority globally"
+    },
+    "hillshade_flat_terrain": {
+      "expected": 0.8096194077712559,
+      "max_abs_error": 1.1102230246251565e-16
+    },
+    "hillshade_metric_ratio_lat60_over_lat0": {
+      "slope_lat0": 0.0008993260685799459,
+      "slope_lat60": 0.0017986411791555505,
+      "ratio": 1.9999878153155746,
+      "expected": 1.9999999999999996,
+      "rel_error": 6.092342212715707e-06
+    },
+    "hillshade_vs_O8_gdal": {
+      "oracle": "O7/O8 GDAL",
+      "route": "ctypes",
+      "version": "3.10.3",
+      "slope_max_abs_error_deg": 4.195812758922557e-05,
+      "aspect_max_abs_error_deg": 0.0008188175676764331,
+      "aspect_pixels_compared": 18094,
+      "hillshade_max_abs_error_dn": 0.0,
+      "hillshade_quantisation_dn": 1.0,
+      "note": "slope/aspect are Float32 and certify the Horn kernel; hillshade is uint8 and certifies only to 1 DN = 1/254"
     }
   },
   "findings": [

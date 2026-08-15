@@ -24,7 +24,6 @@ function h = sha256OfText(txt)
 %
 %   ---------------------------------------------------------------------
 %   geoMap v2.0 | 13-Aug-2026 | Claude Opus 5 (Anthropic)
-%   PROVISIONAL: not verified until its first green run.
 
 arguments
     txt (1,:) char

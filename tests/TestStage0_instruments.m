@@ -18,8 +18,6 @@ classdef TestStage0_instruments < GeoMapTestCase
 %
 %   ---------------------------------------------------------------------
 %   geoMap v2.0 | 13-Aug-2026 | Claude Opus 5 (Anthropic)
-%   PROVISIONAL: written without a MATLAB interpreter. Not verified until
-%   its first green run.
 
     properties (Constant)
         CoveredFunctions = ["GeoMapTestCase" "geoMapTestRecord" ...

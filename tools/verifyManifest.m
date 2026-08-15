@@ -21,7 +21,6 @@ function [ok, report] = verifyManifest(root)
 %
 %   ---------------------------------------------------------------------
 %   geoMap v2.0 | 13-Aug-2026 | Claude Opus 5 (Anthropic)
-%   PROVISIONAL: not verified until its first green run.
 
 mf = fullfile(root, 'MANIFEST.txt');
 if exist(mf, 'file') ~= 2

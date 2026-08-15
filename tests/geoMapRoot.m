@@ -18,7 +18,6 @@ function p = geoMapRoot()
 %
 %   ---------------------------------------------------------------------
 %   geoMap v2.0 | 13-Aug-2026 | Claude Opus 5 (Anthropic)
-%   PROVISIONAL: not verified until its first green run.
 
 p = fileparts(fileparts(mfilename('fullpath')));
 end

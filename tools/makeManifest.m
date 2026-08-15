@@ -33,7 +33,6 @@ function n = makeManifest(root)
 %
 %   ---------------------------------------------------------------------
 %   geoMap v2.0 | 13-Aug-2026 | Claude Opus 5 (Anthropic)
-%   PROVISIONAL: not verified until its first green run.
 
 arguments
     root (1,:) char = geoMapRoot()

@@ -18,8 +18,11 @@ import pathlib
 
 import numpy as np
 
+from . import gdal_oracle as GD
+from . import hillshade as H
 from . import kernels as K
 from . import oracle as O
+from . import regrid as RG
 
 OUT = pathlib.Path(__file__).parent / "out"
 OUT.mkdir(exist_ok=True)
@@ -440,11 +443,18 @@ def main():
     check_great_circle()
     check_scale_factors()
     check_scale_variation()
+    # Stage 0.3: the two oracle rows that were still empty. O8 (gdaldem)
+    # and O7 (gdalwarp) are reached through gdal_oracle, whose own route
+    # is proved on an analytically known plane before anything cites it.
+    values.update(RG.measure())
+    values.update(H.measure())
 
     payload = {
-        "generated": "2026-08-13",
+        "generated": "2026-08-15",
         "model": "sphere, R = 1 (authalic 6371.0072 km for distances)",
         "oracle": "pyproj 3.7.2 / PROJ 9.5.1",
+        "oracle_gdal": GD.provenance(),
+        "oracle_gdal_self_test": GD.self_test(),
         "values": values,
         "findings": findings,
     }

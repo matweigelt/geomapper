@@ -77,6 +77,14 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install the GDAL command-line utilities
+        # Oracles O7 and O8. The runner has root, so CI takes the CLI
+        # route; the authoring sandbox has no root and reaches the same C
+        # entry points through the libgdal bundled in the rasterio wheel.
+        # Which route ran is RECORDED with every measurement, so the two
+        # are compared rather than assumed equivalent (mirror limit L12).
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq gdal-bin
+
       - name: Install mirror dependencies
         run: python3 -m pip install --upgrade pip -r mirror/requirements.txt
 
@@ -86,6 +94,14 @@ jobs:
           python3 -c "import pyproj, numpy, scipy; \
             print('pyproj', pyproj.__version__, '| PROJ', pyproj.proj_version_str); \
             print('numpy', numpy.__version__, '| scipy', scipy.__version__)"
+          gdalinfo --version
+
+      - name: Prove the GDAL route before anything cites it
+        # An oracle wired up wrongly agrees with nothing and looks like a
+        # defect in the code under test. This asserts the route reproduces
+        # the slope and aspect of an analytically known plane FIRST.
+        working-directory: mirror
+        run: python3 -m geomap_mirror.gdal_oracle
 
       - name: Run the mirror
         working-directory: mirror
@@ -154,7 +170,14 @@ jobs:
             n = numel(dir(fullfile('tests','*.m')));
             fprintf('files in tests: %d\n', n);
             assert(n >= 6, 'repo layout: only %d files in tests', n);
-            addpath(pwd, fullfile(pwd,'tests'), fullfile(pwd,'tools'));
+            addpath(pwd, fullfile(pwd,'tests'), fullfile(pwd,'tools'), ...
+                    fullfile(pwd,'records'));
+            % The audit first, with its own self-test on: it is the only
+            % gate here that proves every one of its checks against a
+            % planted defect before reporting anything. A red audit then
+            % costs seconds instead of a full suite run.
+            assert(geoMapAudit(), 'geo:ci:AuditFailed', ...
+                'The static audit reported findings. See the table above.');
             makeManifest;
             ok = rungeoMapTests("all");
             assert(ok, 'geo:ci:GateFailed', ...

@@ -12,18 +12,27 @@ proves. Only Matthias advances `main`.
 
 | # | Who | Step |
 |---|---|---|
-| 1 | Claude | Builds in its own sandbox and runs every runnable gate there to **zero findings**. |
-| 2 | Claude | Places the files into the working copy on Matthias's machine (Filesystem connector), or hands them over as a bundle if that connector is not available. |
-| 3 | **Matthias** | `git checkout -b claude/<version>-<topic>`, commit, push. |
-| 4 | **Matthias** | Opens the pull request. The template fills itself in. |
-| 5 | CI | Static gates, then the mirror, then MATLAB. |
-| 6 | **Matthias** | Pastes the failing output back — verbatim, as a file if long. |
-| 7 | Claude | Diagnoses, fixes, returns to step 1. |
-| 8 | **Matthias** | Merges. Never Claude. |
+| 1 | Claude | Builds directly in the working copy and runs **every** gate there to zero findings — including the MATLAB suite, over the very folder the deliverable is built from. |
+| 2 | Claude | `git checkout -b claude/<version>-<topic>`, commit, push. |
+| 3 | Claude | Opens the pull request. The template fills itself in. |
+| 4 | CI | Static gates, then the mirror, then MATLAB. |
+| 5 | Claude | Reads the run, diagnoses, fixes, returns to step 1. |
+| 6 | **Matthias** | Reviews and merges. **Never Claude.** |
 
-Claude has no GitHub credentials and does not handle tokens. That is not a
-limitation to work around; the division above is the reason the loop is
-trustworthy.
+**Updated 15-Aug-2026.** Steps 2 and 3 moved from Matthias to Claude when
+`gh` was installed and authenticated, which is exactly the re-read trigger
+decision **D-013** wrote for itself. `gh pr create` works through the
+credential helper with **no token ever visible to Claude**, which is what
+D-013 was protecting; extracting a credential from a keychain remains out
+of the question and always will be.
+
+**What did NOT move: the merge.** Claude proposes, builds and proves; only
+Matthias advances `main`. That division is the reason the loop is
+trustworthy, and it is not a consequence of tooling.
+
+**What else changed.** Under Tier A the MATLAB gate runs in the authoring
+session, so a deliverable is no longer PROVISIONAL on arrival — the table
+at the foot of this file recorded the opposite and is corrected there.
 
 ### Branch naming
 
@@ -60,16 +69,23 @@ provisioning.
 
 ## What Claude cannot do here, and what follows
 
+*Table corrected 15-Aug-2026. Three of its four rows had become false.*
+
 | | available | consequence |
 |---|---|---|
-| Read/write Matthias's files | **yes** — Filesystem connector, `C:\Users\matth\Documents\MATLAB` | Claude places files directly into the working copy; no download, no unpacking |
-| Run anything on Matthias's machine | **no** | MATLAB is never executed by Claude. Every MATLAB deliverable ships **PROVISIONAL** until Matthias's run |
-| Push, open PRs, poll CI | **no** | Steps 3–6 above are Matthias's |
-| Network from the sandbox | yes, unauthenticated | the Python mirror runs for real, against a real PROJ |
+| Read/write Matthias's files | **yes** — `C:\Users\matth\Documents\MATLAB` | Claude works directly in the working copy; no download, no unpacking |
+| Run MATLAB on Matthias's machine | **yes** — MCP bridge to a live R2026a, over that same folder | **Tier A.** The in-session run is ground truth. A deliverable is proved before it is committed, not after |
+| Push, open PRs, read CI | **yes** — `gh` 2.97, authenticated by the owner | Claude closes its own loop up to the merge (D-013's re-read trigger) |
+| Network from the sandbox | yes, unauthenticated | the mirror runs for real, against a real PROJ and a real GDAL |
 
-**A MATLAB deliverable Claude has written is a hypothesis.** The
-attribution audit lists every `PROVISIONAL` file on every run so the debt
-stays visible until a green run clears it.
+**PROVISIONAL is now the exception, not the default.** It marks a file
+that shipped without ever being executed, which under Tier A should not
+happen; the provenance audit lists every one on every run so the debt
+stays visible until a green run clears it. As of 15-Aug-2026 there are
+none.
+
+**What Claude still cannot do, and it is deliberate:** merge. See the
+loop above.
 
 ---
 

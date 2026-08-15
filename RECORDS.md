@@ -279,4 +279,101 @@ and a credential-manager token is not Claude's to extract (D-013).
 
 ---
 
-*Entries R-005 onward are written at each stage's green gate.*
+## R-005 — Stage 0, checkpoint 0.3, 15-Aug-2026, tier A
+
+**Scope.** The instruments Stage 0 still owed: the static audit with a
+fault-injection fixture per check, the mirror modules that fill oracle
+rows O7 and O8, and the two v1 measurement scripts that discharge V4 and
+V9. Delivered: `tools/{geoMapAudit,geoMapAuditFixtures}.m`,
+`tests/TestStage03_audit.m`, `records/{v1_defect_probes,
+v1_option_inventory}.m` and their two reports,
+`mirror/geomap_mirror/{gdal_oracle,regrid,hillshade}.py`, `Contents.m`,
+`.gitattributes`.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`.
+**Predicted 36 points before the run; suite size 36, per-class sum 36,
+36 passed + 0 failed + 0 incomplete.** Green gate on all six conditions —
+zero failures, manifest verified (42 files), warning inventory empty,
+speed budgets met, category coverage clean, **static audit 0 findings**.
+Total 5.30 s. Python gates: `mcheck` 17 files 0 problems, `provenance_audit`
+0 problems, mirror **65 frozen criteria, 0 breaches**.
+
+The two tests filtered in R-004 for want of the mirror JSON now run.
+
+**Numbers measured this round.**
+
+| quantity | measured | consequence |
+|---|---|---|
+| Conservative-regrid mass closure, 2161×4321 → 181×361, worst of three summation orders | **2.150e-14** | **V7 discharged.** `TolMass` = **1e-13**, one decade above the floor — *tighter* than the handover's 1e-12 guess, not looser |
+| … by order: pairwise / naive / `fsum` | 2.15e-14 / 1.65e-14 / 6.48e-15 | the tolerance is set from the worst realistic order, never the best |
+| Conservative remap vs the analytic affine-field mean | 7.105e-15 | the weights are certified against closed-form integration, not against a second copy of themselves |
+| The same remap with latitude weighted in **degrees** | 4.098e-3 | the analytic check is *shown to discriminate*, by twelve orders of magnitude |
+| Horn hillshade vs `gdaldem hillshade` (uint8), interior | **0 DN over 18 094 px** | exact reproduction of GDAL's byte output |
+| … vs `gdaldem slope` / `aspect` (Float32) | 4.196e-5° / 8.188e-4° | the gradient itself, certified where the instrument has resolution |
+| Flat-terrain shade vs `Ambient + (1−Ambient)·sin(elev)` | 1.11e-16 | analytically exact |
+| Metric ratio, same E–W ramp at lat 60 vs lat 0 | 1.9999878 (6.1e-6 rel.) | the test that catches a missing `cos(lat)`; no oracle supplies it |
+| `gdalwarp -r average` vs conservative, ±10° band | RMS 5.5e-4 on a field of RMS 0.98 | corroboration only |
+| … globally | **RMS 0.207 on a field of RMS 1.00** | **21% of the signal.** O7 as the register names it is not an authority |
+| v1 defect probes | **17 reproduced, 0 refuted, 1 blocked** | **V4 discharged.** F17 blocked on O6 |
+| v1 option inventory | **177 options: 159 carried, 15 renamed, 3 dropped, 0 unmapped** | **V9 discharged** |
+
+**Findings — thirteen. Ten came from running code that had already passed
+every static check in the project.**
+
+| id | Finding | Why nothing else could see it |
+|---|---|---|
+| PV-022 | **The v1 tree was not installed anywhere on the machine**, breaching OB-7 and leaving O12 unreachable. Supplied mid-session as `maptoolbox.zip`; now at `Documents/MATLAB/maptoolbox_v1`. | Requires looking, which no gate did |
+| PV-023 | **O7 and O8 are fillable after all.** The sandbox has no root, so `apt-get install gdal-bin cdo` fails and PyPI's `gdal` sdist cannot build — but the `rasterio` wheel bundles **libgdal 3.10.3**, and `GDALDEMProcessing` and `GDALWarp` are the exact C entry points `gdaldem` and `gdalwarp` call. Both register rows now filled for real. | Requires trying the third option after two failed |
+| PV-024 | **MATLAB's `regexp` does not implement `\b` as a word boundary** — it is the backspace escape. `'^\s*function\b'` matches *nothing*, silently. Every help block was reported absent, including on the healthy control. Use `(?![\w])`. | The pattern is valid; only its meaning is wrong |
+| PV-025 | **`for id = setdiff(a,b)` runs once when the result is an empty COLUMN vector**, because a for-loop iterates over columns and a 0×1 array has one. Two findings were raised against a file with no identifiers at all. | Requires the empty case, on the healthy control |
+| PV-026 | **The one-line form `if cond, continue, end` broke the block-depth counter.** The first parser read only each line's leading keyword, so the trailing `end` was never counted, depth drifted upward, and `GeoMapTestCase.seedRandom` — four lines long — was reported at **404**, over the 400-line rule. A length rule fed by a counter that never returns is not strict, it is random. | Requires executing the parser on real source |
+| PV-027 | **The comment stripper handled single-quoted strings only.** `geoMapAuditFixtures.m` writes MATLAB source as *double-quoted string data*, so its literals contain `"function"`, `"if"` and `"end"`; the depth counter read them as code and reported a 25-line function at 407. | Requires a file that contains code about code |
+| PV-028 | **GDAL's `aspect` is the direction of steepest DESCENT.** The expectation first written here was `atan2(3,4)` = 36.87°; the self-test returned an error of exactly **180.0000059°** — a residual that names its own cause. An oracle convention recalled rather than checked is F1's plausible wrong answer. | The self-test on an analytically known plane |
+| PV-029 | **`tools/gates.sh` cannot run from a Windows working copy.** Git for Windows defaults `core.autocrlf` to true, so the LF-committed script is checked out with CRLF and bash fails on `set: pipefail: invalid option name` — naming neither the file nor the cause. **The local gate WORKFLOW.md tells every contributor to run before pushing had never been runnable locally.** It ran in CI, so the failure was invisible from the side that matters least. Fixed by `.gitattributes`. | Requires running it on Windows, which CI never does |
+| PV-030 | **Two of eighteen v1 probes initially REFUTED their own claim, and both probes were wrong.** F4 queried lon −0.5, the obvious seam, which v1's rewrap puts comfortably *inside* the interpolation hull; the hull's real upper edge is 179, and a query at 179.5 returns the value *at* 179 — nearest extrapolation, silently. F16 tested span 120, where nearest-snap and the ceiling policy happen to agree exactly; over a ladder of 13 spans they differ at 4, worst 10 lines against a target of 6. **The probe point is part of the probe** — the same lesson as C-026, in a new place. Diagnosis order (configuration → criterion → code) is what caught both. | Requires distrusting a refutation as much as a confirmation |
+| PV-031 | **`[f.check]` on an empty struct array is a 0×0 double, not a string array**, so `strjoin` errors. Both of this suite's diagnostic messages therefore errored **on a clean tree**, while the assertions they carried were true. A diagnostic that can only fail when everything is fine is worse than no diagnostic. | Requires the passing case |
+| PV-032 | **`gdalwarp -r average` is not a conservative remap.** It is an unweighted mean of source pixels whose centres fall in the target pixel — no spherical area weighting, no partial cells. Measured 21% of signal RMS globally. O7's row is **annotated, not ticked**, and the weights are certified analytically instead. Limit L11. | Requires measuring the oracle rather than adopting it |
+| PV-033 | `references.py::scale_factors` carries a dead assignment (`area = cross / coslat * coslat` immediately overwritten by `area = cross`). Harmless — the surviving line is correct — but recorded rather than silently tidied, since §6.6 forbids mixing an unrelated repair into this round. | Reading, not running |
+| PV-034 | **Operator error: `git rm --cached -r . && git reset --hard`, run to renormalise line endings, destroyed every uncommitted edit to tracked files.** Eleven files' changes were lost and had to be redone from the session record; the ~3 600 lines of *new* files survived only because `reset --hard` does not touch untracked ones. **Rule earned: commit before any command that rewrites the index.** The safety commit that should have come first came second. | Nothing in the project could have caught this; it is recorded because a process defect that goes unrecorded recurs |
+
+**Instrument integrity.** `geoMapAudit` refuses to report a clean tree
+unless its self-test has passed in the same invocation: **13 fixtures, one
+planted defect per check plus a healthy control on which nothing may
+fire.** Four of the findings above (PV-024, PV-025, PV-026, PV-027) were
+caught *by that control* rather than by the defect fixtures — the half of
+the discipline that is usually skipped is the half that paid.
+
+**Binding items a later stage could be wrong for not reading:**
+
+1. **`\b` is not a word boundary in MATLAB `regexp`.** Use `(?![\w])` or
+   `(?<![\w.])`. It fails silently and looks like a data problem.
+2. **Never `for x = setdiff(...)`.** Index with `1:numel(...)`.
+3. **`TolMass` reads `.tolerance` from the mirror JSON, not `.measured`.**
+   They are deliberately different numbers: 1e-13 asserted, 2.15e-14
+   measured.
+4. **O7 is annotated, not filled.** `gdalwarp -r average` corroborates in
+   a near-constant-area band and is wrong globally. Stage B's conservative
+   regrid is certified against the **analytic** affine-field oracle, and
+   that check must keep its degree-weighted counterfactual, which is what
+   proves it discriminates.
+5. **O8 certifies the Horn kernel on a constant-spacing tile only.** The
+   spherical `cos(lat)` metric has no oracle and is checked analytically
+   by the lat-0 vs lat-60 slope ratio. Do not delete that test as
+   redundant; nothing else covers the metric.
+6. **The v1 tree lives at `Documents/MATLAB/maptoolbox_v1/maptoolbox`**
+   and must stay there until Stage F (OB-7). It is deliberately outside
+   the repository.
+7. **Stage E reads `records/v1_option_inventory.md`, not its
+   recollection.** 177 options, 0 unmapped.
+8. **Handover Part 5's F16 wording is wrong and should be corrected**:
+   the illustration "3 or 11 lines for a 6 target" does not reproduce; the
+   measured worst is **10 lines at span 45°**. The defect is real, the
+   illustration is not.
+9. `Contents.m` now exists and is the **version authority**
+   (`2.0.0-alpha.0`). `README`, `CHANGELOG`, `CITATION.cff`, `geoMap.prj`
+   and `info.xml` are checked against it and never independently
+   maintained.
+
+---
+
+*Entries R-006 onward are written at each stage's green gate.*

@@ -29,6 +29,21 @@ REF = HERE / "geomap_mirror" / "out" / "reference_values.json"
 ACC = HERE / "acceptance.json"
 
 
+def _walk(d, dotted):
+    """Resolve a dotted path through nested dicts. None if any step misses.
+
+    None means ABSENT, and absent is a breach at the call site rather than
+    a skip: a criterion that quietly disappears is indistinguishable from
+    one that passes, which is the failure this whole script exists for.
+    """
+    cur = d
+    for part in dotted.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return None
+        cur = cur[part]
+    return cur
+
+
 def die(code, msg):
     print(f"\nFAILED: {msg}")
     sys.exit(code)
@@ -163,6 +178,34 @@ def main():
         print(f"  {'ok ' if got else 'BAD'} {key:34s} {got}")
         if not got:
             breaches.append(f"regression {key} REINSTATED. {spec['meaning']}")
+
+    # --- 8b. Stage 0.3: oracles O7 and O8 -------------------------------
+    # Dotted paths, because these measurements are nested one level deeper
+    # than the flat point values. Resolved by walking, never by parsing a
+    # composed key back apart at the consumer (handover 2.7).
+    print("\n[stage 0.3: O7 regrid, O8 hillshade]")
+    for key, bound in acc.get("stage03_max", {}).items():
+        if key.startswith("_"):
+            continue
+        got = _walk(vals, key)
+        if got is None:
+            breaches.append(f"stage03 {key}: absent from this run")
+            continue
+        ok = got <= bound
+        checked += 1
+        print(f"  {'ok ' if ok else 'BAD'} {key:52s} {got:.3e} "
+              f"(bound {bound:.0e})")
+        if not ok:
+            breaches.append(f"stage03 {key}: {got:.3e} > {bound:.0e}")
+    for key, want in acc.get("stage03_true", {}).items():
+        if key.startswith("_"):
+            continue
+        got = _walk(vals, key)
+        ok = bool(got) == bool(want)
+        checked += 1
+        print(f"  {'ok ' if ok else 'BAD'} {key:52s} {got}")
+        if not ok:
+            breaches.append(f"stage03 {key}: {got}, expected {want}")
 
     # --- 9. Verdict -----------------------------------------------------
     print("\n" + "=" * 68)
