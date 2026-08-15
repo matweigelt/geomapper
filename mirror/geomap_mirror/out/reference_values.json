@@ -466,7 +466,7 @@
         "exact": 6.484721407432972e-15
       },
       "measured": 2.1501970982541102e-14,
-      "tolerance": 1e-12,
+      "tolerance": 1e-13,
       "handover_guess": 1e-12,
       "agrees_with_guess": true,
       "note": "TolMass is set from the WORST order measured here, not from the handover's guess and not from the best order; the asserted tolerance is one decade above the floor"

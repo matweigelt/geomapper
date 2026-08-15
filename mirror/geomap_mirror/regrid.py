@@ -183,7 +183,22 @@ def measure_mass_closure_floor(nlat=2161, nlon=4321, plat=181, plon=361,
     # is a round number a later reader can check against this measurement,
     # and is still 10x TIGHTER than the handover's guess - so it constrains
     # more, not less.
-    tolerance = 10.0 ** math.ceil(math.log10(worst) + 1.0)
+    # floor(log10)+1, NOT ceil(log10 + 1). They differ, and the
+    # difference is a whole decade: for a floor of 2.15e-14 the ceil form
+    # returns 1e-12 with 46x headroom, the floor form 1e-13 with 4.65x.
+    #
+    # The ceil form shipped first, and every document describing it -
+    # this module's own comment, the handover's debt row V7, the change
+    # log, geo.regrid's ACCURACY block - said 1e-13 and "tighter than the
+    # handover's guess". The code returned 1e-12, which is EQUAL to the
+    # guess. Caught by reading the bound printed beside the measurement
+    # in a green run, not by any check: the number in the prose and the
+    # number in the code had never been compared.
+    #
+    # That is precisely debt V1's failure mode, committed inside the
+    # instrument built to prevent it, so it is recorded rather than
+    # quietly corrected.
+    tolerance = 10.0 ** (math.floor(math.log10(worst)) + 1)
     return {
         "grid": f"{nlat}x{nlon} -> {plat}x{plon}",
         "relative_closure_by_summation_order": out,
