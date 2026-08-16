@@ -1,8 +1,9 @@
-function [crs, lonLim, latLim, base] = elementExtent(axH, crs, options)
+function [crs, lonLim, latLim, base, xl, yl, diag] = elementExtent(axH, crs, options)
 %GEO.INTERNAL.ELEMENTEXTENT  What an L3 element draws over, resolved once.
 %
 %   SYNTAX
 %     [crs, lonLim, latLim, base] = GEO.INTERNAL.ELEMENTEXTENT(AX, CRS)
+%     [..., xl, yl, diag] = GEO.INTERNAL.ELEMENTEXTENT(AX, CRS)
 %     [...] = GEO.INTERNAL.ELEMENTEXTENT(AX, CRS, Name, Value)
 %
 %   DESCRIPTION
@@ -38,6 +39,17 @@ function [crs, lonLim, latLim, base] = elementExtent(axH, crs, options)
 %     lonLim  (1,2) double  Degrees East.
 %     latLim  (1,2) double  Degrees North, inside CRS.Domain.LatLimit.
 %     base    struct or []  The basemap's handle struct, or empty.
+%     xl,yl   (1,2) double  The map's PROJECTED limits - pristine when a
+%                           basemap can supply them, so an element that
+%                           redraws on resize never reads limits a frame
+%                           has already widened.
+%     diag    (1,1) double  Their diagonal, the unit every element sizes
+%                           itself in. Returned here rather than
+%                           recomputed per element: two identical copies
+%                           of it in geo.scalebar and geo.northarrow were
+%                           rejected by the duplicate-local check, which
+%                           is defect F6 again and the second time this
+%                           helper has absorbed one.
 %
 %   ACCURACY
 %     No numerical claim: it selects and intersects, it does not compute.
@@ -104,4 +116,16 @@ if any(isnan(latLim))
 end
 latLim = [max(latLim(1), crs.Domain.LatLimit(1)), ...
           min(latLim(2), crs.Domain.LatLimit(2))];
+
+if isempty(base)
+    xl = xlim(axH);
+    yl = ylim(axH);
+else
+    xl = base.DataLimits.XLim;
+    yl = base.DataLimits.YLim;
+end
+diag = hypot(diff(xl), diff(yl));
+if ~isfinite(diag) || diag <= 0
+    diag = 1;
+end
 end

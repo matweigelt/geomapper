@@ -1,6 +1,6 @@
 # geoMap v2 — HANDOVER
 
-**Revision 2.6 · 16-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug).**
+**Revision 2.7 · 16-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug).**
 
 **What this file is.** The single source of truth for the revision of `geoImagescToolbox` v1.1/1.2 → `geoMap` v2.0. It holds the rules, the design and the ledger. **It is the only place a status lives.** Per BEST_PRACTICE §6.1 it holds no round-by-round narrative evidence; that goes to `RECORDS.md`.
 
@@ -893,7 +893,7 @@ Every figure below is **a claim from this document, and V1 says it is unmeasured
 
 **2. Depends on.** Stages 0, A, B, C green.
 
-**Checkpoints:** **D.0** `geo.readGrid` window and stride selection, and the shipped topography sample — *added 16-Aug-2026, see below* · **D.1** `internal.layout`, `basemap`, `graticule`, `frame` · **D.2** `coastline`, `scalebar`, `northarrow`, `colorbar`, `inset` · **D.3** the five overlays.
+**Checkpoints:** **D.2 is split into D.2a** (`coastline`, `scalebar`, `northarrow`, delivered 16-Aug-2026, R-012) **and D.2b** (`colorbar`, `inset`) - five elements in one checkpoint was too much to review at once, and the three delivered share a shared polyline projector that the other two do not need. **D.0** `geo.readGrid` window and stride selection, and the shipped topography sample — *added 16-Aug-2026, see below* · **D.1** `internal.layout`, `basemap`, `graticule`, `frame` · **D.2** `coastline`, `scalebar`, `northarrow`, `colorbar`, `inset` · **D.3** the five overlays.
 
 **D.1 delivered 16-Aug-2026, R-010.** `geo.internal.layout`,
 `geo.internal.avoidRectCollisions`, `geo.internal.elementExtent`,
@@ -1129,6 +1129,13 @@ anything. R-011, PV-080.
 | C-079 | 16-Aug-2026 | **C-071's 8192-point cap, its refinement guard and the transverse Mercator test exclusion all removed** | All three were scar tissue around a mis-diagnosis. Bisection can only shorten a segment, so the guard is unnecessary by construction |
 | C-080 | 16-Aug-2026 | **Graticule lines now reach the map edge**, by bisecting the segment that straddles the domain boundary | Measured on orthographic, whose horizon is at radius 1 exactly: shortfall 1.5e-9. Previously a line stopped at whichever sample was last inside |
 | C-081 | 16-Aug-2026 | **Stage D checkpoint D.1b delivered and executed.** 263 points, 263 passed | R-011 |
+| C-082 | 16-Aug-2026 | **`geo.scalebar` chooses the ground distance FIRST and draws the bar that long** | PV-082. v1 drew a fixed 90-point bar and labelled it with the nearest ladder entry to whatever that spanned - errors near 50% on the one element of a map meant to be measured. Asserted by walking the drawn bar: agreement 7.75e-10 |
+| C-083 | 16-Aug-2026 | **The bar is calibrated at its own position and along its own direction** | v1 measured along a meridian at the projection's reference point and applied it to a horizontal bar in the corner. Two separate errors, worth 59% and 9.3% when measured |
+| C-084 | 16-Aug-2026 | **The nice-length ladder is generated, not tabulated, and chosen in LOG space** | v1's table clamped at 1 km and 5000 km and picked nearest in linear space, biasing to the smaller neighbour across every decade |
+| C-085 | 16-Aug-2026 | **North is measured AT the arrow, not once for the map** | v1 used one bearing from the projection's reference point. On a Lambert conformal conic the two upper corners differ by 205.7 degrees of convergence |
+| C-086 | 16-Aug-2026 | **`geo.readCoastline("builtin")` now reads a shipped Natural Earth coastline** | PV-081. It loaded MATLAB's coastlines.mat, which does not ship with R2026a. A path with no caller is a path with no test, whatever the coverage table says |
+| C-087 | 16-Aug-2026 | **The branch-cut rule is promoted to `geo.internal.projectPolyline`** | R-011 left this as the condition for promotion: the moment a second caller needs it. `geo.coastline` was that caller |
+| C-088 | 16-Aug-2026 | **Stage D checkpoint D.2a delivered and executed.** 285 points, 285 passed. **D.2 split; colorbar and inset are D.2b** | R-012 |
 
 ---
 

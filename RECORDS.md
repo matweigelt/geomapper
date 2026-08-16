@@ -885,4 +885,76 @@ exactly: the graticule reaches **1.000000**, short by 1.5e-9.
 
 ---
 
-*Entries R-012 onward are written at each stage's green gate.*
+## R-012 — Stage D, checkpoint D.2a, 16-Aug-2026, tier A
+
+**Scope.** `geo.internal.projectPolyline`, `geo.coastline`,
+`geo.scalebar`, `geo.northarrow`, the shipped Natural Earth coastline and
+its builder. **D.2 is split**: the colorbar and the map inset are D.2b.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+285; suite size 285, per-class sum 285, 285 passed, 0 failed.** Green gate
+on all six conditions. **79 value records and 16 ratio records, two weak.**
+
+**v1's SCALE BAR DID NOT MEASURE WHAT IT SAID, and that is the largest
+defect found in this project so far.** It drew a bar of FIXED width - 90
+points, always - then computed the ground distance those 90 points
+happened to span and printed the nearest entry of a hard-coded ladder
+beside it. **The bar was never resized to match.** A bar spanning 3 km was
+labelled "2 km"; one spanning 750 km was labelled "500 km". Errors
+approaching 50%, on the one element of a map whose entire purpose is to be
+measured against. Three further faults compounded it: the calibration was
+taken along a MERIDIAN and applied to a HORIZONTAL bar; the ladder clamped
+at 1 km and 5000 km, mislabelling every regional and every planetary map;
+and the nice value was chosen nearest in linear space, biasing to the
+smaller neighbour across every decade.
+
+v2 chooses the ground distance first and draws the bar exactly that long.
+**Asserted by walking it**: 16 000 points unprojected across the drawn bar
+and the great-circle steps summed, which accumulates a different quantity
+from the single derivative the bar was built from. Agreement **7.75e-10
+relative**.
+
+**Getting that right took two corrections of my own, both measured.**
+
+| what | measured error |
+|---|---|
+| calibrated at the map centre, drawn at the corner | **59%** |
+| calibrated at the bar's baseline, not its centre | **9.3%** |
+| final | **7.75e-10** |
+
+The second is the instructive one: a half-thickness offset, invisible
+reading the code, worth 9% because cos(66°) and cos(63.5°) are not the
+same number and the bar sat between them.
+
+**Findings — five.**
+
+| id | Finding |
+|---|---|
+| PV-081 | **`geo.readCoastline("builtin")` could not work on R2026a.** It loaded `coastlines.mat`, which shipped with base MATLAB for years and now ships only with the Mapping Toolbox - whose absence is the point of F1. Stage C shipped it, Stage C's tests passed, and nothing caught it because no test had ever asked for the builtin coastline: the reference tests used real GSHHG and Natural Earth files and the contract tests used arrays. **A path with no caller is a path with no test, whatever the coverage table says.** Repaired by shipping a Natural Earth 110m coastline, which is public domain and therefore redistributable where GSHHG is not. |
+| PV-082 | **A scale bar must be calibrated where it is DRAWN, not where the map is centred** - and the difference on a global map is 59%. Then, having fixed that, the calibration must be taken at the bar's vertical CENTRE and not its baseline, which is another 9.3%. Both were found by walking the drawn bar rather than by reading the code, which is what that instrument is for. |
+| PV-083 | **The calibration step is a secant and its error is O(step²).** Measured against the closed form R·cos(lat): 1.3e-6 at width/1e3, 1.3e-8 at 1e4, 1.3e-10 at 1e5, **5.3e-12 at 1e6**, then DEGRADING to 2.9e-10 at 1e7 as floating-point cancellation in the unprojection takes over. The step is set at the floor of that curve, which is a measurement and not a preference. |
+| PV-084 | **A third Stage D speed fixture was too small to ask its own question.** The coastline budget failed at 3.29 against a toy 36×72 basemap; against the shipped 10-arc-minute grid it measures **0.139**. Nobody draws a coastline over 2 592 cells. With PV-069 and PV-076 this is now a named pattern rather than three accidents: **a graphics speed fixture must be the size of the thing it is about.** |
+| PV-085 | **The audit caught F6 for the third time**, `mapBox` duplicated between `geo.scalebar` and `geo.northarrow`. Absorbed into `geo.internal.elementExtent`, which now answers the whole of "what am I drawing over" - projection, geographic extent, projected box and its diagonal. Each catch has been within the same round; v1 shipped its six for four years. |
+
+**North is measured AT the arrow.** v1 computed one bearing at the
+projection's reference point and used it wherever the arrow sat. On a
+Lambert conformal conic the two upper corners differ by **205.7 degrees**
+of convergence between them; an arrow drawn with the centre's bearing
+points somewhere that is not north. Asserted both ways: exactly 0 at every
+corner on equirectangular, and provably different between corners on the
+conic.
+
+**Binding items a later stage could be wrong for not reading:**
+
+1. **`geo.internal.projectPolyline` is where a polyline becomes drawable.**
+   D.2b and D.3 must call it. `Densify` is TRUE only for generated lines;
+   a data polyline gets `false`, because inventing vertices between two
+   survey points invents geography.
+2. **`geo.internal.elementExtent` returns the projected box and diagonal.**
+   Nothing may recompute them; that is what F6 keeps being.
+3. **The shipped coastline is a fallback, not a recommendation.** Anything
+   that cares about the shoreline should take a GSHHG path.
+
+---
+
+*Entries R-013 onward are written at each stage's green gate.*

@@ -225,121 +225,13 @@ end
 end
 
 function [x, y, seg] = traceLine(lonEnds, latEnds, crs, target)
-%TRACELINE  Project a line, subdividing where it bends and breaking where
-%   it jumps.
-%
-%   ADAPTIVE, BECAUSE UNIFORM SAMPLING IS THE WRONG PARAMETERISATION and
-%   the first version of this function got that wrong. It resampled the
-%   whole line at a uniformly finer spacing in DEGREES, which spends
-%   almost every point in the middle of the line where the curve barely
-%   moves, and still cannot resolve the ends where it moves fastest.
-%   Bisecting only the segments that are too long puts points exactly
-%   where the projection bends and nowhere else. Measured over all
-%   sixteen projections: about 1 800 points for a whole graticule, where
-%   the uniform version used 4 096 per LINE.
-%
-%   A SEGMENT THAT WILL NOT SHRINK IS A DISCONTINUITY, NOT A CURVE, and
-%   this is the load-bearing idea. Bisection can only shorten a real
-%   curve. When a segment has been halved until its parameter width is
-%   below TolEdge and it still spans more than the target, the line has
-%   a branch cut in it and no amount of sampling will help; it is broken
-%   with a NaN instead, which is this toolbox's gap convention and is
-%   what MATLAB needs in order not to draw across it.
-%
-%   WHAT THAT CAUGHT. Transverse Mercator's meridians at 120 degrees
-%   from the central meridian sit on the BACK of the transverse
-%   cylinder, where cos(dLon) changes sign and the atan2 giving y flips
-%   branch. The jump measures 6.2832 - exactly 2*pi - and it does not
-%   shrink under bisection. Without this, every transverse Mercator map
-%   would have carried a spurious straight line across it, which is
-%   defect F2's cousin: F2 was Robinson's wrap, this is the same class
-%   of error on a different projection.
-%
-%   THE FIRST DIAGNOSIS OF THAT JUMP WAS WRONG, TWICE, and the record is
-%   kept because both errors are instructive. It was first read as under
-%   sampling, and 262 000 points were computed as the price of fixing it
-%   - the arithmetic was right and the question was wrong. It was then
-%   read as the projection's clip being too generous, and written up as
-%   an open question about whether to narrow the strip. Neither. The
-%   sampler could not tell a curve from a cut.
-%
-%   IT ALSO WALKS THE LINE ONTO THE MAP'S EDGE. A segment with one
-%   endpoint inside the domain and one outside is bisected too, until
-%   its parameter width falls below TolEdge, so a meridian reaches the
-%   boundary instead of stopping at whatever sample happened to be the
-%   last finite one. Measured on orthographic, whose horizon is at
-%   radius 1 exactly: the meridians now reach 1.000000, short by 1.5e-9.
-u = linspace(0, 1, 17);
-[x, y] = sampleAt(u, lonEnds, latEnds, crs);
-maxPoints = 20000;
-tolEdge = 1e-4;
-for pass = 1:40                         %#ok<NASGU> named for the reader
-    split = needsSplit(x, y, u, target, tolEdge);
-    if ~any(split) || numel(u) >= maxPoints
-        break
-    end
-    idx = find(split);
-    u = sort([u, (u(idx) + u(idx + 1)) / 2]);
-    [x, y] = sampleAt(u, lonEnds, latEnds, crs);
-end
-
-[x, y] = breakDiscontinuities(x, y, u, target, tolEdge);
-d = hypot(diff(x), diff(y));
-d = d(isfinite(d));
-if isempty(d)
-    seg = 0;
-else
-    seg = max(d);
-end
-end
-
-function split = needsSplit(x, y, u, target, tolEdge)
-%NEEDSSPLIT  Segments to bisect: too long, or straddling the domain edge.
-%   Both cases stop at TolEdge. A long segment that narrow is a jump and
-%   is handled by BREAKDISCONTINUITIES; an edge segment that narrow has
-%   located the boundary closely enough to draw to.
-%   A segment with both endpoints outside the domain is left alone - it
-%   is a gap, and gaps are how this toolbox clips.
-finite = isfinite(x) & isfinite(y);
-bothIn = finite(1:end-1) & finite(2:end);
-oneIn = xor(finite(1:end-1), finite(2:end));
-wide = diff(u) > tolEdge;
-d = hypot(diff(x), diff(y));
-split = wide & ((bothIn & d > target) | oneIn);
-end
-
-function [x, y] = breakDiscontinuities(x, y, u, target, tolEdge)
-%BREAKDISCONTINUITIES  NaN wherever the line jumps rather than bends.
-finite = isfinite(x) & isfinite(y);
-bothIn = finite(1:end-1) & finite(2:end);
-d = hypot(diff(x), diff(y));
-jump = bothIn & d > target & diff(u) <= tolEdge;
-if ~any(jump)
-    return
-end
-idx = find(jump);
-newX = NaN(1, numel(x) + numel(idx));
-newY = newX;
-src = 1;
-dst = 1;
-for k = 1:numel(idx)
-    n = idx(k) - src + 1;
-    newX(dst:dst + n - 1) = x(src:idx(k));
-    newY(dst:dst + n - 1) = y(src:idx(k));
-    dst = dst + n + 1;                  % the skipped slot stays NaN
-    src = idx(k) + 1;
-end
-newX(dst:end) = x(src:end);
-newY(dst:end) = y(src:end);
-x = newX;
-y = newY;
-end
-
-function [x, y] = sampleAt(u, lonEnds, latEnds, crs)
-%SAMPLEAT  Project the line at parameter positions U in [0, 1].
-lonV = lonEnds(1) + u * (lonEnds(2) - lonEnds(1));
-latV = latEnds(1) + u * (latEnds(2) - latEnds(1));
-[x, y] = geo.project(lonV, latV, crs);
+%TRACELINE  A graticule line, densified where it bends, cut where it jumps.
+%   The work is GEO.INTERNAL.PROJECTPOLYLINE's; this only says that a
+%   generated line may be densified, which a data polyline may not. See
+%   that function for why a segment that will not shrink is a cut.
+[x, y, info] = geo.internal.projectPolyline(lonEnds, latEnds, crs, ...
+    Target = target, Densify = true);
+seg = info.MaxSegment;
 end
 
 function h = drawLine(axH, x, y, options)
