@@ -67,6 +67,17 @@ become false is a finding.
 | geo.scalebar | vectorisation | One call draws one bar. |
 | geo.internal.projectPolyline | reference | No external authority certifies where a projection's branch cuts lie; the criterion is behavioural - a segment that will not shrink - and is asserted under `contract` and `robustness`. |
 | geo.internal.projectPolyline | speed | Its cost is dominated by GEO.PROJECT, which has its own budgets; a ratio here would measure that function twice. |
+| geo.internal.plottedBox | precision | Exact arithmetic on a Position and two axis limits; that it is exact is asserted under `contract` at 1e-9, which is the whole claim. |
+| geo.internal.plottedBox | vectorisation | One axes per call. |
+| geo.internal.plottedBox | reference | No external authority certifies MATLAB's own letterboxing; the assertion is against the arithmetic it must satisfy. |
+| geo.internal.plottedBox | speed | Two property reads and a division. A budget would measure the timer. |
+| geo.internal.plottedBox | metamorphic | Its output is a pure function of the axes state; there is no invariance to state to assert. |
+| geo.internal.plottedBox | robustness | A degenerate aspect returns the axes rectangle, which is asserted under `contract`; there is no other degenerate input, because the argument block rejects anything that is not an axes. |
+| geo.colorbar | precision | Its one geometric claim - a tick sits at the exact fraction along the bar - is asserted under `reference` at TolGeom. Everything else it does is layout, which has no correct answer to be precise about. |
+| geo.colorbar | vectorisation | One call draws one bar. |
+| geo.inset | precision | Geometric, asserted under `robustness` by the extent outline closing exactly. The projection's own accuracy is GEO.PROJECT's. |
+| geo.inset | vectorisation | One call draws one locator. |
+| geo.inset | reference | No external authority certifies a locator globe's appearance; its projection is Stage B's and is certified there. |
 | geo.internal.avoidRectCollisions | precision | Rectangle edges are compared and added exactly; the only constant is a 4-point clearance, which is a typographic choice and not a measurement. There is no error to bound. |
 | geo.internal.avoidRectCollisions | reference | Ported verbatim from v1, which is the thing being replaced and is not an authority on correctness. Its geometry is asserted directly under `contract`. |
 | geo.internal.avoidRectCollisions | vectorisation | Moves one rectangle. |

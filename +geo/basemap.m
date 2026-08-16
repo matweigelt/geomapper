@@ -103,6 +103,11 @@ function [figH, axH, H] = basemap(G, crs, options)
 %                                        these rather than asking the
 %                                        axes, because the axes knows
 %                                        only projected units by then.
+%             HasUnder     (1,1) logical  Data lies below CLim(1), and
+%             HasOver      (1,1) logical  above CLim(2). GEO.COLORBAR
+%                                        draws an end cap only where one
+%                                        of these is true, because a cap
+%                                        MEANS the data continues.
 %             Crs          (1,1) struct
 %
 %   ACCURACY
@@ -222,7 +227,8 @@ dataLimits = struct('XLim', xlim(axH), 'YLim', ylim(axH));
 
 H = struct('Surface', s, 'CLim', cLim, 'Colormap', cmap, ...
     'Shade', shade, 'DataLimits', dataLimits, 'Crs', crs, ...
-    'LonLimit', [min(lon) max(lon)], 'LatLimit', [min(lat) max(lat)]);
+    'LonLimit', [min(lon) max(lon)], 'LatLimit', [min(lat) max(lat)], ...
+    'HasUnder', any(Z(:) < cLim(1)), 'HasOver', any(Z(:) > cLim(2)));
 
 geo.internal.layout("register", axH, "basemap", @(~) []);
 geo.internal.layout("setData", axH, "basemap", H);

@@ -201,7 +201,7 @@ classdef TestD1_elements < GeoMapTestCase
             % interval, 2 per latitude interval, plus 4 corners, and it is
             % computed here from the extent and step rather than recorded
             % from a previous run.
-            G = tc.globalGrid();
+            G = tc.demoGrid();
             ax = tc.axesFor();
             [~, ~, B] = geo.basemap(G, "equirectangular", Parent = ax);
             H = geo.frame(ax, StepLon = 60, StepLat = 30);
@@ -306,7 +306,7 @@ classdef TestD1_elements < GeoMapTestCase
             % transverse Mercator and justified the exclusion at length.
             % The justification was wrong twice over - see R-011 - and
             % the exclusion is gone rather than quietly narrowed.
-            G = tc.globalGrid();
+            G = tc.demoGrid();
             worst = 0;
             for name = geo.internal.projectionNames()
                 ax = tc.axesFor();
@@ -329,7 +329,7 @@ classdef TestD1_elements < GeoMapTestCase
             % Mercator map carries a straight line across it - defect
             % F2's cousin on a different projection.
             ax = tc.axesFor();
-            geo.basemap(tc.globalGrid(), geo.crs("transversemercator"), ...
+            geo.basemap(tc.demoGrid(), geo.crs("transversemercator"), ...
                 Parent = ax, Hillshade = "off");
             H = geo.graticule(ax, StepLon = 60, StepLat = 30);
             k = find(abs(abs(H.LonTicks) - 120) < 1e-9, 1);
@@ -351,7 +351,7 @@ classdef TestD1_elements < GeoMapTestCase
             % shortfall is measurable rather than a matter of opinion.
             ax = tc.axesFor();
             c = geo.crs("orthographic", CenterLatitude = 30);
-            geo.basemap(tc.globalGrid(), c, Parent = ax, Hillshade = "off");
+            geo.basemap(tc.demoGrid(), c, Parent = ax, Hillshade = "off");
             H = geo.graticule(ax);
             reached = 0;
             for k = 1:numel(H.Meridians)
@@ -373,7 +373,7 @@ classdef TestD1_elements < GeoMapTestCase
             % checking it with geo.unproject would check it against
             % itself; the placement is analytic, so the two directions
             % are genuinely separate.
-            G = tc.globalGrid();
+            G = tc.demoGrid();
             ax = tc.axesFor();
             c = geo.crs("equirectangular");
             geo.basemap(G, c, Parent = ax);
@@ -521,7 +521,7 @@ classdef TestD1_elements < GeoMapTestCase
             % which widened them again: the map crept smaller inside its
             % own axes over repeated resizes. Ten cycles here, and the
             % limits must come back to where they started.
-            G = tc.globalGrid();
+            G = tc.demoGrid();
             f = tc.figureFor();
             f.Position = [100 100 800 500];
             ax = axes('Parent', f);
@@ -542,7 +542,7 @@ classdef TestD1_elements < GeoMapTestCase
             % The ticks are a property of the EXTENT. If a projection
             % changed them, two maps of the same region would carry
             % different graticules and read as different regions.
-            G = tc.globalGrid();
+            G = tc.demoGrid();
             ref = [];
             for name = ["equirectangular" "mollweide" "robinson" "hammer"]
                 ax = tc.axesFor();
@@ -581,7 +581,7 @@ classdef TestD1_elements < GeoMapTestCase
             % the raster too - easy to do by accident, invisible in every
             % correctness test here - this ratio would jump. Measured
             % 1.05 on the baseline machine.
-            G = tc.globalGrid();
+            G = tc.demoGrid();
             f = tc.figureFor();
             ax = axes('Parent', f);
             geo.basemap(G, "equirectangular", Parent = ax);
@@ -606,13 +606,6 @@ classdef TestD1_elements < GeoMapTestCase
                 repmat((1:9)', 1, 18) + repmat(1:18, 9, 1));
         end
 
-        function G = globalGrid(~)
-            lon = -177.5:5:177.5;
-            lat = (-87.5:5:87.5)';
-            G = geo.grid(lon, lat, ...
-                sind(3 * repmat(lon, numel(lat), 1)) .* ...
-                cosd(2 * repmat(lat, 1, numel(lon))));
-        end
 
         function c = crsFor(~, name)
             %CRSFOR  A usable CRS for each projection in the register.

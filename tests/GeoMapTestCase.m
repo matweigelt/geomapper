@@ -112,6 +112,18 @@ classdef GeoMapTestCase < matlab.unittest.TestCase
             tc.addTeardown(@() closeIfValid(f));
         end
 
+        function G = demoGrid(~)
+            %DEMOGRID  The 5-degree global field every Stage D suite draws.
+            %   Here rather than in three suites: the duplicate-local
+            %   check rejected the third copy, which is the same rule
+            %   this class exists to enforce for fixtures.
+            lon = -177.5:5:177.5;
+            lat = (-87.5:5:87.5)';
+            G = geo.grid(lon, lat, ...
+                sind(3 * repmat(lon, numel(lat), 1)) .* ...
+                cosd(2 * repmat(lat, 1, numel(lon))));
+        end
+
         function suppressWarning(tc, id)
             %SUPPRESSWARNING  Disable an identifier for this test only.
             %   Restored by teardown, so a failing assertion cannot leave
