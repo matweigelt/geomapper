@@ -1,9 +1,59 @@
-function probeV1map()
-%PROBEV1MAP  Propose v1 -> v2 option mappings and CHECK each against the
-%   real arguments block. Nothing is guessed: a proposal that does not
-%   resolve to an option that exists is reported as unresolved.
-root = "C:\Users\matth\Documents\MATLAB\geomapper";
-cd(root); addpath(root, fullfile(root,'tests'), fullfile(root,'tools'), fullfile(root,'records'));
+function v1_option_resolution()
+%V1_OPTION_RESOLUTION  Resolve v1 option names against v2's real options.
+%
+%   SYNTAX
+%     V1_OPTION_RESOLUTION()
+%
+%   DESCRIPTION
+%     Proposes a v2 destination for every v1 option that reaches
+%     geoImagesc, and then CHECKS each proposal against the target
+%     function's actual arguments block. A proposal that does not resolve
+%     to an option that exists is printed as UNRESOLVED.
+%
+%     WHY THIS IS AN INSTRUMENT AND NOT A TABLE. The Stage 0 inventory
+%     states its own rule: "an option no rule matched is unmapped, never
+%     guessed - a plausible guess here would be indistinguishable from an
+%     answer". A hand-written mapping table cannot enforce that, because
+%     nothing checks that the destination it names exists. This reads the
+%     arguments blocks and can only agree with reality.
+%
+%     First pass over the 114 options reaching geoImagesc: 54 resolve
+%     mechanically, 60 do not. The 60 are four classes, and only the last
+%     is a decision rather than a rule: on/off booleans that map to a
+%     geo.map option itself; prefix gaps needing more strip rules;
+%     COLLAPSED PAIRS, where two v1 options became one v2 option and the
+%     translator must MERGE rather than rename; and options with no v2
+%     equivalent at all.
+%
+%   INPUTS
+%     (none)
+%
+%   OUTPUTS
+%     (none; prints a table and a count to the command window)
+%
+%   ACCURACY
+%     Exact: a name either appears in the target's arguments block or it
+%     does not. There is no tolerance and no oracle - the source is the
+%     authority on its own option names.
+%
+%   ERRORS
+%     (none raised; unresolved names are reported, not thrown)
+%
+%   EXAMPLE
+%     v1_option_resolution
+%
+%   LIMITATIONS
+%     It reads arguments blocks as text, so an option introduced by any
+%     other mechanism is invisible to it. It proposes; it does not
+%     decide. Nothing here writes a mapping anywhere.
+%
+%   See also V1_OPTION_INVENTORY, GEO.MAP.
+%
+%   ---------------------------------------------------------------------
+%   geoMap v2.0 | 16-Aug-2026 | Claude Opus 5 (Anthropic)
+
+root = geoMapRoot();
+addpath(root, fullfile(root,'tests'), fullfile(root,'tools'), fullfile(root,'records'));
 
 % --- v1 names that reach geoImagesc, with their inventory destination
 [names, dest] = inventory(fullfile(root, 'records', 'v1_option_inventory.md'));
