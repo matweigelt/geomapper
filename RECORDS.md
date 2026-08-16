@@ -1110,8 +1110,10 @@ thirteenth check — `orchestrationPurity`, which is the Stage E hard rule
 made mechanical.
 
 **Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
-369; suite size 369, per-class sum 369, 369 passed, 0 failed.** Green gate
+370; suite size 370, per-class sum 370, 370 passed, 0 failed.** Green gate
 on all six conditions. Audit: 15 fixtures, every check proved, 0 findings.
+Also green on `glnxa64` CI, which for this checkpoint is not a formality:
+three of the five findings below are visible only there.
 
 **Four claims, all read off the file the operating system wrote:**
 
@@ -1159,6 +1161,14 @@ a local function of the calling script. That message names the symbol and
 not the cause, so it is now wrapped as `geo:export:WorkerFailed`, which
 names the cause. **A builder must be self-contained**, and that is the
 sharp edge of the parallel form.
+
+**One warning suppressed, with its cause named.**
+`MATLAB:graphics:HardwareUnavailable` fails the warning gate on CI. It is
+a statement about the host — no hardware OpenGL, software rasteriser in
+use — and not about anything geoMap does, and it is **the exact condition
+behind PV-104**. Suppressed per test method in `TestE0_export`, with that
+connection written at the suppression rather than left for someone to
+rediscover.
 
 **An exemption withdrawn.** `geo.export | reference` was reserved in
 advance as *"no external authority certifies a PDF's byte content"*. True
