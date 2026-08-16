@@ -1151,6 +1151,15 @@ anything. R-011, PV-080.
 | C-101 | 16-Aug-2026 | **Every high-level plotting call is guarded by the hold state** | PV-097. scatter3 clears the axes: a map of fifty objects came back with five. v1 never met it because it drew in one fixed order |
 | C-102 | 16-Aug-2026 | **`geo.internal.colourScale` promoted** - one colour scale rule for every overlay | F6 for the fifth time, rejected within the round again |
 | C-103 | 16-Aug-2026 | **Stage D checkpoint D.3b delivered and executed. STAGE D COMPLETE.** 347 points, 347 passed | R-015. Thirteen elements and six internals replace v1's monolith, its two clones, its five plumbing functions and its four colorbars |
+| C-104 | 16-Aug-2026 | **`print` is the primary export route, not `exportgraphics`** — §7.7 deliverable 5 said "exportgraphics with print fallback" | PV-100. Measured: `exportgraphics` ignores `PaperPosition` and crops to content, giving 12.58 cm and 27.7 cm for a page asked for at 17.0 cm in two configurations. `print` gives 17.004 cm. The instrument that keeps the contract leads |
+| C-105 | 16-Aug-2026 | **Audit check 13: `orchestrationPurity`** — a file declaring `L4-FRONT` may call no drawing primitive and may not exceed 200 executable lines | §7.7's hard rule. It belongs in the audit, not in a test class: it must apply from the moment the first front is written, and the audit already ships fault injection. Two fixtures added, one per shape of the defect |
+| C-106 | 16-Aug-2026 | **The purity marker must be a whole help line, not a substring** | PV-102. Written as a `contains` it fired on the file that only *explains* the rule. Third occurrence of "prose about a token is not the token" in this project |
+| C-107 | 16-Aug-2026 | **`geo.export` is an L4 utility, not an L4 front**, and declares no marker | It draws nothing and orchestrates nothing. Marking it would have meant a false pass or a raised 200-line limit, and §4.6 forbids the second |
+| C-108 | 16-Aug-2026 | **`geo.internal.writeFigureFile` split out** — one decision on which route writes which extension | D-003: `export.m` reached 441 lines. The audit's answer was a justification line; the right answer was a split |
+| C-109 | 16-Aug-2026 | **`geo:export:WorkerFailed` wraps a builder's failure on a worker** | Measured: a builder reaching a local function of the calling script fails with "Unrecognized function or variable", which names the symbol and not the cause |
+| C-110 | 16-Aug-2026 | **Exemption withdrawn: `geo.export \| reference`** | Nothing certifies a PDF's content, but its own MediaBox certifies its size, and the size is the claim. Second exemption withdrawn on inspection |
+| C-111 | 16-Aug-2026 | **Block keywords joined the `shadowedBuiltins` watch list** — `methods`, `properties`, `events`, `enumeration`, `arguments` | PV-103. A variable named `methods` ran fine in MATLAB and made `tools/mcheck.py` report the file unbalanced by three levels. Two gates that read the source differently only pay if the disagreement is a finding |
+| C-112 | 16-Aug-2026 | **Stage E checkpoint E.0 delivered and executed.** 369 points, 369 passed | R-016 |
 
 ---
 

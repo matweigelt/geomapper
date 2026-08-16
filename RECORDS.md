@@ -1103,4 +1103,69 @@ the tolerance.
 
 ---
 
-*Entries R-016 onward are written at each stage's green gate.*
+## R-016 — Stage E, checkpoint E.0, 16-Aug-2026, tier A
+
+**Scope.** `geo.export`, `geo.internal.writeFigureFile`, and the audit's
+thirteenth check — `orchestrationPurity`, which is the Stage E hard rule
+made mechanical.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+369; suite size 369, per-class sum 369, 369 passed, 0 failed.** Green gate
+on all six conditions. Audit: 15 fixtures, every check proved, 0 findings.
+
+**Four claims, all read off the file the operating system wrote:**
+
+| | measured | bound |
+|---|---|---|
+| PDF page width vs the requested 17.0 cm | **0.00389 cm** | ≤ 0.05 |
+| PNG pixel width vs 17.0 cm at 300 dpi | **0.126 px** | ≤ 1 |
+| spread of one page expressed in cm, in and pt | **exactly 0 cm** | ≤ 0.05 |
+| bare `exportgraphics` width vs the requested page | **0.2605 relative** | ≥ 0.05 |
+
+The third is the one to notice: 17 cm, 6.69291 in and 481.89 pt produced
+**byte-identical page widths**, so nothing in the unit handling rounds in
+one path and not another. The fourth is the defect, asserted as a test:
+the naive route is 26% off on the same figure.
+
+**Speed.** `geo.export` vs bare `print` on the same paper setup:
+**0.988** against a weak budget of 1.6. The sizing, state-saving and
+routing cost nothing measurable next to the file write.
+
+**Findings — four.**
+
+| id | Finding |
+|---|---|
+| PV-100 | **v1 could not be asked for a figure of a given physical size, and neither of MATLAB's two export routes gives one by itself.** v1's entire export path is `exportgraphics(fig, path, 'Resolution', dpi)` over a figure sized in SCREEN PIXELS, so the centimetres delivered are a function of the machine's `ScreenPixelsPerInch`. Worse, `exportgraphics` **ignores `PaperPosition` and crops to content**: a figure set to 17 × 12 cm exported to PNG at 300 dpi came back 1486 × 711 px = **12.58 cm, 26% narrow**; the same figure at its default on-screen size, with a 17 cm page requested, came back 3269 px = **27.7 cm, 63% wide**. Both measured. A journal asks for 17.0 cm. `print`, driven by `PaperPosition` and `PaperSize`, delivers 17.004 cm — so `print` is the primary route here and `exportgraphics` is used only where it is the better instrument (a content crop, and `.gif`, which `print` has no driver for). |
+| PV-101 | **`geoImagescMulti` has no export at all.** The one v1 function whose output is most likely to reach a paper — the multi-panel figure — never gained an `ExportPath`. `grep` over the v1 tree finds `exportgraphics` in exactly three of its five front functions. |
+| PV-103 | **A variable named `methods` made the text gate lose its place, and MATLAB did not care.** `methods = strings(1, n)` is legal and ran correctly through every MATLAB test; `tools/mcheck.py` read the assignment as the start of a class block and reported `export.m` **unbalanced by three levels**, with two functions and a phantom `methods` block unclosed. The two gates read the source differently on purpose (§2.9), and that only pays if the disagreement is treated as a finding rather than as a false positive. It was: the variable is now `routes`, and `methods`, `properties`, `events`, `enumeration` and `arguments` joined the `shadowedBuiltins` watch list, which had `clim` and `figure` but no block keyword. **This is the second time the Python gate has caught what the MATLAB gate could not**, in the opposite direction to R-004, where the Code Analyzer caught three stale AGROW pragmas the text checker was blind to. |
+| PV-102 | **The new purity check fired on the file that merely EXPLAINS it.** Written as a `contains`, `orchestrationPurity` flagged `+geo/export.m`, which declares no marker and only describes the rule in its help. **This is the third time this project has met the same shape**: `arrayGrowth` fired on the file documenting why `%#ok<AGROW>` is banned, and `checkPrinting` carries a comment about it. Prose about a token is not the token. The marker is now structural — the help line, stripped of its comment character and trimmed, must BE the marker — and the healthy fixture tree carries a compliant front so the control proves the lookbehind on every run. |
+
+**Two things the audit caught inside this checkpoint.** `export.m` came in
+at 441 lines, over D-003's 400. The fix was not a justification line but a
+split: format routing — which instrument writes which extension, and the
+fallback — moved to `geo.internal.writeFigureFile`, which is a better
+design independently. And the purity check's own 200-line budget rejected
+`export.m` at 233 executable lines, which is how it was established that
+**`geo.export` is an L4 *utility* and not an L4 *front*** and carries no
+marker. Marking it would have meant a false pass or a raised limit; §4.6
+forbids the second.
+
+**The parallel path, measured end to end.** Three builders on a 16-worker
+pool wrote three correctly-sized, correctly-coloured PNGs in 2.82 s and
+leaked no figure to the client. The first attempt failed with
+`Unrecognized function or variable 'localBuild'` — a builder that reached
+a local function of the calling script. That message names the symbol and
+not the cause, so it is now wrapped as `geo:export:WorkerFailed`, which
+names the cause. **A builder must be self-contained**, and that is the
+sharp edge of the parallel form.
+
+**An exemption withdrawn.** `geo.export | reference` was reserved in
+advance as *"no external authority certifies a PDF's byte content"*. True
+and irrelevant: nothing certifies the content, but the file's own
+`MediaBox` certifies its **size**, and the size is the whole claim.
+`geo.export` has four reference tests. Second exemption withdrawn on
+inspection, after `geo.cache | metamorphic`.
+
+---
+
+*Entries R-017 onward are written at each stage's green gate.*

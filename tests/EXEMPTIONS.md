@@ -93,6 +93,13 @@ become false is a finding.
 | geo.internal.avoidRectCollisions | vectorisation | Moves one rectangle. |
 | geo.internal.avoidRectCollisions | speed | At most eight passes over a handful of rectangles; a budget would measure the timer. |
 | geo.internal.avoidRectCollisions | metamorphic | Order-dependent BY DESIGN - it is a greedy solver and obstacle order changes the result. Asserting a permutation invariance would assert something false. |
+| geo.export | precision | Its numerical claim - the page is the size that was asked for - is asserted under `reference` against the produced file, at 0.05 cm and 1 px. There is no second, finer claim for a precision test to make. |
+| geo.export | vectorisation | The batch form IS the vectorised form, and it is asserted under `contract` and `metamorphic` rather than timed: a batch of N writes N files, and no arithmetic is repeated per file that could be lifted out of a loop. |
+| geo.internal.writeFigureFile | precision | It selects an instrument and writes a file. It computes nothing, so there is no error to bound; the size claim belongs to `geo.export`, which owns the page. |
+| geo.internal.writeFigureFile | reference | Its output IS a file written by MATLAB's own exporters. Certifying it against an external authority would certify PRINT, not this. The one thing it decides - which route each extension takes - is asserted under `contract` on the returned method. |
+| geo.internal.writeFigureFile | vectorisation | Writes one file. |
+| geo.internal.writeFigureFile | speed | One disk write through the graphics stack; a budget here would measure PRINT and the filesystem. The wrapper's own cost is budgeted once, in `geo.export`. |
+| geo.internal.writeFigureFile | metamorphic | Determinism is asserted where it is observable, on the produced image, under `geo.export`'s metamorphic tests. |
 
 ## Reserved rows, to be filled at their stage
 
@@ -104,4 +111,4 @@ pre-approved before the function exists and the claim can be checked.
 | L3 graphics elements | vectorisation | No batched form; each call draws into one axes. | **filled 16-Aug-2026**, per function above |
 | L3/L4 graphics | precision | The claim is geometric, asserted under contract with TolGeom. | **filled 16-Aug-2026** for D.1; D.2/D.3 rows follow at their checkpoints |
 | geo.cache | metamorphic | Its observable is a hit or a miss, which has no invariance to state. | **withdrawn 15-Aug-2026**: a metamorphic test DID exist - the cache is transparent, so a cached read equals an uncached one. The exemption was false. |
-| geo.export | reference | No external authority certifies a PDF's byte content. | pending Stage E |
+| geo.export | reference | No external authority certifies a PDF's byte content. | **withdrawn 16-Aug-2026**: the exemption was false. Nothing certifies the *content*, but the file's own MediaBox certifies its *size*, and the size is the claim. `geo.export` has four reference tests. |
