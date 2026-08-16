@@ -1,6 +1,6 @@
 # geoMap v2 — HANDOVER
 
-**Revision 2.5 · 16-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug).**
+**Revision 2.6 · 16-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug).**
 
 **What this file is.** The single source of truth for the revision of `geoImagescToolbox` v1.1/1.2 → `geoMap` v2.0. It holds the rules, the design and the ledger. **It is the only place a status lives.** Per BEST_PRACTICE §6.1 it holds no round-by-round narrative evidence; that goes to `RECORDS.md`.
 
@@ -942,18 +942,18 @@ grow a fourth copy of the same twelve lines.
 
 ---
 
-**OPEN QUESTION FROM D.1, for Matthias — transverse Mercator's clip.**
-`geo.crs` clips transverse Mercator at **89.5 degrees** from the central
-meridian, against a singularity at 90. Mercator clips at **85** against
-a singularity at 90 — the same kind of divergence with a margin ten
-times wider. At 89.5 the scale factor is 115, and the consequence is
-measured: it is the ONLY projection whose graticule cannot meet the
-1/200-of-the-diagonal smoothness criterion, needing about 262 000 points
-on the equator alone. Both values are v1's, kept under the rule that a
-v2 figure should cover the same extent as the v1 figure it replaces, so
-narrowing the strip is a decision about that rule rather than a repair.
-Real transverse Mercator zones are 6 degrees wide. **Not changed;
-pinned by a test so that changing it is visible.** See PV-079.
+**RESOLVED 16-Aug-2026 — the transverse Mercator question was the wrong
+question.** D.1 raised the 0.5°-versus-5° clip margin as an open
+question, on the evidence that transverse Mercator was the one projection
+whose graticule could not meet the smoothness criterion. It was not the
+clip. The offending segment measures exactly 2π and sits on the meridians
+120° from the central meridian, where the `atan2` giving y flips branch:
+a **branch cut**, which no amount of sampling resolves and which was
+being drawn straight across the map. `geo.graticule` now breaks any
+segment that will not shrink under bisection, all sixteen projections
+meet the criterion, and **no change to any clip is needed**. The margin
+inconsistency is real, much smaller than it looked, and no longer blocks
+anything. R-011, PV-080.
 
 ---
 
@@ -1124,6 +1124,11 @@ pinned by a test so that changing it is visible.** See PV-079.
 | C-074 | 16-Aug-2026 | **The frame's resize is solved in closed form**, not iterated, and the axis limits are SET from pristine data limits | PV-075. v1 unioned them and ratcheted the map smaller over repeated resizes. Drift is now exactly 0 over ten cycles and the thickness change on halving the width is 0.00% |
 | C-075 | 16-Aug-2026 | **`geo.internal.layout` uses command dispatch, not the handover's `layout.register(...)` struct-of-handles notation** | Deviation, recorded. `geo.cache` already established command dispatch in this package; identifiers stay statically visible to the audit; and closures over a figure handle are the very failure mode v1's chaining suffered from |
 | C-076 | 16-Aug-2026 | **Stage D checkpoint D.1 delivered and executed.** 262 points, 262 passed | R-010 |
+| C-077 | 16-Aug-2026 | **`geo.graticule` samples ADAPTIVELY**, bisecting only segments longer than the target, instead of resampling the whole line uniformly in degrees | R-011. Uniform sampling wasted a factor of 436 on transverse Mercator and still could not meet the criterion. A whole graticule now costs about 1 800 points where one line used to cost 4 096 |
+| C-078 | 16-Aug-2026 | **A segment that will not shrink under bisection is broken with a NaN**, not drawn | PV-080. It is a branch cut, not a curve, and the test needs no table and no per-projection case. Caught a 2*pi jump on transverse Mercator's back meridians that would otherwise have drawn a straight line across every such map - F2's cousin |
+| C-079 | 16-Aug-2026 | **C-071's 8192-point cap, its refinement guard and the transverse Mercator test exclusion all removed** | All three were scar tissue around a mis-diagnosis. Bisection can only shorten a segment, so the guard is unnecessary by construction |
+| C-080 | 16-Aug-2026 | **Graticule lines now reach the map edge**, by bisecting the segment that straddles the domain boundary | Measured on orthographic, whose horizon is at radius 1 exactly: shortfall 1.5e-9. Previously a line stopped at whichever sample was last inside |
+| C-081 | 16-Aug-2026 | **Stage D checkpoint D.1b delivered and executed.** 263 points, 263 passed | R-011 |
 
 ---
 

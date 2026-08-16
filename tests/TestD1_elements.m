@@ -301,55 +301,70 @@ classdef TestD1_elements < GeoMapTestCase
             % DRAWN RESULT - no projected graticule segment longer than
             % 1/200 of the map diagonal - so it is measured after drawing
             % rather than predicted from the sampling.
+            %
+            % ALL SIXTEEN. An earlier version of this test excluded
+            % transverse Mercator and justified the exclusion at length.
+            % The justification was wrong twice over - see R-011 - and
+            % the exclusion is gone rather than quietly narrowed.
             G = tc.globalGrid();
             worst = 0;
             for name = geo.internal.projectionNames()
-                if name == "transversemercator"
-                    continue        % see the test below - excluded, not ignored
-                end
                 ax = tc.axesFor();
-                c = tc.crsFor(name);
-                geo.basemap(G, c, Parent = ax, Hillshade = "off");
+                geo.basemap(G, tc.crsFor(name), Parent = ax, Hillshade = "off");
                 H = geo.graticule(ax);
                 worst = max(worst, H.MaxSegment);
             end
             tc.verifyAndRecord(worst, 1 / 200, ...
-                "worst graticule segment, 15 of 16 projections", ...
+                "worst graticule segment, all 16 projections", ...
                 "fraction of map diagonal");
         end
 
-        function transverseMercatorMissesTheCriterionAndTheReasonIsKnown(tc)
-            % THE ONE EXCLUSION, RECORDED RATHER THAN HIDDEN. Transverse
-            % Mercator's equator runs to a real singularity 90 degrees
-            % from the central meridian, and geo.crs clips it 0.5 degrees
-            % short of that, where the scale factor is 115. Uniform
-            % sampling in longitude needs about 262 000 points on that one
-            % line to get under 1/200 of the diagonal - measured, by
-            % refining until it did:
-            %
-            %     n =    4096  ->  maxSeg 0.147
-            %     n =   32768  ->  maxSeg 0.021
-            %     n =  262144  ->  maxSeg 0.0027
-            %
-            % So it converges; it is a resolution limit and not a
-            % mathematical one. It is excluded because 262 000 points is
-            % not a graticule, and because the clip itself is the thing
-            % that looks wrong: Mercator's margin for the SAME kind of
-            % singularity is 5 degrees, ten times wider. Changing it
-            % would change what a v2 figure covers relative to the v1
-            % figure it replaces, which the handover deliberately
-            % preserved, so it is an open question and not a repair to
-            % make quietly. This test pins the current behaviour so that
-            % answering the question shows up as a change here.
+        function aBranchCutIsBrokenRatherThanDrawnAcross(tc)
+            % REGRESSION, and the defect this checkpoint nearly shipped.
+            % Transverse Mercator's meridians 120 degrees from the
+            % central meridian lie on the back of the transverse
+            % cylinder, where cos(dLon) changes sign and the atan2 giving
+            % y flips branch. The jump is exactly 2*pi and does not
+            % shrink under bisection, so without a break every transverse
+            % Mercator map carries a straight line across it - defect
+            % F2's cousin on a different projection.
             ax = tc.axesFor();
             geo.basemap(tc.globalGrid(), geo.crs("transversemercator"), ...
                 Parent = ax, Hillshade = "off");
+            H = geo.graticule(ax, StepLon = 60, StepLat = 30);
+            k = find(abs(abs(H.LonTicks) - 120) < 1e-9, 1);
+            tc.assertNotEmpty(k, 'The 120-degree meridian must be drawn.');
+            x = H.Meridians(k).XData;
+            y = H.Meridians(k).YData;
+            tc.verifyTrue(any(isnan(x)), ...
+                'The back-of-cylinder meridian must be broken by a NaN.');
+            d = hypot(diff(x), diff(y));
+            tc.verifyLessThan(max(d(isfinite(d))), 2 * pi, ...
+                'No drawn segment may span the branch cut.');
+        end
+
+        function graticuleLinesReachTheMapEdge(tc)
+            % Bisecting the segment that straddles the domain boundary is
+            % what makes a meridian arrive AT the edge rather than
+            % stopping at whichever sample happened to be last inside.
+            % Orthographic has a horizon at radius 1 exactly, so the
+            % shortfall is measurable rather than a matter of opinion.
+            ax = tc.axesFor();
+            c = geo.crs("orthographic", CenterLatitude = 30);
+            geo.basemap(tc.globalGrid(), c, Parent = ax, Hillshade = "off");
             H = geo.graticule(ax);
-            tc.verifyTrue(isfinite(H.MaxSegment));
-            tc.verifyNotEmpty(H.Meridians);
-            tc.verifyAndRecord(H.MaxSegment, 1, ...
-                "transverse Mercator graticule segment [EXCLUDED, see test]", ...
-                "fraction of map diagonal");
+            reached = 0;
+            for k = 1:numel(H.Meridians)
+                x = H.Meridians(k).XData;
+                y = H.Meridians(k).YData;
+                ok = isfinite(x) & isfinite(y);
+                if any(ok)
+                    reached = max(reached, max(hypot(x(ok), y(ok))));
+                end
+            end
+            tc.verifyAndRecord(1 - reached, 1e-6, ...
+                "orthographic horizon shortfall of the graticule", ...
+                "Earth radii");
         end
 
         function aLabelAnchorUnprojectsToTheValueItNames(tc)
