@@ -1159,7 +1159,9 @@ anything. R-011, PV-080.
 | C-109 | 16-Aug-2026 | **`geo:export:WorkerFailed` wraps a builder's failure on a worker** | Measured: a builder reaching a local function of the calling script fails with "Unrecognized function or variable", which names the symbol and not the cause |
 | C-110 | 16-Aug-2026 | **Exemption withdrawn: `geo.export \| reference`** | Nothing certifies a PDF's content, but its own MediaBox certifies its size, and the size is the claim. Second exemption withdrawn on inspection |
 | C-111 | 16-Aug-2026 | **Block keywords joined the `shadowedBuiltins` watch list** — `methods`, `properties`, `events`, `enumeration`, `arguments` | PV-103. A variable named `methods` ran fine in MATLAB and made `tools/mcheck.py` report the file unbalanced by three levels. Two gates that read the source differently only pay if the disagreement is a finding |
-| C-112 | 16-Aug-2026 | **Stage E checkpoint E.0 delivered and executed.** 369 points, 369 passed | R-016 |
+| C-112 | 16-Aug-2026 | **`geo.export` realises the figure with `drawnow` before writing it** | PV-104. Measured on headless CI: the first export of a never-drawn figure differs from the second in **31.3%** of its pixels; the second and third are identical to the byte. Invisible interactively, unavoidable in `-batch`, on a worker, and in the builder form |
+| C-113 | 16-Aug-2026 | **A CI-only failure is diagnosed, never tolerated** — the metamorphic test exports three times and reports 1-vs-2 against 2-vs-3 | The instinct on a platform-specific graphics failure is to weaken the claim. §4.6 forbids it. Making the test discriminate cost one CI cycle and turned a red square into PV-104 |
+| C-114 | 16-Aug-2026 | **Stage E checkpoint E.0 delivered and executed.** 369 points, 369 passed | R-016 |
 
 ---
 

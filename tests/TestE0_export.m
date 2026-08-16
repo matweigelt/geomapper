@@ -82,6 +82,45 @@ classdef TestE0_export < GeoMapTestCase
                 max(abs(d(:))), mean(abs(d(:))), da.bytes, db.bytes);
         end
 
+        function s = strategySweep(tc)
+            %STRATEGYSWEEP  Which preparation, if any, settles the first
+            %   export? Reported together so one CI run answers four
+            %   hypotheses instead of one, since this reproduces on
+            %   software OpenGL only and not on the two local platforms.
+            prep = {@(f) [], @(f) drawnow, @warmPrint, @noSmoothing};
+            name = ["plain" "drawnow" "discarded print" "smoothing off"];
+            d = tc.scratch();
+            parts = strings(1, numel(prep));
+            for i = 1:numel(prep)
+                f = tc.exportFigure();
+                prep{i}(f);
+                p = fullfile(d, name(i) + (1:3) + ".png");
+                for k = 1:3
+                    geo.export(f, p(k), Width = 8, Resolution = 150);
+                end
+                parts(i) = sprintf('%s[1v2 %s | 2v3 %s]', name(i), ...
+                    shortDiff(p(1), p(2)), shortDiff(p(2), p(3)));
+            end
+            s = strjoin(parts, "  ");
+
+            function warmPrint(f)
+                f.PaperUnits = 'centimeters';
+                f.PaperPositionMode = 'manual';
+                f.PaperPosition = [0 0 8 6];
+                f.PaperSize = [8 6];
+                print(f, char(fullfile(d, "warm.png")), '-dpng', '-r150', '-image');
+            end
+            function noSmoothing(f)
+                f.GraphicsSmoothing = 'off';
+            end
+            function t = shortDiff(a, b)
+                x = double(imread(a)) - double(imread(b));
+                t = sprintf('%.3f%%/max%d', ...
+                    100 * nnz(any(x ~= 0, 3)) / (size(x, 1) * size(x, 2)), ...
+                    max(abs(x(:))));
+            end
+        end
+
         function w = pageWidthCm(tc, file)
             %PAGEWIDTHCM  The page box of the file, in centimetres.
             txt = fileread(file);
@@ -333,7 +372,8 @@ classdef TestE0_export < GeoMapTestCase
             % property of the renderer.
             tc.verifyEqual(imread(r(2)), imread(r(1)), ...
                 "1 vs 2: " + tc.imageDiff(r(1), r(2)) + ...
-                " || 2 vs 3: " + tc.imageDiff(r(2), r(3)));
+                " || 2 vs 3: " + tc.imageDiff(r(2), r(3)) + ...
+                " || SWEEP " + tc.strategySweep());
         end
 
         function theOrderOfABatchDoesNotChangeItsFiles(tc)
