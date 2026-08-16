@@ -1,6 +1,6 @@
 # geoMap v2 — HANDOVER
 
-**Revision 2.7 · 16-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug).**
+**Revision 2.9 · 16-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug).**
 
 **What this file is.** The single source of truth for the revision of `geoImagescToolbox` v1.1/1.2 → `geoMap` v2.0. It holds the rules, the design and the ledger. **It is the only place a status lives.** Per BEST_PRACTICE §6.1 it holds no round-by-round narrative evidence; that goes to `RECORDS.md`.
 
@@ -893,7 +893,7 @@ Every figure below is **a claim from this document, and V1 says it is unmeasured
 
 **2. Depends on.** Stages 0, A, B, C green.
 
-**Checkpoints:** **D.2 is split into D.2a** (`coastline`, `scalebar`, `northarrow`, delivered 16-Aug-2026, R-012) **and D.2b** (`colorbar`, `inset`) - five elements in one checkpoint was too much to review at once, and the three delivered share a shared polyline projector that the other two do not need. **D.0** `geo.readGrid` window and stride selection, and the shipped topography sample — *added 16-Aug-2026, see below* · **D.1** `internal.layout`, `basemap`, `graticule`, `frame` · **D.2** `coastline`, `scalebar`, `northarrow`, `colorbar`, `inset` · **D.3** the five overlays.
+**Checkpoints:** **D.2 is split into D.2a** (`coastline`, `scalebar`, `northarrow`, delivered 16-Aug-2026, R-012) **and D.2b** (`colorbar`, `inset`) - five elements in one checkpoint was too much to review at once, and the three delivered share a shared polyline projector that the other two do not need. **D.0** `geo.readGrid` window and stride selection, and the shipped topography sample — *added 16-Aug-2026, see below* · **D.1** `internal.layout`, `basemap`, `graticule`, `frame` · **D.2** `coastline`, `scalebar`, `northarrow`, `colorbar`, `inset` · **D.3a** `overlayPolygons`, `stipple`, `overlayContours` - the field overlays, under the graticule (delivered 16-Aug-2026, R-014) - and **D.3b** `overlayTrack`, `overlayPoints`, over it at z = 5.
 
 **D.1 delivered 16-Aug-2026, R-010.** `geo.internal.layout`,
 `geo.internal.avoidRectCollisions`, `geo.internal.elementExtent`,
@@ -1136,6 +1136,16 @@ anything. R-011, PV-080.
 | C-086 | 16-Aug-2026 | **`geo.readCoastline("builtin")` now reads a shipped Natural Earth coastline** | PV-081. It loaded MATLAB's coastlines.mat, which does not ship with R2026a. A path with no caller is a path with no test, whatever the coverage table says |
 | C-087 | 16-Aug-2026 | **The branch-cut rule is promoted to `geo.internal.projectPolyline`** | R-011 left this as the condition for promotion: the moment a second caller needs it. `geo.coastline` was that caller |
 | C-088 | 16-Aug-2026 | **Stage D checkpoint D.2a delivered and executed.** 285 points, 285 passed. **D.2 split; colorbar and inset are D.2b** | R-012 |
+| C-089 | 16-Aug-2026 | **v1's four colorbar implementations become one `geo.colorbar`** with Style native/gmt/half/dual | R-013. Two of the four were byte-identical copies in different files. A continuous bar is 9 objects where v1's was about 283 |
+| C-090 | 16-Aug-2026 | **An end cap is drawn only where the data continues** | PV-087. v1 drew both triangles whenever Arrows was on and varied only their colour |
+| C-091 | 16-Aug-2026 | **Colorbar and inset handles survive a resize** | PV-086. All three of v1's custom bars returned handles invalid after the first window drag |
+| C-092 | 16-Aug-2026 | **`geo.internal.plottedBox` promoted** - the map's rectangle in figure points, in one place | PV-089. v1 had five copies |
+| C-093 | 16-Aug-2026 | **Stage D checkpoint D.2b delivered and executed.** 305 points, 305 passed | R-013, written one PR late - PV-094 |
+| C-094 | 16-Aug-2026 | **`geo.overlayPolygons` is new**: a value per irregular polygon, for mascon and basin fields | R-014. A regular grid cannot represent a mascon solution; v1 forced one onto a raster |
+| C-095 | 16-Aug-2026 | **A seam-crossing ring is CLIPPED, not broken** | PV-090. Breaking leaves open fragments and a patch closes them across the map. No split gave one patch spanning 94% of the map; breaking discarded the polygon entirely |
+| C-096 | 16-Aug-2026 | **`geo.stipple` is new**: significance masking, subsampled by a regular stride and never randomly | v1 could not draw a mask at all. Determinism asserted as bit-identical output |
+| C-097 | 16-Aug-2026 | **`geo.overlayContours` drops v1's two jump heuristics and their three constants** | PV-092 |
+| C-098 | 16-Aug-2026 | **Stage D checkpoint D.3a delivered and executed.** 327 points, 327 passed | R-014 |
 
 ---
 

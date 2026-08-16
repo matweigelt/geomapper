@@ -73,6 +73,12 @@ become false is a finding.
 | geo.internal.plottedBox | speed | Two property reads and a division. A budget would measure the timer. |
 | geo.internal.plottedBox | metamorphic | Its output is a pure function of the axes state; there is no invariance to state to assert. |
 | geo.internal.plottedBox | robustness | A degenerate aspect returns the axes rectangle, which is asserted under `contract`; there is no other degenerate input, because the argument block rejects anything that is not an axes. |
+| geo.overlayPolygons | precision | Its two numerical claims - that a polygon takes exactly the basemap's colour for its value, and that a seam-crossing polygon's parts total exactly its own width - are asserted under `reference` at 0 and 1e-9. A separate precision row would assert the same two things less directly. |
+| geo.overlayPolygons | vectorisation | One call draws one polygon set; the per-polygon loop IS the interface. |
+| geo.stipple | precision | The marks sit at projected cell centres and inherit GEO.PROJECT's accuracy; the claim that matters is determinism, asserted under `metamorphic` as bit-identical output. |
+| geo.stipple | vectorisation | One call marks one mask. |
+| geo.overlayContours | precision | Vertices are CONTOURC's, unmodified; this function projects them and decides where to break, and both are asserted behaviourally. |
+| geo.overlayContours | vectorisation | One call contours one field. |
 | geo.colorbar | precision | Its one geometric claim - a tick sits at the exact fraction along the bar - is asserted under `reference` at TolGeom. Everything else it does is layout, which has no correct answer to be precise about. |
 | geo.colorbar | vectorisation | One call draws one bar. |
 | geo.inset | precision | Geometric, asserted under `robustness` by the extent outline closing exactly. The projection's own accuracy is GEO.PROJECT's. |
