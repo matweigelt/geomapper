@@ -803,4 +803,86 @@ tested.**
 
 ---
 
-*Entries R-011 onward are written at each stage's green gate.*
+## R-011 — Stage D, checkpoint D.1b, 16-Aug-2026, tier A
+
+**Scope.** One function, `geo.graticule`'s line sampler. **This entry
+exists to correct PV-079 in R-010, which was wrong twice over**, and the
+wrong versions are left standing above rather than edited away, because
+the order in which a thing was understood is part of the evidence.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+263; suite size 263, per-class sum 263, 263 passed, 0 failed.** Green gate
+on all six conditions.
+
+**The question that started it, from Matthias: "Is it necessary to fix the
+Mercator projections?"** The answer was no, and finding out why exposed a
+defect that would have shipped.
+
+**Wrong diagnosis 1 — under-sampling.** D.1 measured that transverse
+Mercator's graticule needed about 262 000 uniformly-spaced points to get
+every segment under 1/200 of the map diagonal, and concluded the criterion
+was out of reach there. The arithmetic was right and the question was
+wrong: **the same line's projected arc length is 28.0 against a target
+segment of 0.0466, so 601 segments was all it ever needed** — a factor of
+**436** wasted by sampling uniformly in degrees, which spends its points
+in the middle of the line where the curve barely moves.
+
+**Wrong diagnosis 2 — the projection's clip.** D.1 then reasoned that
+transverse Mercator is clipped 0.5° inside its singularity where Mercator
+is clipped 5° inside the same kind, and wrote the difference up as an open
+question about whether to narrow the strip. That is a real inconsistency
+and it is **not what was causing this**.
+
+**What it actually was.** The offending segment measures **6.2832 —
+exactly 2π** — and it lies on the meridians **120° from the central
+meridian**, on the back of the transverse cylinder, where `cos(Δλ)`
+changes sign and the `atan2` giving y flips branch. It is a branch cut,
+not a curve. **Bisection cannot shrink it**, which is precisely how it can
+be told apart from a curve: a real curve halves when you halve its
+parameter interval; a cut does not.
+
+**Without this, every transverse Mercator map would have carried a
+spurious straight line across it** — defect F2's cousin. F2 was Robinson's
+wrap; this is the same class of error on a different projection, and v2
+came within one merged PR of shipping it.
+
+**What changed.**
+
+| | before | after |
+|---|---|---|
+| sampling | uniform in degrees, resampled whole | bisect only over-long segments |
+| points, whole graticule, worst projection | 4 096 **per line** | ~1 800 **for all lines** |
+| worst segment, all 16 projections | 0.674 (TM excluded from the claim) | **0.005, none excluded** |
+| orthographic horizon shortfall | not measured | **1.5e-9** Earth radii |
+| branch cuts | drawn across | broken with NaN |
+
+Three pieces of machinery went with the wrong diagnosis: the 8192-point
+cap, the "refining made it worse" guard, and the transverse Mercator
+exclusion in the test. **All three were scar tissue around a mis-reading
+and all three are gone.** The guard in particular is now unnecessary by
+construction — bisection can only shorten a segment.
+
+**Lines now reach the map edge.** A segment with one endpoint inside the
+domain and one outside is bisected too, so a meridian arrives AT the
+boundary instead of stopping at whichever sample happened to be the last
+finite one. Measured on orthographic, whose horizon is at radius 1
+exactly: the graticule reaches **1.000000**, short by 1.5e-9.
+
+**Findings — one.**
+
+| id | Finding |
+|---|---|
+| PV-080 | **A segment that will not shrink under bisection is a discontinuity, not a curve**, and that is a projection-agnostic test requiring no table, no per-projection special case and no knowledge of where a given projection's branch cut lies. It is the general form of the rule `geo.splitAntimeridian` applies to tracks, and it caught a 2π jump in transverse Mercator that two rounds of reasoning about clips and sampling densities had both missed. **PV-079 is superseded**: transverse Mercator's clip needs no change, and the criterion is met by all sixteen projections. The 0.5°-versus-5° margin inconsistency noted there is real but is a separate and much smaller matter, and is no longer blocking anything. |
+
+**Binding items a later stage could be wrong for not reading:**
+
+1. **D.2's coastline and overlays project polylines too**, and every one
+   of them can carry a branch cut. They must break the same way — the
+   rule lives in `geo.graticule`'s `traceLine` today and should be
+   promoted to `geo.internal` the moment a second caller needs it.
+2. **`MaxSegment` excludes broken segments**, because a gap is not a
+   segment. Anything reading it should know that.
+
+---
+
+*Entries R-012 onward are written at each stage's green gate.*

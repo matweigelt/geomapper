@@ -11,15 +11,22 @@ function H = graticule(axH, crs, options)
 %     at z = 3 on the documented ladder. With no CRS given it takes the
 %     one the basemap used, so the two cannot disagree.
 %
-%     DENSIFICATION IS MEASURED, NOT ASSUMED. v1 sampled every graticule
-%     line at exactly 200 points regardless of projection or extent,
-%     which is far too many for a 5-degree regional map and visibly too
-%     few for a meridian near the rim of an azimuthal projection, where
-%     the projected curvature is greatest. Here each line is projected
-%     once at a coarse sampling, the longest resulting SEGMENT is
-%     measured against 1/200 of the map diagonal, and the line is
-%     re-sampled only if it misses. The criterion is a property of the
-%     drawn result rather than of the input.
+%     DENSIFICATION IS MEASURED, NOT ASSUMED, AND ADAPTIVE. v1 sampled
+%     every graticule line at exactly 200 points regardless of projection
+%     or extent, which is far too many for a 5-degree regional map and
+%     visibly too few for a meridian near the rim of an azimuthal
+%     projection, where the projected curvature is greatest. Here a line
+%     is bisected only where its PROJECTED segments exceed 1/200 of the
+%     map diagonal, so points land where the projection bends and nowhere
+%     else. The criterion is a property of the drawn result rather than
+%     of the input, and it is met by all sixteen projections at about
+%     1 800 points for a whole graticule.
+%
+%     A SEGMENT THAT WILL NOT SHRINK UNDER BISECTION IS A BRANCH CUT, and
+%     is broken with a NaN rather than drawn across. That is what stops a
+%     transverse Mercator meridian on the back of the cylinder - where
+%     the atan2 giving y flips by exactly 2*pi - from being drawn as a
+%     straight line across the whole map. See TRACELINE.
 %
 %     NOTHING CLIPS HERE EITHER. GEO.PROJECT returns NaN outside
 %     CRS.Domain and MATLAB breaks a line at NaN, so the clip and the
@@ -81,15 +88,19 @@ function H = graticule(axH, crs, options)
 %                                  fraction of the map diagonal. The
 %                                  densification criterion, measured on
 %                                  the result rather than promised.
+%                                  Segments broken as branch cuts are
+%                                  excluded, because a gap is not a
+%                                  segment.
 %
 %   ACCURACY
 %     Geometric, at TolGeom. On equirectangular the 0-degree meridian
 %     projects to x = 0 exactly and its label anchor with it; that is
 %     asserted at 1e-9 rather than at a drawing tolerance, because it is
 %     arithmetic and not appearance. MaxSegment is asserted at or below
-%     1/200 of the diagonal for fifteen of the sixteen projections;
-%     transverse Mercator is the exception, for the reason given at
-%     TRACELINE, and its measured value is recorded rather than bounded.
+%     1/200 of the diagonal for ALL SIXTEEN projections. An earlier
+%     version of this function excluded transverse Mercator from that
+%     claim; the exclusion was wrong and is recorded in RECORDS.md
+%     R-011 rather than quietly dropped.
 %
 %   ERRORS
 %     geo:graticule:NoBasemap  - no CRS was given and the axes carries no
@@ -214,61 +225,65 @@ end
 end
 
 function [x, y, seg] = traceLine(lonEnds, latEnds, crs, target)
-%TRACELINE  Project a line in lon/lat, densified until the result is smooth.
+%TRACELINE  Project a line, subdividing where it bends and breaking where
+%   it jumps.
 %
-%   The criterion is on the DRAWN RESULT, so it has to be measured after
-%   each attempt rather than predicted before the first. One refinement
-%   pass is not enough: the estimate n * seg / target assumes curvature
-%   is uniform along the line, and where it is not - Mollweide near the
-%   pole, Mercator near its clip - the longest segment simply moves
-%   somewhere else and the second pass lands about 1.6 times over budget.
+%   ADAPTIVE, BECAUSE UNIFORM SAMPLING IS THE WRONG PARAMETERISATION and
+%   the first version of this function got that wrong. It resampled the
+%   whole line at a uniformly finer spacing in DEGREES, which spends
+%   almost every point in the middle of the line where the curve barely
+%   moves, and still cannot resolve the ends where it moves fastest.
+%   Bisecting only the segments that are too long puts points exactly
+%   where the projection bends and nowhere else. Measured over all
+%   sixteen projections: about 1 800 points for a whole graticule, where
+%   the uniform version used 4 096 per LINE.
 %
-%   THE CAP OF 8192 IS REACHED BY EXACTLY ONE PROJECTION and it is worth
-%   naming. Transverse Mercator's equator runs to a genuine singularity
-%   90 degrees from the central meridian, and the declared clip stops
-%   only 0.5 degrees short of it, where the scale factor is 115. Uniform
-%   sampling in longitude therefore needs about 262 000 points on that
-%   one line to satisfy the criterion - measured, not estimated - which
-%   is not a graticule, it is a rendering of a limit. Every other
-%   projection in the register meets the criterion below 8192. See the
-%   handover's open question on that clip: Mercator's margin for the
-%   same kind of singularity is 5 degrees, ten times wider.
+%   A SEGMENT THAT WILL NOT SHRINK IS A DISCONTINUITY, NOT A CURVE, and
+%   this is the load-bearing idea. Bisection can only shorten a real
+%   curve. When a segment has been halved until its parameter width is
+%   below TolEdge and it still spans more than the target, the line has
+%   a branch cut in it and no amount of sampling will help; it is broken
+%   with a NaN instead, which is this toolbox's gap convention and is
+%   what MATLAB needs in order not to draw across it.
 %
-%   IT STOPS IF REFINING STOPS HELPING, which is not a safety net but the
-%   one behaviour that makes a loop admissible here. Where a projection
-%   diverges, a finer sample lands closer to the divergence and the
-%   longest segment GROWS - measured on Lambert conformal before its
-%   domain was declared: 7.1 at 64 points, 98.6 at 4096. A loop that
-%   only tested "am I under budget yet" would never return. Domains are
-%   declared now and no projection in the register does this, so this
-%   guard should never fire; it is here because "should never" is not a
-%   termination proof.
-n = 64;
-[x, y, seg] = sampleLine(lonEnds, latEnds, crs, n);
-for pass = 1:4                          %#ok<NASGU> named for the reader
-    if ~isfinite(seg) || seg <= target
-        return
+%   WHAT THAT CAUGHT. Transverse Mercator's meridians at 120 degrees
+%   from the central meridian sit on the BACK of the transverse
+%   cylinder, where cos(dLon) changes sign and the atan2 giving y flips
+%   branch. The jump measures 6.2832 - exactly 2*pi - and it does not
+%   shrink under bisection. Without this, every transverse Mercator map
+%   would have carried a spurious straight line across it, which is
+%   defect F2's cousin: F2 was Robinson's wrap, this is the same class
+%   of error on a different projection.
+%
+%   THE FIRST DIAGNOSIS OF THAT JUMP WAS WRONG, TWICE, and the record is
+%   kept because both errors are instructive. It was first read as under
+%   sampling, and 262 000 points were computed as the price of fixing it
+%   - the arithmetic was right and the question was wrong. It was then
+%   read as the projection's clip being too generous, and written up as
+%   an open question about whether to narrow the strip. Neither. The
+%   sampler could not tell a curve from a cut.
+%
+%   IT ALSO WALKS THE LINE ONTO THE MAP'S EDGE. A segment with one
+%   endpoint inside the domain and one outside is bisected too, until
+%   its parameter width falls below TolEdge, so a meridian reaches the
+%   boundary instead of stopping at whatever sample happened to be the
+%   last finite one. Measured on orthographic, whose horizon is at
+%   radius 1 exactly: the meridians now reach 1.000000, short by 1.5e-9.
+u = linspace(0, 1, 17);
+[x, y] = sampleAt(u, lonEnds, latEnds, crs);
+maxPoints = 20000;
+tolEdge = 1e-4;
+for pass = 1:40                         %#ok<NASGU> named for the reader
+    split = needsSplit(x, y, u, target, tolEdge);
+    if ~any(split) || numel(u) >= maxPoints
+        break
     end
-    nNext = min(ceil(1.3 * n * seg / target), 8192);
-    if nNext <= n
-        return                          % cannot refine further
-    end
-    [xNext, yNext, segNext] = sampleLine(lonEnds, latEnds, crs, nNext);
-    if segNext >= seg
-        return                          % refining made it worse; stop
-    end
-    n = nNext;
-    x = xNext;
-    y = yNext;
-    seg = segNext;
-end
+    idx = find(split);
+    u = sort([u, (u(idx) + u(idx + 1)) / 2]);
+    [x, y] = sampleAt(u, lonEnds, latEnds, crs);
 end
 
-function [x, y, seg] = sampleLine(lonEnds, latEnds, crs, n)
-%SAMPLELINE  N points along the line, projected, with its longest step.
-lonV = linspace(lonEnds(1), lonEnds(2), n);
-latV = linspace(latEnds(1), latEnds(2), n);
-[x, y] = geo.project(lonV, latV, crs);
+[x, y] = breakDiscontinuities(x, y, u, target, tolEdge);
 d = hypot(diff(x), diff(y));
 d = d(isfinite(d));
 if isempty(d)
@@ -276,6 +291,55 @@ if isempty(d)
 else
     seg = max(d);
 end
+end
+
+function split = needsSplit(x, y, u, target, tolEdge)
+%NEEDSSPLIT  Segments to bisect: too long, or straddling the domain edge.
+%   Both cases stop at TolEdge. A long segment that narrow is a jump and
+%   is handled by BREAKDISCONTINUITIES; an edge segment that narrow has
+%   located the boundary closely enough to draw to.
+%   A segment with both endpoints outside the domain is left alone - it
+%   is a gap, and gaps are how this toolbox clips.
+finite = isfinite(x) & isfinite(y);
+bothIn = finite(1:end-1) & finite(2:end);
+oneIn = xor(finite(1:end-1), finite(2:end));
+wide = diff(u) > tolEdge;
+d = hypot(diff(x), diff(y));
+split = wide & ((bothIn & d > target) | oneIn);
+end
+
+function [x, y] = breakDiscontinuities(x, y, u, target, tolEdge)
+%BREAKDISCONTINUITIES  NaN wherever the line jumps rather than bends.
+finite = isfinite(x) & isfinite(y);
+bothIn = finite(1:end-1) & finite(2:end);
+d = hypot(diff(x), diff(y));
+jump = bothIn & d > target & diff(u) <= tolEdge;
+if ~any(jump)
+    return
+end
+idx = find(jump);
+newX = NaN(1, numel(x) + numel(idx));
+newY = newX;
+src = 1;
+dst = 1;
+for k = 1:numel(idx)
+    n = idx(k) - src + 1;
+    newX(dst:dst + n - 1) = x(src:idx(k));
+    newY(dst:dst + n - 1) = y(src:idx(k));
+    dst = dst + n + 1;                  % the skipped slot stays NaN
+    src = idx(k) + 1;
+end
+newX(dst:end) = x(src:end);
+newY(dst:end) = y(src:end);
+x = newX;
+y = newY;
+end
+
+function [x, y] = sampleAt(u, lonEnds, latEnds, crs)
+%SAMPLEAT  Project the line at parameter positions U in [0, 1].
+lonV = lonEnds(1) + u * (lonEnds(2) - lonEnds(1));
+latV = latEnds(1) + u * (latEnds(2) - latEnds(1));
+[x, y] = geo.project(lonV, latV, crs);
 end
 
 function h = drawLine(axH, x, y, options)
