@@ -322,12 +322,18 @@ classdef TestE0_export < GeoMapTestCase
         function twoExportsOfOneFigureAgreeByteForByte(tc)
             d = tc.scratch();
             f = tc.exportFigure();
-            r1 = fullfile(d, "r1.png");
-            r2 = fullfile(d, "r2.png");
-            geo.export(f, r1, Width = 8, Resolution = 150);
-            geo.export(f, r2, Width = 8, Resolution = 150);
-            tc.verifyEqual(imread(r2), imread(r1), ...
-                tc.imageDiff(r1, r2));
+            r = fullfile(d, ["r1.png" "r2.png" "r3.png"]);
+            for k = 1:3
+                geo.export(f, r(k), Width = 8, Resolution = 150);
+            end
+            % Three, not two, so the diagnostic can tell a FIRST-RENDER
+            % effect from genuine nondeterminism: if 1 differs from 2 but
+            % 2 equals 3, the figure was simply not realised yet the
+            % first time, and that is a defect with a fix rather than a
+            % property of the renderer.
+            tc.verifyEqual(imread(r(2)), imread(r(1)), ...
+                "1 vs 2: " + tc.imageDiff(r(1), r(2)) + ...
+                " || 2 vs 3: " + tc.imageDiff(r(2), r(3)));
         end
 
         function theOrderOfABatchDoesNotChangeItsFiles(tc)
