@@ -38,6 +38,25 @@ classdef TestE0_export < GeoMapTestCase
         CoveredFunctions = ["geo.export" "geo.internal.writeFigureFile"]
     end
 
+    methods (TestMethodSetup)
+
+        function noGpuIsAMachineFactNotADefect(tc)
+            %NOGPUISAMACHINEFACTNOTADEFECT  One suppression, with a reason.
+            %   MATLAB:graphics:HardwareUnavailable is a statement about
+            %   the HOST - no hardware OpenGL, the software rasteriser
+            %   will be used - and not about anything geoMap does. Every
+            %   test in this class rasterises, so any of them can raise
+            %   it, and which one does depends on execution order; it is
+            %   set up per method rather than guessed at.
+            %
+            %   It is also the exact condition behind PV-104: the
+            %   first-render difference is a property of that software
+            %   rasteriser. So it is suppressed with its cause named,
+            %   which is the opposite of hiding it.
+            tc.suppressWarning('MATLAB:graphics:HardwareUnavailable');
+        end
+    end
+
     methods (Access = private)
 
         function d = scratch(tc)
