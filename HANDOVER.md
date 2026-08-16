@@ -1,6 +1,6 @@
 # geoMap v2 — HANDOVER
 
-**Revision 2.2 · 15-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug).**
+**Revision 2.4 · 16-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug).**
 
 **What this file is.** The single source of truth for the revision of `geoImagescToolbox` v1.1/1.2 → `geoMap` v2.0. It holds the rules, the design and the ledger. **It is the only place a status lives.** Per BEST_PRACTICE §6.1 it holds no round-by-round narrative evidence; that goes to `RECORDS.md`.
 
@@ -388,8 +388,8 @@ Gaps show as empty rows rather than as an absence nobody notices. **A stage may 
 | **O6** | GSHHG binary `.b`, any resolution (real file) | Real data file | GSHHG reader — **the only thing that can discharge V3** | Stage C `reference` | ☑ **15-Aug-2026, V3 DISCHARGED.** Five resolutions available; crude and intermediate checked. F17 pole closure exact at −90. Microdegree residual 2.98e-8 |
 | **O7** | `cdo remapcon` or `gdalwarp -r average` | Second toolkit | Conservative regrid weights and mass closure | Stage 0 mirror, Stage B `reference` | ☐ |
 | **O8** | `gdaldem hillshade` (Horn) | Second toolkit | Horn gradient hillshade on a known DEM tile | Stage 0 mirror, Stage B `reference` | ☐ |
-| **O9** | ETOPO 2022 1-arc-minute bed elevation | Real data | `geo.readGrid` NetCDF path; regrid at production size | Stage C `reference`, Stage B `speed` fixture | ☐ Matthias has this |
-| **O10** | MATLAB built-in `topo.mat`, `coast.mat` | Shipped reference data | Builtin coastline/grid path; the 0–359 longitude convention case | Stage C `reference` | ☐ |
+| **O9** | ETOPO 2022, 60 and 30 arc-second, BOTH the ice-surface and bedrock variants | Real data | `geo.readGrid` NetCDF path, window and stride selection; regrid at production size | Stage C `reference`, Stage D.0 | ☑ **16-Aug-2026, FILLED.** Dimension order (lon,lat) read from the file; cell-centred origin and span exact to **0**; EGM2008 vertical datum recorded. `.nc` and `.tif` of one tile disagree on row order — NCO flipped latitude |
+| **O10** | MATLAB built-in `topo.mat` (`coast.mat` **absent from R2026a**) | Shipped reference data | Builtin grid path; the 0–359 longitude convention case | Stage C `reference`, Stage D.0 | ☑ **16-Aug-2026, FILLED for `topo.mat`.** Axes derived from `topolatlim`/`topolonlim` and the array size, not the legend's corner; four named places land correctly. `coast.mat` does not ship with R2026a, so that half stays open rather than pretended |
 | **O11** | A published GRACE mascon EWH trend map (e.g. JPL RL06 mascon, any release) | Real scientific product | End-to-end figure sanity: sign, magnitude and pattern of a known signal (Greenland, West Antarctica, north India) | Stage F acceptance | ☐ Matthias to name the release |
 | **O12** | v1 `geoImagescToolbox` itself, as installed | Prior implementation | **Only** the F1–F18 defect probes (V4). Not an authority on correctness — it is the thing being replaced. | Stage 0 probes | ☐ |
 
@@ -893,7 +893,9 @@ Every figure below is **a claim from this document, and V1 says it is unmeasured
 
 **2. Depends on.** Stages 0, A, B, C green.
 
-**Checkpoints:** **D.1** `internal.layout`, `basemap`, `graticule`, `frame` · **D.2** `coastline`, `scalebar`, `northarrow`, `colorbar`, `inset` · **D.3** the five overlays.
+**Checkpoints:** **D.0** `geo.readGrid` window and stride selection, and the shipped topography sample — *added 16-Aug-2026, see below* · **D.1** `internal.layout`, `basemap`, `graticule`, `frame` · **D.2** `coastline`, `scalebar`, `northarrow`, `colorbar`, `inset` · **D.3** the five overlays.
+
+**D.0 — why a Stage C reader is amended in Stage D's branch.** ETOPO 2022 arrived after Stage C merged. `ncread` returns double, so the 60-arc-second global field is 1.74 GB resident and the 30-arc-second one 6.95 GB, and `geo.readGrid` had no way to ask for less. D.1's basemap cannot use the data without it. Put in its own checkpoint rather than folded into D.1, because a graphics checkpoint quietly containing a reader change is exactly what stage attribution exists to prevent. **Delivered 16-Aug-2026, R-009**; oracles O9 and O10 filled in the same round. Three consequences bind D.1 onward: a window COVERS its region and may exceed it by one cell per edge; a seam-crossing window returns longitude continuing past 180 rather than wrapped; and `Stride` subsamples, at 184x the per-cell cost of a contiguous read on a compressed file, so a decimated global overview belongs in `geo.cache` and not in a re-read.
 
 **Reference files to attach:** v1 `geoImagesc.m` (whole), `geoSegmentedFrame.m`, `geoAttachFrameResize.m`, `geoChainCallback.m`, `geoAttachResizeCallback.m`, `geoRegisterInsetRect.m`, `geoGetOtherInsetRects.m`, `geoAvoidRectCollisions.m`, `geoScaleBar.m`, `geoNorthArrow.m`, `geoCompassAnchor.m`, `geoGmtColorbar.m`, `geoImagescTrack.m`, `geoImagescPoints.m`.
 
@@ -1079,6 +1081,15 @@ Every figure below is **a claim from this document, and V1 says it is unmeasured
 | C-056 | 15-Aug-2026 | **Stage C delivered and executed.** 205 points, 205 passed. **V3 discharged; O5 and O6 filled** | R-008 |
 | C-057 | 15-Aug-2026 | **The `geo.region` file hook is closed**, converting Stage A's deferred contract test into a success test | The pattern worked exactly as designed: the identifier and its test existed before the capability, so Stage C converted rather than invented |
 | C-058 | 15-Aug-2026 | **GeoTIFF and worldfile input deferred** to its own round, with a named identifier and contract test shipped now | §6.6. A binary TIFF tag parser does not belong rushed in beside three other readers |
+| C-059 | 16-Aug-2026 | **`geo.readGrid` gains `Region` and `Stride`**, turned into NCREAD start/count bounds rather than applied after a full read | A global 60-arc-second field is 1.74 GB resident and the 30-arc-second one 6.95 GB, because NCREAD returns double. A regional basemap needs a few thousand cells of it |
+| C-060 | 16-Aug-2026 | **Region selection grows outwards in INDEX space, never by an epsilon** | PV-068. Comparing `centre >= lo - h` decides an exact cell-edge boundary by the last bit, and did: latitude 30–72 came back starting at 30.008. Coverage is now guaranteed by construction, at a cost of at most one surplus cell per edge |
+| C-061 | 16-Aug-2026 | **A seam-crossing window is read as two blocks and returned as ONE monotone axis** continuing past 180 | `geo.grid` requires strict monotonicity, and a seam in the middle of an axis is not something a downstream consumer should have to rediscover |
+| C-062 | 16-Aug-2026 | **NetCDF orientation is READ from the variable's dimension names**, not inferred by comparing sizes | ETOPO stores z as (lon,lat). Subsetting forces the question anyway — start/count must be in the file's order — and the answer also makes a square grid readable, which the size heuristic could never resolve |
+| C-063 | 16-Aug-2026 | **`readGrid(G, Region=…)` now applies the selection to a grid in memory** instead of ignoring it | PV-072. The same two arguments meant something on a filename and nothing on the grid that filename produced |
+| C-064 | 16-Aug-2026 | **A 10-arc-minute topography sample ships in `data/`**, block-averaged from ETOPO 2022 ice surface, int16, 4.0 MB | Doc examples and graphics tests need a real basemap without the 478 MB original. Averaged, not subsampled: measured 91.95 m vs 124.55 m mean |∂z/∂λ|, i.e. subsampling is 35% rougher, and hillshade is a derivative |
+| C-065 | 16-Aug-2026 | **Ice surface is the basemap default; bedrock is supported, not default** | Coastlines trace the ice front. At 80°S 100°W the surface is +2 080 m and the bed −1 158 m, so a bedrock basemap paints the inside of the coastline as ocean — two layers of one map contradicting each other |
+| C-066 | 16-Aug-2026 | **The windowed-read speed fixture is deflate-compressed and chunked like a real product** | PV-069. Uncompressed, fixed cost exceeded data cost and the budget of 5 was unreachable by ANY implementation. The budget did not move; the fixture became able to see the property it asserts |
+| C-067 | 16-Aug-2026 | **Stage D checkpoint D.0 delivered and executed.** 227 points, 227 passed. **O9 and O10 filled** | R-009 |
 
 ---
 
