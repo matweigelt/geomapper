@@ -1163,6 +1163,12 @@ anything. R-011, PV-080.
 | C-113 | 16-Aug-2026 | **What `geo.export` controls across a first export is asserted separately** — same dimensions, same route, same reported page | The renderer's warm-up is not geoMap's to certify; the page size is, and the builder workflow exports every figure exactly once |
 | C-114 | 16-Aug-2026 | **A CI-only failure is diagnosed, never tolerated** | The instinct on a platform-specific graphics failure is to weaken the claim. §4.6 forbids it. Making the test discriminate — three exports, 1-vs-2 against 2-vs-3 — cost CI cycles and turned a red square into PV-104. A `drawnow` fix was tried, changed nothing to the digit, and was removed rather than left in looking like one |
 | C-115 | 16-Aug-2026 | **Stage E checkpoint E.0 delivered and executed.** 370 points, 370 passed | R-016 |
+| C-116 | 16-Aug-2026 | **`geo.title` added as an L3 element**, and `title`, `xlabel`, `ylabel`, `legend`, `sgtitle` added to the audit's banned primitives | PV-105. The Stage E rule fired on real code for the first time: `geo.map` needed a title, no element drew one, so the capability was written rather than inlined. MATLAB's `TITLE` anchors to the axes box, which under `axis equal` is 53.03 pt above the map |
+| C-117 | 16-Aug-2026 | **`geo.map`'s element options take `false`, `true` or a struct** rather than restating 120 flat option names | The front stays at 128 executable lines against a 200 budget. v1's flat spellings become a separate compatibility layer (E.1b), so no option table lives in the front |
+| C-118 | 16-Aug-2026 | **The raw triplet spends the three positional slots on lon, lat and Z; the projection moves to `CRS =`** | D-003 caps positional arity at 3. The projection gives way because it has a name |
+| C-119 | 16-Aug-2026 | **Region outline flagged as a missing L3 capability, not improvised** | PV-106. v1's `AreaOfInterest` has no v2 element. Named in `geo.map`'s LIMITATIONS rather than bent onto `geo.coastline` |
+| C-120 | 16-Aug-2026 | **A front may hand its shared typeface only to elements that draw text** | PV-107. MATLAB's `arguments` block rejects an unknown name-value pair rather than ignoring it; `geo.coastline` refused `FontSize` |
+| C-121 | 16-Aug-2026 | **Stage E checkpoint E.1a delivered and executed.** 392 points, 392 passed | R-017. `geo.map` is 128 lines against `geoImagesc`'s 3413 |
 
 ---
 
