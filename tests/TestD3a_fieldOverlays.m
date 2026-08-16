@@ -348,13 +348,5 @@ classdef TestD3a_fieldOverlays < GeoMapTestCase
 
     % ==================================================================
     methods (Access = private)
-        function ax = mapAxes(tc, crs)
-            arguments
-                tc
-                crs = "equirectangular"
-            end
-            ax = axes('Parent', tc.figureFor());
-            geo.basemap(tc.demoGrid(), crs, Parent = ax, Hillshade = "off");
-        end
     end
 end

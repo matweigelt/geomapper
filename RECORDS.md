@@ -1052,4 +1052,55 @@ bit-identical coordinates.
 
 ---
 
-*Entries R-015 onward are written at each stage's green gate.*
+## R-015 — Stage D, checkpoint D.3b, 16-Aug-2026, tier A. **STAGE D CLOSES.**
+
+**Scope.** `geo.overlayTrack`, `geo.overlayPoints`,
+`geo.internal.colourScale`. **Stage D is complete**: fourteen L3 elements
+and five internals, replacing v1's 3413-line plotting function, its two
+near-clones and its five plumbing functions.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+347; suite size 347, per-class sum 347, 347 passed, 0 failed.** Green gate
+on all six conditions.
+
+**Two exact claims, both of which v1 would have failed:**
+
+| | measured |
+|---|---|
+| wiggle peak amplitude vs max\|Obs\| × Scale | **2.7e-16** relative |
+| legend circle radius vs its own marker's radius | **0** points |
+
+**Findings — five.**
+
+| id | Finding |
+|---|---|
+| PV-095 | **v1 computed the wiggle's "auto" scale PER RUN.** It lived inside the per-run drawing function and took that run's own maximum, so a track broken by a single missing sample drew two ribbons at two different scales with nothing on the figure to say so. A wiggle is a QUANTITATIVE display whose entire content is the amplitude; two segments of one orbit could not be compared by eye, which is the only way anybody reads them. One scale for the whole track now, asserted by drawing a track and the same track with a gap punched through its quiet half and requiring the two to report the same number. |
+| PV-096 | **v1's size legend was 11% wrong and decoded its own markers incorrectly.** It drew reference circles at radius `sqrt(area/pi)` — the radius of a circle of that AREA — while MATLAB's `scatter` treats `SizeData` as the area of the marker's BOUNDING BOX, giving radius `sqrt(area)/2`. The factor is `sqrt(pi)/2 = 0.886`. A reader measuring a bubble against that legend read the wrong number, which is the one thing a legend exists not to allow. |
+| PV-097 | **SCATTER3 CLEARS THE AXES, and in a composable toolbox that is a landmine.** It is a high-level plotting call and resets the axes unless `hold` is on. Measured: a map carrying **fifty objects came back with five** — the basemap and every element drawn before it, gone. v1 never met this because it drew everything inside one function in a fixed order; v2's whole design is that any element may be called at any time. The hold state is now saved, forced and restored, and a regression test draws a populated map and requires the count to GROW. |
+| PV-098 | **A missing size is not the smallest size.** v1 mapped a NaN in `SizeData` to fraction zero, so a point with no measurement rendered identically to the smallest real one. "We did not measure this" and "this is the minimum" are different statements and now look different. |
+| PV-099 | **Adding a method to the shared test base class silently EXCLUDED two existing suites.** `mapAxes` was promoted to `GeoMapTestCase`, and the two suites that already had a private one of that name were dropped by the framework for an access-permission mismatch — reported as a warning, not an error. The suite would have run smaller and still called itself green. **The reconcile-three-ways caught it**, which is exactly the signal that instrument exists to give: the count moved when nothing should have moved it. |
+
+**F6 for the FIFTH time.** `colourFrom` was written identically in
+`geo.overlayTrack` and `geo.overlayPoints` and rejected within the round;
+promoted to `geo.internal.colourScale`, which `geo.overlayPolygons` now
+uses too. v2 has been stopped from committing a duplicated local on five
+separate occasions, every one inside the checkpoint that wrote it. v1
+shipped six of them for four years.
+
+**PV-077 recurred a THIRD time** — `verifyEqual(a, b, RelTol = t,
+'diagnostic')`. Three checkpoints, three occurrences, one suite load lost
+each time. Worth a habit rather than a note: the diagnostic goes before
+the tolerance.
+
+**Stage D, complete:**
+
+| | |
+|---|---|
+| elements | basemap, graticule, frame, coastline, scalebar, northarrow, colorbar, inset, overlayPolygons, stipple, overlayContours, overlayTrack, overlayPoints |
+| internals | layout, avoidRectCollisions, elementExtent, projectPolyline, plottedBox, colourScale |
+| v1 code replaced | one 3413-line function, two near-clones, five plumbing functions, four colorbar implementations |
+| suite | 347 points |
+
+---
+
+*Entries R-016 onward are written at each stage's green gate.*

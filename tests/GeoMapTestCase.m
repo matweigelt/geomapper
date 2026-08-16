@@ -124,6 +124,19 @@ classdef GeoMapTestCase < matlab.unittest.TestCase
                 cosd(2 * repmat(lat, 1, numel(lon))));
         end
 
+        function ax = mapAxes(tc, crs)
+            %MAPAXES  Fresh axes carrying a basemap, ready for an element.
+            %   Here rather than in each Stage D suite: the third copy was
+            %   rejected by the duplicate-local check, which is the rule
+            %   this class exists to enforce for fixtures.
+            arguments
+                tc
+                crs = "equirectangular"
+            end
+            ax = axes('Parent', tc.figureFor());
+            geo.basemap(tc.demoGrid(), crs, Parent = ax, Hillshade = "off");
+        end
+
         function suppressWarning(tc, id)
             %SUPPRESSWARNING  Disable an identifier for this test only.
             %   Restored by teardown, so a failing assertion cannot leave

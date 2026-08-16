@@ -1,6 +1,6 @@
 # geoMap v2 — HANDOVER
 
-**Revision 2.9 · 16-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug).**
+**Revision 3.0 · 16-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug).**
 
 **What this file is.** The single source of truth for the revision of `geoImagescToolbox` v1.1/1.2 → `geoMap` v2.0. It holds the rules, the design and the ledger. **It is the only place a status lives.** Per BEST_PRACTICE §6.1 it holds no round-by-round narrative evidence; that goes to `RECORDS.md`.
 
@@ -893,7 +893,7 @@ Every figure below is **a claim from this document, and V1 says it is unmeasured
 
 **2. Depends on.** Stages 0, A, B, C green.
 
-**Checkpoints:** **D.2 is split into D.2a** (`coastline`, `scalebar`, `northarrow`, delivered 16-Aug-2026, R-012) **and D.2b** (`colorbar`, `inset`) - five elements in one checkpoint was too much to review at once, and the three delivered share a shared polyline projector that the other two do not need. **D.0** `geo.readGrid` window and stride selection, and the shipped topography sample — *added 16-Aug-2026, see below* · **D.1** `internal.layout`, `basemap`, `graticule`, `frame` · **D.2** `coastline`, `scalebar`, `northarrow`, `colorbar`, `inset` · **D.3a** `overlayPolygons`, `stipple`, `overlayContours` - the field overlays, under the graticule (delivered 16-Aug-2026, R-014) - and **D.3b** `overlayTrack`, `overlayPoints`, over it at z = 5.
+**Checkpoints:** **D.2 is split into D.2a** (`coastline`, `scalebar`, `northarrow`, delivered 16-Aug-2026, R-012) **and D.2b** (`colorbar`, `inset`) - five elements in one checkpoint was too much to review at once, and the three delivered share a shared polyline projector that the other two do not need. **D.0** `geo.readGrid` window and stride selection, and the shipped topography sample — *added 16-Aug-2026, see below* · **D.1** `internal.layout`, `basemap`, `graticule`, `frame` · **D.2** `coastline`, `scalebar`, `northarrow`, `colorbar`, `inset` · **D.3a** `overlayPolygons`, `stipple`, `overlayContours` - the field overlays, under the graticule (delivered 16-Aug-2026, R-014) - and **D.3b** `overlayTrack`, `overlayPoints`, over it at z = 5 (delivered 16-Aug-2026, R-015). **STAGE D IS COMPLETE.**
 
 **D.1 delivered 16-Aug-2026, R-010.** `geo.internal.layout`,
 `geo.internal.avoidRectCollisions`, `geo.internal.elementExtent`,
@@ -1146,6 +1146,11 @@ anything. R-011, PV-080.
 | C-096 | 16-Aug-2026 | **`geo.stipple` is new**: significance masking, subsampled by a regular stride and never randomly | v1 could not draw a mask at all. Determinism asserted as bit-identical output |
 | C-097 | 16-Aug-2026 | **`geo.overlayContours` drops v1's two jump heuristics and their three constants** | PV-092 |
 | C-098 | 16-Aug-2026 | **Stage D checkpoint D.3a delivered and executed.** 327 points, 327 passed | R-014 |
+| C-099 | 16-Aug-2026 | **The wiggle scale is computed ONCE for the whole track** | PV-095. v1 computed it per run, so a track broken by one missing sample drew two ribbons at two scales - and a wiggle's entire content is its amplitude |
+| C-100 | 16-Aug-2026 | **The size legend uses the marker's own radius rule** | PV-096. v1 drew sqrt(area/pi) where scatter uses sqrt(area)/2, so its legend was 11% small and decoded its own markers wrongly |
+| C-101 | 16-Aug-2026 | **Every high-level plotting call is guarded by the hold state** | PV-097. scatter3 clears the axes: a map of fifty objects came back with five. v1 never met it because it drew in one fixed order |
+| C-102 | 16-Aug-2026 | **`geo.internal.colourScale` promoted** - one colour scale rule for every overlay | F6 for the fifth time, rejected within the round again |
+| C-103 | 16-Aug-2026 | **Stage D checkpoint D.3b delivered and executed. STAGE D COMPLETE.** 347 points, 347 passed | R-015. Thirteen elements and six internals replace v1's monolith, its two clones, its five plumbing functions and its four colorbars |
 
 ---
 

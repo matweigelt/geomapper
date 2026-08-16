@@ -354,15 +354,6 @@ classdef TestD2_annotations < GeoMapTestCase
             ax = axes('Parent', tc.figureFor());
         end
 
-        function ax = mapAxes(tc, crs)
-            %MAPAXES  Fresh axes carrying a basemap, ready for an element.
-            arguments
-                tc
-                crs = "equirectangular"
-            end
-            ax = tc.axesFor();
-            geo.basemap(tc.demoGrid(), crs, Parent = ax, Hillshade = "off");
-        end
 
 
         function km = walkBar(~, H, crs)
