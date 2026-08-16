@@ -79,6 +79,8 @@ function [xy, meta] = readCoastline(source, options)
 %       geo:readCoastline:NoMatchingLevels - records read, none matched
 %       geo:readCoastline:UnsupportedShape - shapefile geometry that is
 %                                            not a polyline or polygon
+%       geo:readCoastline:BuiltinMissing   - the shipped coastline is
+%                                            absent from data/
 %
 %   WARNINGS
 %       geo:readCoastline:TruncatedFile    - the file ends mid-record
@@ -348,7 +350,27 @@ xy = vertcat(parts{1:np});
 end
 
 function xy = builtinCoast()
-%BUILTINCOAST  MATLAB's own coastline, already NaN-separated.
-s = load('coastlines.mat');
+%BUILTINCOAST  The coastline shipped with this toolbox.
+%
+%   NOT MATLAB'S. This used to load `coastlines.mat`, which shipped with
+%   base MATLAB for years and does NOT ship with R2026a - it moved to the
+%   Mapping Toolbox, whose absence is the whole point of defect F1. The
+%   call failed outright and no test caught it, because until Stage D
+%   nothing had ever asked for the builtin coastline. It is now a Natural
+%   Earth 110m coastline living in data/, public domain and therefore
+%   redistributable, built by tools/makeCoastlineSample.m.
+%
+%   It is a FALLBACK, not a recommendation. GSHHG is the better
+%   coastline and GEO.COASTLINE will read one; this is what you get when
+%   you have not said which shoreline you want.
+p = fullfile(geoMapRoot(), "data", "coast_110m.mat");
+if ~isfile(p)
+    error('geo:readCoastline:BuiltinMissing', ...
+        ['The shipped coastline is not at %s. It is built by ' ...
+         'tools/makeCoastlineSample.m from a Natural Earth shapefile. ' ...
+         'MATLAB''s own coastlines.mat is NOT a substitute: it does not ' ...
+         'ship with R2026a.'], p);
+end
+s = load(p);
 xy = [s.coastlon(:), s.coastlat(:)];
 end

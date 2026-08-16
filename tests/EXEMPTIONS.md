@@ -57,6 +57,16 @@ become false is a finding.
 | geo.internal.layout | vectorisation | Its interface is one command at a time by construction. |
 | geo.internal.layout | reference | No external authority certifies a figure resize registry. |
 | geo.internal.layout | speed | Its cost is a struct-array append against a graphics redraw that dominates it by orders of magnitude; a ratio would measure MATLAB's renderer. |
+| geo.coastline | precision | The coordinates are GEO.READCOASTLINE's, asserted exact for shapefiles in Stage C, passed through GEO.PROJECT, certified against PROJ. This function adds no arithmetic of its own to bound. |
+| geo.coastline | vectorisation | One call draws into one axes. |
+| geo.northarrow | precision | The bearing is a central difference of GEO.PROJECT and inherits its measured 1e-8; the claim asserted under `reference` is the stronger one, that north is measured AT the arrow rather than once for the map. |
+| geo.northarrow | vectorisation | One call draws one glyph. |
+| geo.scalebar | precision | Its numerical claim - that the bar is as long as it says - is asserted under `reference` by walking the drawn bar, which is a stronger instrument than a tolerance on an intermediate. |
+| geo.internal.projectPolyline | precision | It projects and decides; the projection's accuracy is GEO.PROJECT's and is asserted there, and the decision is a boolean asserted under `contract`. |
+| geo.internal.projectPolyline | vectorisation | It IS the vectorised form; there is no scalar version to compare a loop against. |
+| geo.scalebar | vectorisation | One call draws one bar. |
+| geo.internal.projectPolyline | reference | No external authority certifies where a projection's branch cuts lie; the criterion is behavioural - a segment that will not shrink - and is asserted under `contract` and `robustness`. |
+| geo.internal.projectPolyline | speed | Its cost is dominated by GEO.PROJECT, which has its own budgets; a ratio here would measure that function twice. |
 | geo.internal.avoidRectCollisions | precision | Rectangle edges are compared and added exactly; the only constant is a 4-point clearance, which is a typographic choice and not a measurement. There is no error to bound. |
 | geo.internal.avoidRectCollisions | reference | Ported verbatim from v1, which is the thing being replaced and is not an authority on correctness. Its geometry is asserted directly under `contract`. |
 | geo.internal.avoidRectCollisions | vectorisation | Moves one rectangle. |
