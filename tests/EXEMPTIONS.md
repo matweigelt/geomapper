@@ -93,6 +93,12 @@ become false is a finding.
 | geo.internal.avoidRectCollisions | vectorisation | Moves one rectangle. |
 | geo.internal.avoidRectCollisions | speed | At most eight passes over a handful of rectangles; a budget would measure the timer. |
 | geo.internal.avoidRectCollisions | metamorphic | Order-dependent BY DESIGN - it is a greedy solver and obstacle order changes the result. Asserting a permutation invariance would assert something false. |
+| geo.map | precision | It computes nothing. Every number on the figure belongs to an element and is asserted where that element is; what a front can get wrong is COMPOSITION, which is asserted under `reference` against the same map built by hand. A precision test here would re-assert geo.basemap's arithmetic through one more layer. |
+| geo.map | vectorisation | One call draws one map. Several maps side by side are `geo.panel`. |
+| geo.title | precision | Its one number - the clearance above the map - is exact arithmetic on the plotted box and is asserted under `reference` at 1e-9 relative. There is no second, finer claim. |
+| geo.title | vectorisation | Draws one title. The multi-line form is one Text object, not a loop. |
+| geo.title | speed | One Text object and one Extent read. A budget would measure the renderer's text metrics, which are not ours; the front's total cost is budgeted once, in `geo.map`. |
+| geo.title | metamorphic | Its observable is a position, which is a function of the plotted box alone. The invariance worth asserting - that a resize re-places it - is the layout manager's and is asserted there. |
 | geo.export | precision | Its numerical claim - the page is the size that was asked for - is asserted under `reference` against the produced file, at 0.05 cm and 1 px. There is no second, finer claim for a precision test to make. |
 | geo.export | vectorisation | The batch form IS the vectorised form, and it is asserted under `contract` and `metamorphic` rather than timed: a batch of N writes N files, and no arithmetic is repeated per file that could be lifted out of a loop. |
 | geo.internal.writeFigureFile | precision | It selects an instrument and writes a file. It computes nothing, so there is no error to bound; the size claim belongs to `geo.export`, which owns the page. |

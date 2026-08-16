@@ -407,7 +407,8 @@ function f = checkPurity(files)
 %   rule and must pass, while a bare colorbar() must not.
 banned = ["surf" "surface" "patch" "line" "text" "scatter" "scatter3" ...
           "plot" "plot3" "colorbar" "annotation" "imagesc" "image" ...
-          "fill" "contour" "contourf" "rectangle" "quiver"];
+          "fill" "contour" "contourf" "rectangle" "quiver" ...
+          "title" "xlabel" "ylabel" "legend" "sgtitle"];
 budget = 200;
 f = emptyFinding();
 for i = 1:numel(files)

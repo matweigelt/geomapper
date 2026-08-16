@@ -1179,4 +1179,49 @@ inspection, after `geo.cache | metamorphic`.
 
 ---
 
-*Entries R-017 onward are written at each stage's green gate.*
+## R-017 — Stage E, checkpoint E.1a, 16-Aug-2026, tier A
+
+**Scope.** `geo.map`, the first L4 front, and `geo.title`, the L3 element
+it turned out to need.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+392; suite size 392, per-class sum 392, 392 passed, 0 failed.** Green gate
+on all six. Audit: 15 fixtures, every check proved, 0 findings.
+
+**The number this checkpoint is about:**
+
+| | |
+|---|---|
+| v1's `geoImagesc` | **3413 lines** |
+| `geo.map`, executable | **128 lines**, against a 200-line budget |
+
+**Composition is exact.** A map built in one call and the same map built
+element by element give identical `CData`, identical `DataLimits`, the
+same registered elements and the same object count on the axes. That is
+the only claim that makes a front safe to use instead of the elements,
+and it is the one asserted.
+
+| | measured | bound |
+|---|---|---|
+| title clearance above the map vs Gap × diagonal | **2.28e-15** relative | ≤ 1e-9 |
+| `geo.map` vs the same four elements by hand | **1.121** | ≤ 1.3, weak |
+
+**The rule bit twice, which is the point of having it.**
+
+| id | Finding |
+|---|---|
+| PV-105 | **`geo.map` needed a title and there was no element for one.** The Stage E rule says a front that needs a drawing primitive stops and flags the missing L3 capability rather than inlining it, and this is the first time it fired on real code. `GEO.TITLE` was written instead of a `text()` call, and `title`, `xlabel`, `ylabel`, `legend` and `sgtitle` joined the audit's banned list on the same day so that no front can quietly acquire one later. **Writing the element found a defect that inlining would have shipped**: MATLAB's `TITLE` anchors to the AXES box, and under `axis equal` an axes letterboxes — measured on a 2:1 world map in a default axes, the map's top sits **53.03 points** below the axes' top, so a stock title floats three quarters of an inch clear of the map with nothing in between. `GEO.TITLE` anchors to the plotted box. (The horizontal centres *do* agree, because letterboxing is symmetric — checked before it was claimed, and the first draft of the help claimed the opposite.) |
+| PV-106 | **There is no element that draws a region outline, and it is flagged rather than improvised.** v1's `AreaOfInterest` drew a dashed outline of a rectangle or polygon. `geo.coastline` draws coastlines; `geo.overlayPolygons` fills. Rather than bend either, `Region` is absent from `geo.map` and named in its LIMITATIONS. Second thing the rule has caught and the first it has not resolved — which is the honest state to be in, and visible rather than papered over. |
+| PV-107 | **A front cannot hand every option to every element, because MATLAB's `arguments` block REJECTS an unknown name-value pair rather than ignoring it.** `geo.coastline` draws no text and refused `FontSize` on this file's first run. That is correct on its side — a front that could pass anything to anything would have no contract — so the ladder table carries a column saying which elements draw text, and a regression test asserts the shared typeface reaches the graticule and not the coastline. |
+| PV-108 | **`geo.crs` is the one constructor in this toolbox that is not idempotent**, and a front is exactly where that bites. `geo.grid`, `geo.track`, `geo.points` and `geo.region` all accept their own output; `geo.crs` takes a name and rejects a crs struct. `geo.map(G, geo.crs("mollweide"))` — the call every element example in the documentation makes — failed on the first run. Guarded, and asserted rather than remembered. |
+
+**A missed prediction, reported.** The E.1a suite was predicted at 21
+points and came in at 22: the contract block has eleven methods, not ten.
+The count was miscounted, not the change misunderstood — but the
+instrument did what it exists to do, and a miss is worth recording even
+when it is benign, because a record of only the alarming ones teaches
+that a small miss is not worth checking.
+
+---
+
+*Entries R-018 onward are written at each stage's green gate.*
