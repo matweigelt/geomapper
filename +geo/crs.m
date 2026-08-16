@@ -232,7 +232,7 @@ c = struct( ...
     'ConeConstant', n, ...
     'Class', cls, ...
     'IsWholeWorld', isWholeWorld(name), ...
-    'Domain', domainOf(name));
+    'Domain', domainOf(name, options.Hemisphere, n));
 end
 
 % ======================================================================
@@ -273,12 +273,35 @@ tf = any(name == ["equirectangular" "robinson" "mollweide" "hammer" ...
                   "winkeltripel" "sinusoidal"]);
 end
 
-function d = domainOf(name)
+function d = domainOf(name, hemisphere, coneN)
 %DOMAINOF  The single authority for every projection limit (F12).
 %
 %   The four clip values are v1's, in degrees, rounded inward from the
 %   angle its cos-threshold actually meant. Kept deliberately so a v2
 %   figure covers the same extent as the v1 figure it replaces.
+%
+%   THREE OF THESE DOMAINS DEPEND ON A PARAMETER, NOT ONLY ON THE NAME,
+%   and the first version of this table did not, which is why it takes
+%   three arguments now. Polar stereographic diverges at the pole
+%   OPPOSITE its own, so north and south have mirror-image domains; a
+%   conformal conic diverges at whichever pole its cone does not wrap,
+%   which is decided by the SIGN OF THE CONE CONSTANT and therefore by
+%   the standard parallels the caller chose. A table keyed on the name
+%   alone cannot express any of that, and silently returned [-90 90].
+%
+%   WHAT THAT COST, MEASURED. `geo.project(0, -90, polarstereographic
+%   north)` returned 3.266e+16 - not NaN, not an error, a finite number.
+%   Drawn, it set the axis limits to 3e16 and the map became one pixel.
+%   Lambert conformal was subtler and worse: its longest projected
+%   graticule segment GREW with sampling, 7.1 at 64 points to 98.6 at
+%   4096, because a finer sample lands closer to the pole it diverges
+%   at. Anything that refines until a length criterion is met would
+%   never terminate.
+%
+%   The clip is set five degrees short of the divergence, which is the
+%   margin Mercator already used for the same reason. It is cosmetic:
+%   the mathematics is fine right up to the pole, and nobody draws a
+%   polar stereographic map of the far hemisphere.
 maxDist = NaN;
 distFrom = "none";
 singular = NaN;
@@ -305,6 +328,15 @@ switch name
         maxDist = 89.5;     distFrom = "centralMeridian";  singular = 90;
     case "mercator"
         latLim = [-85 85];  singular = 90;
+    case "polarstereographic"
+        singular = 90;
+        latLim = farPoleClip(hemisphere == "north");
+    case "lambertconformal"
+        % Albers is NOT here on purpose: its rho is bounded at both
+        % poles - it is an equal-area conic - so it has no singularity
+        % to clip and adding one would remove map for no reason.
+        singular = 90;
+        latLim = farPoleClip(coneN > 0);
 end
 
 d = struct( ...
@@ -314,6 +346,15 @@ d = struct( ...
     'ClipIsCosmetic', ~isnan(maxDist) && ...
                       (isnan(singular) || maxDist < singular), ...
     'LatLimit', latLim);
+end
+
+function latLim = farPoleClip(divergesAtSouth)
+%FARPOLECLIP  Stop five degrees short of the pole that diverges.
+if divergesAtSouth
+    latLim = [-85 90];
+else
+    latLim = [-90 85];
+end
 end
 
 function n = coneConstant(name, sp1, sp2)

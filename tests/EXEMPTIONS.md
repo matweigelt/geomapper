@@ -46,6 +46,22 @@ become false is a finding.
 | v1_option_inventory | vectorisation | Reads five files once. No batched form. |
 | v1_option_inventory | speed | Runs once per stage boundary at most. |
 | v1_option_inventory | metamorphic | Its observable is a name mapping; permuting the input files changes only the recorded order of the Fronts column, which is meaningful and therefore not an invariance. |
+| geo.basemap | precision | The claim is geometric and is asserted under `contract` at TolGeom, per handover 2.3.2. The numerical claims it composes - projection, hillshade, colour mapping - are asserted where they are made, in Stages B and C. |
+| geo.basemap | vectorisation | One call draws into one axes. There is no batched form to compare a loop against. |
+| geo.graticule | precision | Same as geo.basemap: geometric, asserted under `contract`. The two closed-form assertions (0-meridian x, Mollweide span) run there at 1e-9 rather than at a drawing tolerance. |
+| geo.graticule | vectorisation | One call draws into one axes. |
+| geo.graticule | robustness | **NOT EXEMPT** - listed here only to record that it was considered and rejected. Its degenerate cases run inside geo.basemap's rows, because a graticule with no basemap raises before it draws. |
+| geo.frame | precision | Geometric, asserted under `contract` by patch count and under `metamorphic` by the resize invariant. |
+| geo.frame | vectorisation | One call draws into one axes. |
+| geo.internal.layout | precision | A registry stores and returns rectangles unchanged. There is no arithmetic to bound; that it does not alter them is asserted under `contract`. |
+| geo.internal.layout | vectorisation | Its interface is one command at a time by construction. |
+| geo.internal.layout | reference | No external authority certifies a figure resize registry. |
+| geo.internal.layout | speed | Its cost is a struct-array append against a graphics redraw that dominates it by orders of magnitude; a ratio would measure MATLAB's renderer. |
+| geo.internal.avoidRectCollisions | precision | Rectangle edges are compared and added exactly; the only constant is a 4-point clearance, which is a typographic choice and not a measurement. There is no error to bound. |
+| geo.internal.avoidRectCollisions | reference | Ported verbatim from v1, which is the thing being replaced and is not an authority on correctness. Its geometry is asserted directly under `contract`. |
+| geo.internal.avoidRectCollisions | vectorisation | Moves one rectangle. |
+| geo.internal.avoidRectCollisions | speed | At most eight passes over a handful of rectangles; a budget would measure the timer. |
+| geo.internal.avoidRectCollisions | metamorphic | Order-dependent BY DESIGN - it is a greedy solver and obstacle order changes the result. Asserting a permutation invariance would assert something false. |
 
 ## Reserved rows, to be filled at their stage
 
@@ -54,7 +70,7 @@ pre-approved before the function exists and the claim can be checked.
 
 | Function | Category | Reason | Status |
 |---|---|---|---|
-| L3 graphics elements | vectorisation | No batched form; each call draws into one axes. | pending Stage D |
-| L3/L4 graphics | precision | The claim is geometric, asserted under contract with TolGeom. | pending Stage D |
-| geo.cache | metamorphic | Its observable is a hit or a miss, which has no invariance to state. | pending Stage C |
+| L3 graphics elements | vectorisation | No batched form; each call draws into one axes. | **filled 16-Aug-2026**, per function above |
+| L3/L4 graphics | precision | The claim is geometric, asserted under contract with TolGeom. | **filled 16-Aug-2026** for D.1; D.2/D.3 rows follow at their checkpoints |
+| geo.cache | metamorphic | Its observable is a hit or a miss, which has no invariance to state. | **withdrawn 15-Aug-2026**: a metamorphic test DID exist - the cache is transparent, so a cached read equals an uncached one. The exemption was false. |
 | geo.export | reference | No external authority certifies a PDF's byte content. | pending Stage E |

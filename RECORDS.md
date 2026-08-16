@@ -740,4 +740,67 @@ ocean. Both variants are supported; only the default is chosen.
 
 ---
 
-*Entries R-010 onward are written at each stage's green gate.*
+## R-010 — Stage D, checkpoint D.1, 16-Aug-2026, tier A
+
+**Scope.** The L3 cartographic frame: `geo.internal.layout`,
+`geo.internal.avoidRectCollisions`, `geo.internal.elementExtent`,
+`geo.basemap`, `geo.graticule`, `geo.frame`, and `TestD1_elements`. Five
+of v1's plumbing functions absorbed; its 3413-line monolith replaced for
+the raster path.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+262; suite size 262, per-class sum 262, 262 passed, 0 failed.** Green gate
+on all six conditions. **77 value records and 15 ratio records, one of
+them weak.**
+
+**The largest departure from v1 is that the shading is computed, not
+lit.** v1 drew a real three-dimensional surface whose ZData was
+exaggerated topography and let OpenGL shade it with `light`, `material`
+and `shading interp`. That is defect F9 — the output depended on the
+renderer, the driver and the view, so no two machines agreed and nothing
+was assertable. `geo.hillshade` computes an intensity array, and the
+surface is flat at z = 0 with `FaceColor` flat. **The shading is now a
+deterministic array of numbers, which is the only reason any of it can be
+tested.**
+
+**Three properties are asserted rather than described:**
+
+| property | measured |
+|---|---|
+| `Hillshade = "off"` equals `truecolor` without `Shade` | **bit for bit**, `isequal` |
+| equirectangular 0° meridian x | **0**, exactly |
+| Mollweide global span vs 4√2 | 5.56e-4 relative, bound 1e-3 |
+| worst graticule segment, 15 of 16 projections | 0.0049 of the map diagonal, bound 1/200 |
+| label anchor unprojected to its own longitude | 2.84e-14° |
+| axis-limit drift over ten resize cycles | **0** |
+| frame resize / frame draw | 1.009 |
+
+**Findings — seven.**
+
+| id | Finding |
+|---|---|
+| PV-073 | **`geo.crs`'s domain table was keyed on the projection NAME, but three domains depend on a parameter.** Polar stereographic diverges at the pole opposite its own, so north and south are mirror images; a conformal conic diverges at whichever pole its cone does not wrap, decided by the sign of the cone constant and therefore by the caller's standard parallels. The table could not express any of that and silently returned [−90 90]. **Measured cost:** `geo.project(0, −90, polarstereographic north)` returned **3.266e+16** — not NaN, not an error, a finite number that set the axis limits and made the map one pixel. Lambert conformal was worse because it was subtler: its longest projected graticule segment GREW with sampling, 7.1 at 64 points to 98.6 at 4096, so any refinement loop would never terminate. Fixed by giving `domainOf` the hemisphere and the cone constant, and clipping five degrees short of the divergence — the margin Mercator already used for the same reason. Albers is deliberately NOT clipped: it is an equal-area conic, its ρ is bounded at both poles, and adding a clip would remove map for no reason. **No existing test changed**, which is itself informative: nothing had ever asserted anything at those poles. |
+| PV-074 | **An invisible figure does not emit `SizeChanged` when its Position is set.** Measured, not assumed — the first layout probe reported zero listener hits and looked like a broken listener. It fires when the figure becomes visible and on every resize thereafter. Every figure in the harness is invisible so the suite can run headless, so the resize tests raise the real event with `notify(fig, 'SizeChanged')`, which exercises the listener, the registry and every element's update exactly as a drag would. |
+| PV-075 | **v1's resize ratchet, reproduced and then solved in closed form.** v1 UNIONED the axis limits on every redraw, so shrinking the figure widened them, which lowered the points-per-data-unit, which widened them again: the map crept smaller inside its own axes. Setting the limits from `geo.basemap`'s pristine `DataLimits` fixed the direction but still left the thickness converging rather than fixed, because drawing the band widens the limits the band is measured in — measured drift 0.0022 units over ten cycles. The relation has an exact solution, `t = target·(D + 0.04·diag)/(W − 2·target)`, and with it the drift is **0** and the thickness change on halving the figure width is **0.00%** against a 5% budget. Converging is not the same as correct. |
+| PV-076 | **A speed budget that asserted the wrong relation.** The first Stage D budget required a frame resize to be cheaper than a basemap redraw, reasoning that a resize does less work. Measured: basemap **5.2 ms**, frame draw **12.5 ms** — one `Surface` is cheaper than 28 `Patch` objects, so the premise was false and nothing could have passed. Replaced with the property that actually matters, that a resize costs ONE frame redraw and nothing more, which is what would break if the resize path ever started rebuilding the raster too. Measures 1.009 against a budget of 1.5. Same lesson as PV-069 from D.0, arrived at from the opposite direction. |
+| PV-077 | **`verifyEqual(a, b, AbsTol = t, 'diagnostic')` is a syntax error** — name-value arguments must follow every positional one, and the diagnostic is positional. Cost two suite loads, because MATLAB reports it as "unsupported use of the '=' operator" from inside the test framework's file scanner rather than at the line. |
+| PV-078 | **The audit caught F6 before it shipped.** `geo.graticule` and `geo.frame` were written with an identical `resolveCrs` and `resolveExtent` each, and the duplicate-local-function check rejected both. That is exactly v1's defect — six locals duplicated across its plotters — caught this time in the same round rather than four years later. Promoted to `geo.internal.elementExtent`. |
+| PV-079 | **Transverse Mercator's clip is 0.5° inside its singularity where Mercator's is 5° inside the same kind.** It is the one projection whose graticule cannot meet the smoothness criterion: its equator runs to a real singularity 90° from the central meridian, and at the 89.5° clip the scale factor is **115**. Uniform sampling in longitude needs about **262 000 points on that one line** to get under 1/200 of the diagonal — measured by refining until it did (4096 → 0.147, 32768 → 0.021, 262144 → 0.0027), so it converges and is a resolution limit, not a mathematical one. **Left as an open question rather than repaired**, because widening the clip changes what a v2 figure covers relative to the v1 figure it replaces, which the handover deliberately preserved. Pinned by its own test so that answering the question shows up as a change. |
+
+**Binding items a later stage could be wrong for not reading:**
+
+1. **Nothing rediscovers a handle.** An element's own objects live in the
+   layout registry under its kind, so a redraw deletes what it drew.
+   `findobj` is banned and there is now no reason to want it.
+2. **`H.DataLimits` is pristine and every resize must recompute from it**,
+   never from the current axis limits. That is the ratchet fix and it is
+   one line away from being undone.
+3. **The z-ladder is a contract**: basemap 0, contours and polygons 2,
+   graticule 3, coastline 4, overlays 5, frame 6. Asserted, not assumed.
+4. **`geo.internal.elementExtent` is where an element gets its projection
+   and extent.** D.2 and D.3 must call it rather than growing a fourth
+   copy of the same twelve lines.
+
+---
+
+*Entries R-011 onward are written at each stage's green gate.*

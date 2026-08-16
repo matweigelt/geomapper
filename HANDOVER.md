@@ -1,6 +1,6 @@
 # geoMap v2 — HANDOVER
 
-**Revision 2.4 · 16-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug).**
+**Revision 2.5 · 16-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug).**
 
 **What this file is.** The single source of truth for the revision of `geoImagescToolbox` v1.1/1.2 → `geoMap` v2.0. It holds the rules, the design and the ledger. **It is the only place a status lives.** Per BEST_PRACTICE §6.1 it holds no round-by-round narrative evidence; that goes to `RECORDS.md`.
 
@@ -895,6 +895,16 @@ Every figure below is **a claim from this document, and V1 says it is unmeasured
 
 **Checkpoints:** **D.0** `geo.readGrid` window and stride selection, and the shipped topography sample — *added 16-Aug-2026, see below* · **D.1** `internal.layout`, `basemap`, `graticule`, `frame` · **D.2** `coastline`, `scalebar`, `northarrow`, `colorbar`, `inset` · **D.3** the five overlays.
 
+**D.1 delivered 16-Aug-2026, R-010.** `geo.internal.layout`,
+`geo.internal.avoidRectCollisions`, `geo.internal.elementExtent`,
+`geo.basemap`, `geo.graticule`, `geo.frame`. Four items bind D.2 and D.3:
+nothing rediscovers a handle (an element's objects live in the layout
+registry under its kind); `H.DataLimits` is pristine and every resize
+recomputes from it, never from the current limits; the z-ladder is a
+contract and is asserted; and `geo.internal.elementExtent` is where an
+element gets its projection and extent, so D.2 must call it rather than
+grow a fourth copy of the same twelve lines.
+
 **D.0 — why a Stage C reader is amended in Stage D's branch.** ETOPO 2022 arrived after Stage C merged. `ncread` returns double, so the 60-arc-second global field is 1.74 GB resident and the 30-arc-second one 6.95 GB, and `geo.readGrid` had no way to ask for less. D.1's basemap cannot use the data without it. Put in its own checkpoint rather than folded into D.1, because a graphics checkpoint quietly containing a reader change is exactly what stage attribution exists to prevent. **Delivered 16-Aug-2026, R-009**; oracles O9 and O10 filled in the same round. Three consequences bind D.1 onward: a window COVERS its region and may exceed it by one cell per edge; a seam-crossing window returns longitude continuing past 180 rather than wrapped; and `Stride` subsamples, at 184x the per-cell cost of a contiguous read on a compressed file, so a decimated global overview belongs in `geo.cache` and not in a re-read.
 
 **Reference files to attach:** v1 `geoImagesc.m` (whole), `geoSegmentedFrame.m`, `geoAttachFrameResize.m`, `geoChainCallback.m`, `geoAttachResizeCallback.m`, `geoRegisterInsetRect.m`, `geoGetOtherInsetRects.m`, `geoAvoidRectCollisions.m`, `geoScaleBar.m`, `geoNorthArrow.m`, `geoCompassAnchor.m`, `geoGmtColorbar.m`, `geoImagescTrack.m`, `geoImagescPoints.m`.
@@ -929,6 +939,21 @@ Every figure below is **a claim from this document, and V1 says it is unmeasured
 **6. Test categories.** `contract` (basemap rejects a bare matrix; `Divergent` on all-positive data still gives symmetric `clim`; `Hillshade="off"` yields CData identical to `truecolor` without `Shade`; **idempotence — a second call replaces rather than duplicates**, via tag + delete, asserted by constant handle count); `precision` exempt for graphics per §2.3.2, **except** the geometric assertions above which run under `contract`; `robustness` (zero-span extent; a single-cell grid; an all-NaN grid; an extent entirely outside the projection domain; a figure resized to near-zero; **a mask that is all true and all false**, which is exactly the case v1 warned about); `metamorphic` (**draw-order independence** — elements applied in two different orders produce the same object set and the same z-levels; this is what "composable" means and it is otherwise only an intention); `speed` (the Stage D ratios, tagged **weak**). `vectorisation` exempt with reason.
 
 **7. Definition of done.** Green gate. No `light`/`material`/`shading interp` anywhere in the stage (audited). No `findobj` rediscovery (audited). The five v1 plumbing functions fully absorbed. `geo.scalebar` draws and reports rather than refusing (D-006), with the threshold from Stage 0's table.
+
+---
+
+**OPEN QUESTION FROM D.1, for Matthias — transverse Mercator's clip.**
+`geo.crs` clips transverse Mercator at **89.5 degrees** from the central
+meridian, against a singularity at 90. Mercator clips at **85** against
+a singularity at 90 — the same kind of divergence with a margin ten
+times wider. At 89.5 the scale factor is 115, and the consequence is
+measured: it is the ONLY projection whose graticule cannot meet the
+1/200-of-the-diagonal smoothness criterion, needing about 262 000 points
+on the equator alone. Both values are v1's, kept under the rule that a
+v2 figure should cover the same extent as the v1 figure it replaces, so
+narrowing the strip is a decision about that rule rather than a repair.
+Real transverse Mercator zones are 6 degrees wide. **Not changed;
+pinned by a test so that changing it is visible.** See PV-079.
 
 ---
 
@@ -1090,6 +1115,15 @@ Every figure below is **a claim from this document, and V1 says it is unmeasured
 | C-065 | 16-Aug-2026 | **Ice surface is the basemap default; bedrock is supported, not default** | Coastlines trace the ice front. At 80°S 100°W the surface is +2 080 m and the bed −1 158 m, so a bedrock basemap paints the inside of the coastline as ocean — two layers of one map contradicting each other |
 | C-066 | 16-Aug-2026 | **The windowed-read speed fixture is deflate-compressed and chunked like a real product** | PV-069. Uncompressed, fixed cost exceeded data cost and the budget of 5 was unreachable by ANY implementation. The budget did not move; the fixture became able to see the property it asserts |
 | C-067 | 16-Aug-2026 | **Stage D checkpoint D.0 delivered and executed.** 227 points, 227 passed. **O9 and O10 filled** | R-009 |
+| C-068 | 16-Aug-2026 | **`geo.crs`'s domain table now takes the hemisphere and the cone constant**, not just the name | PV-073. Polar stereographic and Lambert conformal diverge at a pole that DEPENDS on those parameters, and a name-keyed table returned [-90 90] for both. `geo.project(0, -90, polarstereographic north)` returned 3.266e+16 |
+| C-069 | 16-Aug-2026 | **v1's five plumbing functions replaced by one listener and one registry**, `fig.UserData.geoMapLayout` | F15. `SizeChangedFcn` chaining could not be enumerated, detached or de-duplicated, swallowed exceptions silently, and left the newest link unprotected. Listeners compose by construction |
+| C-070 | 16-Aug-2026 | **The basemap's shading is COMPUTED, not lit.** No `light`, no `material`, no `shading interp` | F9, D-009. v1's output depended on renderer, driver and view. An intensity array can be asserted; an OpenGL frame cannot |
+| C-071 | 16-Aug-2026 | **Graticule densification is measured on the drawn result**, not fixed at v1's 200 points per line | The criterion is that no projected segment exceeds 1/200 of the map diagonal. v1's fixed count was far too many for a regional map and too few at an azimuthal rim |
+| C-072 | 16-Aug-2026 | **Graticule labels are placed analytically**, replacing v1's tangent heuristics, edge bias, farthest-point search, frame-circle cap and 1.05 snap tolerance | Those five interacted; the azimuthal label defects were not one bug but several, each repaired by adding another case. A label now sits at the last finite projected point of the line it names |
+| C-073 | 16-Aug-2026 | **`geo.unproject` is used to CHECK label placement, not to perform it** | Deviation from the handover's D.1.3, argued rather than silent: a placement computed with the inverse and then checked with the inverse would be checked against itself |
+| C-074 | 16-Aug-2026 | **The frame's resize is solved in closed form**, not iterated, and the axis limits are SET from pristine data limits | PV-075. v1 unioned them and ratcheted the map smaller over repeated resizes. Drift is now exactly 0 over ten cycles and the thickness change on halving the width is 0.00% |
+| C-075 | 16-Aug-2026 | **`geo.internal.layout` uses command dispatch, not the handover's `layout.register(...)` struct-of-handles notation** | Deviation, recorded. `geo.cache` already established command dispatch in this package; identifiers stay statically visible to the audit; and closures over a figure handle are the very failure mode v1's chaining suffered from |
+| C-076 | 16-Aug-2026 | **Stage D checkpoint D.1 delivered and executed.** 262 points, 262 passed | R-010 |
 
 ---
 
