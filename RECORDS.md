@@ -957,4 +957,99 @@ conic.
 
 ---
 
-*Entries R-013 onward are written at each stage's green gate.*
+## R-013 — Stage D, checkpoint D.2b, 16-Aug-2026, tier A
+
+**WRITTEN LATE, AND THAT IS ITSELF THE FIRST FINDING.** This entry should
+have shipped with PR #10 and did not: the shell command that wrote it was
+chained after an `rm` with `&&`, the `rm` failed on a read-only mount, and
+the Python that wrote the record never ran. The commit went out with the
+code and without its evidence, and nothing caught it — the gates check the
+tree, not whether the tree was described. Recorded as **PV-094**.
+
+**Scope.** `geo.colorbar`, `geo.inset`, `geo.internal.plottedBox`.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+305; suite size 305, per-class sum 305, 305 passed, 0 failed.** Green gate
+on all six conditions.
+
+**Four implementations become one.** v1 had the native path,
+`geoGmtColorbar`, TWO byte-identical copies of `localAddHalfColorbar` in
+different files, and `localAddDualScaleColorbar`.
+
+| | v1 | v2 |
+|---|---|---|
+| objects, continuous bar | ~283 | **9** |
+| colour strip | one `patch` per colour | one truecolor `surface` |
+| tick marks | 2 objects each | one NaN-separated `line` |
+| handles after a resize | **all invalid** | live |
+
+**Findings.**
+
+| id | Finding |
+|---|---|
+| PV-086 | **All three of v1's custom colorbars returned handles that went stale on first resize.** Each captured what its first draw created, then deleted and recreated everything on every resize, so `H.Colorbar` held only invalid handles the moment the window was touched. |
+| PV-087 | **An end cap meant nothing.** GMT's convention, which v1's own docstring cites, is that a cap means the data CONTINUES past that end. v1 drew both triangles whenever `Arrows` was on and varied only their colour. |
+| PV-088 | **v1's half colorbar overlapped its own text** by about 14 points whenever a label was set, while leaving 15 points of dead space above the bar. Its dual-scale sibling had already been fixed; that version was kept. |
+| PV-089 | **F6 a fourth time.** `plottedBox` written twice in v2 and rejected in the round; v1 carried the same computation five times, with comments recording two more. |
+
+**A gap the coverage gate could not see.** `geo.internal.plottedBox` was
+created without a `CoveredFunctions` entry and the runner reported no
+gaps, because the coverage table only checks functions some suite has
+DECLARED. PV-081's lesson in a different costume.
+
+---
+
+## R-014 — Stage D, checkpoint D.3a, 16-Aug-2026, tier A
+
+**Scope.** `geo.overlayPolygons`, `geo.stipple`, `geo.overlayContours` —
+the three overlays that describe the FIELD and therefore sit under the
+graticule. **D.3b** is `overlayTrack` and `overlayPoints`, at z = 5.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+327; suite size 327, per-class sum 327, 327 passed, 0 failed.** Green gate
+on all six conditions.
+
+**Two of these are new, and they are why this toolbox is worth rewriting
+for this project.** `geo.overlayPolygons` draws a value per irregular
+cell, which is what a mascon solution IS; a regular grid cannot represent
+one, and v1 forced such a field onto a lon/lat raster, inventing
+boundaries the solution does not have and smoothing across the
+discontinuity that is the point of the parameterisation. `geo.stipple`
+draws a significance mask, which v1 could not do at all — so every figure
+it made either overstated its result or carried the mask in a separate
+panel nobody put beside it.
+
+**Two exact claims, asserted:**
+
+| | measured |
+|---|---|
+| polygon colour vs the basemap's for the same value | **0**, bit for bit |
+| seam-crossing polygon's parts vs its own width | 5.6e-12 of the map |
+
+**Findings — five.**
+
+| id | Finding |
+|---|---|
+| PV-090 | **A RING IS NOT A POLYLINE, and treating it as one loses the polygon entirely.** Splitting an open line at its seam crossings leaves the pieces OPEN, and a patch closes whatever it is given by joining its last vertex to its first — straight across the map. Measured on a 20-degree box across the seam: with no split, **one patch spanning 94% of the map width**; with a break-based split, **three fragments of one or two vertices, all discarded, and the mascon gone**. A ring has to be CLIPPED — Sutherland-Hodgman against each 360-degree window — so every part closes along the meridian it was cut on. The two parts then total exactly the polygon's own width. |
+| PV-091 | **The projection's longitude window is HALF-OPEN, and a clipped polygon's edge lands on the boundary.** A part correctly clipped to [170, 180] came out spanning **97% of the map**, because its 180-degree vertices wrap to −180 and project to the far edge. Clipping to [lo + 1e-9, hi − 1e-9] leaves no vertex on the seam. A choice of REPRESENTATION, not a tolerance on a measurement: 1e-9 degrees is a tenth of a millimetre on the ground. |
+| PV-092 | **v1 broke contours with two heuristic passes and three tuned constants** — a longitude difference above 180, then `min(0.5*diag, max(30*medSeg, 0.02*diag))`, described in its own comments as "belt-and-suspenders". Both caught one class of error. `geo.internal.projectPolyline` catches it with **no constants at all**. Three functions have now been written against that rule and none needed a threshold. |
+| PV-093 | **Ten array-growth findings in one round**, the largest batch of the project: six in `overlayContours`, three in `overlayPolygons`, one in `stipple`. Every one was a loop whose iteration count is unknown until it runs — contour runs, polygon parts, hatch strokes — which is exactly the shape F13 describes and exactly the shape that invites `end + 1`. |
+| PV-094 | **A record entry was lost to a shell `&&`.** See R-013's header. The lesson is narrow and worth having: a chained shell command that writes evidence must not depend on the success of an unrelated command before it. Separated with `;` since. |
+
+**The stipple is deterministic by construction.** A random thinning would
+be prettier and untestable, and a reader with the same data could not
+reproduce the figure. The stride is `ceil(masked / Density)` — asserted
+both ways: the stride matches the formula, and two calls give
+bit-identical coordinates.
+
+**Binding items a later stage could be wrong for not reading:**
+
+1. **A closed ring needs clipping, not breaking.** D.3b's tracks are open
+   polylines and may use `geo.internal.projectPolyline` directly; anything
+   filled may not.
+2. **The seam nudge is in `geo.overlayPolygons` only.** Anything else that
+   clips to a longitude window meets the same half-open boundary.
+
+---
+
+*Entries R-015 onward are written at each stage's green gate.*
