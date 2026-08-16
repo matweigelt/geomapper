@@ -654,4 +654,90 @@ identifier is now gone entirely.
 
 ---
 
-*Entries R-009 onward are written at each stage's green gate.*
+## R-009 — Stage D, checkpoint D.0, 16-Aug-2026, tier A
+
+**Scope.** Windowed and strided reading in `geo.readGrid`, the shipped
+10-arc-minute topography sample and its builder, oracles **O9 and O10
+filled**. A Stage C reader amended in Stage D's branch, because Stage D's
+basemap is what needs it and the alternative was a graphics checkpoint
+quietly containing a reader change.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+227; suite size 227, per-class sum 227, 227 passed, 0 failed.** Green gate
+on all six conditions. **71 value records and 14 ratio records.**
+
+**Why it was needed at all.** ETOPO 2022 arrived at `E:\DATAPOOL\Borders`
+in both variants and both resolutions. `ncread` returns double, so the
+60-arc-second global field is **1.74 GB** resident and the 30-arc-second
+one is **6.95 GB**, before `orientZ`'s transpose doubles the peak. A
+regional basemap needs a few thousand cells of that. `geo.readGrid` had no
+way to ask for them.
+
+**What the file itself settled — four facts, none of them assumed.**
+
+| fact | measured |
+|---|---|
+| `z` is stored **(lon, lat)** | dimension names read from the file, not inferred from size |
+| **Cell-centred** (`node_offset = 1`) | `lon(1) = −180 + half step` to **0**; span vs 360 − step to **0** |
+| Latitude **ascends** in the `.nc` | but the embedded `GeoTransform` says north-up with a negative step — NCO flipped it, so **`.nc` and `.tif` of the same tile disagree on row order** |
+| Vertical datum is **EGM2008**, not the ellipsoid | recorded in provenance rather than assumed |
+
+The cell-centred result matters beyond ETOPO: this is the first real
+global file to exercise `geo.grid`'s 1.5-step allowance, and `topo.mat`
+exercises the other storage convention (0–360, span 359 of 360). Both
+measure as global, which is what the allowance was written for.
+
+**Oracles O9 and O10 filled.** O9 by both ETOPO variants; O10 by MATLAB's
+own `topo.mat`, which carries no coordinate vectors at all — only
+`topolatlim`, `topolonlim` and `topolegend`. The axes are derived from the
+**limits and the array size**, two facts that cannot disagree with each
+other, rather than from the legend's corner convention, which requires
+knowing which corner. Checked against four named places (Himalaya 2850 m,
+Mariana −6578 m, Sahara 1036 m, mid-Atlantic −4283 m) so that an axis
+derived upside down fails rather than passes.
+
+**`coast.mat` is absent from R2026a base MATLAB**, so that half of O10
+cannot be filled and is not pretended otherwise.
+
+**Findings — five.**
+
+| id | Finding |
+|---|---|
+| PV-068 | **Selecting cells by centre-in-region is wrong twice over, and the second way is invisible.** A region narrower than one cell selects nothing; every other region comes back inset by up to half a cell. Worse, the comparison `centre >= lo − h` puts the same real number on both sides computed two different ways, so a region boundary landing exactly on a cell edge is decided by the last bit. Measured: asking for latitude 30–72 of a one-arc-minute grid returned an axis starting at **30.008**, one cell short, because `30 − 1/120` came out a half-ulp above the centre it should have equalled. **No epsilon was added.** The rule changed: bracket by centres, then step one cell outwards in INDEX space. Coverage is now guaranteed by construction at a cost of at most one surplus cell per edge. Regression test `aRegionBoundaryOnACellEdgeStillCovers`. |
+| PV-069 | **A speed fixture too small to see the property it asserts is worse than no fixture.** The windowed-read budget of ≥5 failed at 1.67 — and investigation showed **no implementation could have passed it**: on a 2000×1000 uncompressed file the fixed cost (`ncinfo` plus two axis reads, 8.0 ms) exceeded the data cost (5.9 ms), capping the achievable ratio at **1.26**. A correct reader and one that read everything and trimmed afterwards scored the same. The budget was not loosened. The fixture was made representative — deflate-5 in 250×250 chunks, as ETOPO itself is stored — after which the reader measures **7.91** and a deliberate trim-after-full-read regression measures **1.07**. §4.6 says never loosen a tolerance to pass; it is equally true that a tolerance no fixture can discriminate is not a test. |
+| PV-070 | **`verifyError` cannot be used to capture the exception it checks.** `err = tc.verifyError(fh, id)` invokes `fh` with `nargout` matching its own output list, so the call dies with `MATLAB:maxlhs` before the real error is raised — and the test then fails for the right-looking wrong reason. Replaced by an explicit `errorFrom` helper built on try/catch. |
+| PV-071 | **Reading one output row at a time did not finish.** The sample builder first read 10 source rows per iteration; ETOPO's 2700×1350 deflate chunks mean a ten-row request decompresses the full width of the file, about 29 Mcell of work to deliver 0.2 Mcell, 1080 times over. Reading roughly a chunk's height at once builds the sample in **6.1 s**. The same arithmetic explains the reader's own measured 184× penalty for strided over contiguous reads. |
+| PV-072 | **`readGrid(G, Region=…)` silently ignored the selection** when given a grid rather than a filename, so two arguments meant something on a path and nothing on the grid that path produced. Now applied in memory, with `Topo` carried through the same indices as `Z` — a hillshade built from a window of one and the whole of the other is wrong everywhere and looks right in the middle. |
+
+**The shipped sample averages rather than subsamples, and the difference
+was measured, not asserted:** mean |∂z/∂λ| is **91.95 m** for the block
+mean against **124.55 m** for a stride of 10 — subsampled terrain is
+**35% rougher**, and hillshade is a derivative. Cost of averaging, stated
+in LICENSE rather than hidden: the global range narrows from
+−10251..6344 m to −10082..6259 m, and a block straddling a coast averages
+land and sea, so small islands vanish. Nothing derives a land mask from
+this file.
+
+**Ice surface, not bedrock, and the reason is measurable.** At 80°S,
+100°W — inside the GSHHG coastline — the surface is **+2 080 m** and the
+bed is **−1 158 m**; median ice thickness over the sampled degree square
+is 2 213 m. A bedrock basemap paints the interior of the coastline as
+ocean. Both variants are supported; only the default is chosen.
+
+**Binding items a later stage could be wrong for not reading:**
+
+1. **A window is guaranteed to COVER the region and may exceed it by one
+   cell per edge.** Anything that assumes an exact extent is wrong.
+2. **A seam-crossing window returns longitude continuing past 180**
+   (e.g. 169.99..190.01), monotone, never wrapped. `geo.grid` requires
+   monotonicity and `geo.project` wraps internally, so this is safe —
+   but a consumer that assumes ±180 is not.
+3. **`Stride` subsamples and is 184× slower per cell than a contiguous
+   window on a compressed file.** A decimated global overview belongs in
+   `geo.cache`, computed once.
+4. **When the GeoTIFF round arrives it must not assume the `.tif` and
+   the `.nc` of the same tile agree on row order.** They do not.
+
+---
+
+*Entries R-010 onward are written at each stage's green gate.*
