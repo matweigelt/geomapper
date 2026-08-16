@@ -125,6 +125,10 @@ reg = [ ...
       "contract exempted for a function that validates its arguments") ...
     r("analyzer", "codeAnalyzer", ...
       "a parse error MATLAB's own reader sees and a text checker does not") ...
+    r("purity", "orchestrationPurity", ...
+      "F8: an L4 front that draws instead of orchestrating - one text()") ...
+    r("puritylength", "orchestrationPurity", ...
+      "F8 by accretion: a front over the 200-line orchestration budget") ...
     ];
 end
 
@@ -144,6 +148,7 @@ mkdir(fullfile(d, '+geo', '+internal'));
 mkdir(fullfile(d, 'tests'));
 
 writeText(fullfile(d, '+geo', 'healthy.m'), healthySource());
+writeText(fullfile(d, '+geo', 'frontish.m'), frontSource());
 writeText(fullfile(d, '+geo', '+internal', 'log.m'), logSource());
 writeText(fullfile(d, 'Contents.m'), contentsSource("2.0.0"));
 writeText(fullfile(d, 'README.md'), ...
@@ -201,6 +206,20 @@ switch name
         % is real - three stale AGROW pragmas reached a green run because
         % only the Code Analyzer could see them (RECORDS R-004).
         writeText(fullfile(d, '+geo', 'broken.m'), brokenSource());
+    case "purity"
+        % ONE primitive, in the form the erosion actually takes: not a
+        % rewrite, just a label the front drew itself "for now" because
+        % reaching for geo.colorbar felt like more work. Six of those and
+        % the front is a plotter; 3413 lines of them and it is F8.
+        appendToBody(fullfile(d, '+geo', 'frontish.m'), ...
+            "text(0, 0, 'a label the front drew itself');");
+    case "puritylength"
+        % No forbidden call anywhere - only length. A front can violate
+        % the rule without ever naming a primitive, by accumulating
+        % orchestration until nothing can be read at once, and the budget
+        % is the only thing that catches that shape of the defect.
+        appendToBody(fullfile(d, '+geo', 'frontish.m'), ...
+            join("y = y + " + string(1:210) + ";", newline));
 end
 end
 
@@ -260,6 +279,66 @@ s = join([
 "    error('geo:healthy:Empty', 'x must not be empty.');"
 "end"
 "y = x * options.Scale;"
+"end"
+], newline);
+end
+
+function s = frontSource()
+%FRONTSOURCE  A healthy L4 front, and the control for CHECKPURITY.
+%   It is in the BASE tree, not in one fixture, which makes every fixture
+%   a test of the lookbehind: c.text(1) is indexing and geo.healthy() is
+%   the whole point of a front, and neither may be read as a primitive.
+%   Were the regex written without (?<![\w.]), the control would fail and
+%   the check's claims would be void on every run.
+s = join([
+"function y = frontish(x)"
+"%GEO.FRONTISH  A one-call front, as a control for the purity check."
+"%"
+"%   L4-FRONT"
+"%"
+"%   SYNTAX"
+"%     Y = GEO.FRONTISH(X)"
+"%"
+"%   DESCRIPTION"
+"%     Orchestration only: it calls a public geo.* function and draws"
+"%     nothing. Exists so CHECKPURITY can be shown to stay SILENT on a"
+"%     front that obeys the rule, which is the half of the proof that"
+"%     firing on a defect does not give."
+"%"
+"%   INPUTS"
+"%     x  (1,:) double  Values to pass through."
+"%"
+"%   OUTPUTS"
+"%     y  (1,:) double  Whatever the element returned."
+"%"
+"%   ACCURACY"
+"%     Exact: it adds nothing of its own, which is the property under"
+"%     test. No oracle applies."
+"%"
+"%   ERRORS"
+"%     Input geometry:"
+"%       geo:frontish:Empty  - when x is empty"
+"%"
+"%   EXAMPLE"
+"%     y = geo.frontish([1 2 3]);"
+"%"
+"%   LIMITATIONS"
+"%     A fixture. It does nothing useful and is not shipped."
+"%"
+"%   See also GEOMAPAUDIT."
+"%"
+"%   ---------------------------------------------------------------------"
+"%   geoMap v2.0 | 16-Aug-2026 | Claude Opus 5 (Anthropic)"
+""
+"arguments"
+"    x (1,:) double"
+"end"
+"if isempty(x)"
+"    error('geo:frontish:Empty', 'x must not be empty.');"
+"end"
+"y = geo.healthy(x);"
+"cfg.text = numel(y);"
+"y = y + cfg.text(1);"
 "end"
 ], newline);
 end

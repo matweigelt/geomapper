@@ -8,7 +8,7 @@ function [ok, findings] = geoMapAudit(root, opts)
 %     [ok, findings]  = GEOMAPAUDIT(ROOT, Only = "forbiddenFunctions")
 %
 %   DESCRIPTION
-%     Twelve checks over the tree, each encoding a defect the v1 review
+%     Thirteen checks over the tree, each encoding a defect the v1 review
 %     found (handover Part 5) or a rule the design rests on (Part 2.7).
 %     It exits zero before any ship. It is a gate: a finding blocks, it
 %     does not inform.
@@ -49,6 +49,12 @@ function [ok, findings] = geoMapAudit(root, opts)
 %       contractExemption       contract may never be exempted for a
 %                               function with an arguments block
 %       codeAnalyzer            MATLAB's own reader, over the whole tree
+%       orchestrationPurity     F8: a file marked L4-FRONT may call no
+%                               drawing primitive and may not exceed 200
+%                               executable lines. This is the Stage E
+%                               hard rule, and it is here rather than in
+%                               a test because a rule enforced only by
+%                               review is a rule that erodes
 %
 %   INPUTS
 %     root  (1,1) string  [geoMapRoot()]  Tree to audit.
@@ -180,7 +186,8 @@ function n = checkNames()
 n = ["forbiddenFunctions" "shadowedBuiltins" "arrayGrowth" ...
      "barePrinting" "identifierAgreement" "helpTemplate" ...
      "functionLength" "positionalArity" "duplicateLocalFunctions" ...
-     "versionAgreement" "contractExemption" "codeAnalyzer"];
+     "versionAgreement" "contractExemption" "codeAnalyzer" ...
+     "orchestrationPurity"];
 end
 
 function f = runCheck(name, files, root)
@@ -197,6 +204,7 @@ switch name
     case "versionAgreement",        f = checkVersion(root);
     case "contractExemption",       f = checkContractExemption(files, root);
     case "codeAnalyzer",            f = checkCodeAnalyzer(files);
+    case "orchestrationPurity",     f = checkPurity(files);
 end
 end
 
@@ -367,12 +375,84 @@ for i = 1:numel(files)
 end
 end
 
+function f = checkPurity(files)
+%CHECKPURITY  The Stage E hard rule, made mechanical.
+%   An L4 FRONT is orchestration: it builds a map by calling public geo.*
+%   elements in the documented z-order and owns no drawing of its own.
+%   F8 is what happens when that erodes - geoImagesc grew to 3413 lines
+%   because every new need was answered by one more inlined primitive,
+%   and by the end nothing could be reused or tested in isolation.
+%
+%   The rule is worth having only because it is FALSIFIABLE. "Keep the
+%   fronts thin" is not; "zero calls to surf, patch, line, text, scatter,
+%   plot, colorbar, annotation, imagesc, image, fill, contour, rectangle
+%   or quiver, and at most 200 executable lines" is, and this is where it
+%   is decided rather than reviewed.
+%
+%   A file opts in by carrying the marker ALONE on a help line. Self-
+%   declaration is deliberate: a check that GUESSED which files are
+%   fronts would have to be taught every new one, and the teaching is
+%   where a rule quietly stops applying.
+%
+%   WHY THE MARKER MUST BE THE WHOLE LINE. Written as a CONTAINS, the
+%   check fired on +geo/export.m - a file that carries no marker and
+%   merely EXPLAINS the rule in its help. That is the third time this
+%   project has met the same shape: prose about a token is not the token.
+%   The arrayGrowth check met it on the file describing why AGROW is
+%   banned, and checkPrinting carries a comment about it. A mention is
+%   not a declaration, and only a structural test - the line, stripped of
+%   its comment character and trimmed, IS the marker - tells them apart.
+%
+%   Note also the lookbehind: geo.colorbar() is the whole point of the
+%   rule and must pass, while a bare colorbar() must not.
+banned = ["surf" "surface" "patch" "line" "text" "scatter" "scatter3" ...
+          "plot" "plot3" "colorbar" "annotation" "imagesc" "image" ...
+          "fill" "contour" "contourf" "rectangle" "quiver"];
+budget = 200;
+f = emptyFinding();
+for i = 1:numel(files)
+    if ~files(i).inGeo, continue, end
+    declared = strtrim(erase(files(i).lines, "%")) == "L4-FRONT";
+    if ~any(declared), continue, end
+    for b = banned
+        hits = regexp(cellstr(files(i).code), ...
+            "(?<![\w.])" + b + "\s*\(", 'once');
+        idx = find(~cellfun(@isempty, hits));
+        for k = idx(:)'
+            f(end+1) = finding("orchestrationPurity", files(i).rel, k, ...
+                ['%s() in an L4 front. A front orchestrates public ' ...
+                 'geo.* elements and draws nothing itself; if this is ' ...
+                 'needed, the missing capability belongs in an L3 ' ...
+                 'element (F8).'], b); %#ok<AGROW>
+        end
+    end
+    nCode = nnz(strlength(strtrim(files(i).code)) > 0);
+    if nCode > budget
+        f(end+1) = finding("orchestrationPurity", files(i).rel, 1, ...
+            ['%d executable lines in an L4 front, over the %d-line ' ...
+             'budget. Thickness here is F8 restarting.'], ...
+            nCode, budget); %#ok<AGROW>
+    end
+end
+end
+
 function f = checkShadowed(files)
 %CHECKSHADOWED  A variable named after a builtin the project relies on.
 %   F11: v1 named a variable clim, which shadowed clim() and forced the
 %   deprecated caxis for the rest of the function.
+%   And BLOCK KEYWORDS, which are a second and sharper problem. A
+%   variable named methods, properties, events, enumeration or arguments
+%   is legal MATLAB and runs correctly - but any text-level parser reads
+%   the assignment as the start of a class block and loses its depth from
+%   there. Measured: `methods = strings(1, n)` in +geo/export.m made
+%   tools/mcheck.py report the file as unbalanced by three levels, with
+%   two functions and a phantom methods block left unclosed, while MATLAB
+%   itself ran the file without complaint. Two gates that read the source
+%   differently (2.9) only pay for themselves if the disagreement is
+%   treated as a finding, and the finding here is the variable name.
 watched = ["clim" "range" "axis" "line" "text" "surf" "patch" "alpha" ...
-           "length" "size" "max" "min" "sum" "figure" "plot"];
+           "length" "size" "max" "min" "sum" "figure" "plot" ...
+           "methods" "properties" "events" "enumeration" "arguments"];
 f = emptyFinding();
 for i = 1:numel(files)
     if ~files(i).inGeo, continue, end
