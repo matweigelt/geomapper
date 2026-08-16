@@ -316,11 +316,6 @@ classdef TestD2b_colorbarInset < GeoMapTestCase
 
     % ==================================================================
     methods (Access = private)
-        function ax = mapAxes(tc)
-            ax = axes('Parent', tc.figureFor());
-            geo.basemap(tc.demoGrid(), "equirectangular", Parent = ax, ...
-                Hillshade = "off");
-        end
 
     end
 end

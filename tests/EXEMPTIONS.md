@@ -79,6 +79,10 @@ become false is a finding.
 | geo.stipple | vectorisation | One call marks one mask. |
 | geo.overlayContours | precision | Vertices are CONTOURC's, unmodified; this function projects them and decides where to break, and both are asserted behaviourally. |
 | geo.overlayContours | vectorisation | One call contours one field. |
+| geo.overlayTrack | precision | Its numerical claim - the wiggle amplitude is exactly Obs times Scale - is asserted under `reference` at 1e-12 relative, which is the same assertion a precision row would make. |
+| geo.overlayTrack | vectorisation | One call draws one track; the per-run loop IS the interface. |
+| geo.overlayPoints | precision | Its numerical claim - a legend circle has its own marker's radius - is asserted under `reference` at exactly 0 points. |
+| geo.overlayPoints | vectorisation | One call draws one point set, in one Scatter object. |
 | geo.colorbar | precision | Its one geometric claim - a tick sits at the exact fraction along the bar - is asserted under `reference` at TolGeom. Everything else it does is layout, which has no correct answer to be precise about. |
 | geo.colorbar | vectorisation | One call draws one bar. |
 | geo.inset | precision | Geometric, asserted under `robustness` by the extent outline closing exactly. The projection's own accuracy is GEO.PROJECT's. |

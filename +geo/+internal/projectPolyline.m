@@ -55,6 +55,18 @@ function [x, y, info] = projectPolyline(lon, lat, crs, options)
 %                                       is not a segment.
 %             NumCuts     (1,1) double  How many breaks were inserted.
 %             NumPoints   (1,1) double  numel(x).
+%             SourceIndex (1,:) double  Where each output point came
+%                                       from in the array handed to the
+%                                       break stage - which is the INPUT
+%                                       when Densify is false. NaN at an
+%                                       inserted break. A caller carrying
+%                                       a value per vertex needs this to
+%                                       keep the two aligned; without it
+%                                       an inserted NaN and a point that
+%                                       projected to NaN are
+%                                       indistinguishable, and one
+%                                       consumes an input while the other
+%                                       does not.
 %
 %   ACCURACY
 %     No numerical claim of its own: the projection is GEO.PROJECT's and
@@ -99,7 +111,8 @@ if numel(lon) ~= numel(lat)
 end
 
 [x, y] = geo.project(lon, lat, crs);
-info = struct('MaxSegment', 0, 'NumCuts', 0, 'NumPoints', numel(x));
+info = struct('MaxSegment', 0, 'NumCuts', 0, 'NumPoints', numel(x), ...
+    'SourceIndex', 1:numel(x));
 if numel(lon) < 2 || ~isfinite(options.Target)
     info.MaxSegment = longestDrawn(x, y);
     return
@@ -108,11 +121,12 @@ end
 if options.Densify
     [lon, lat, x, y] = densify(lon, lat, x, y, crs, options);
 end
-[x, y, nCuts] = breakCuts(lon, lat, x, y, crs, options.Target);
+[x, y, nCuts, src] = breakCuts(lon, lat, x, y, crs, options.Target);
 
 info.MaxSegment = longestDrawn(x, y);
 info.NumCuts = nCuts;
 info.NumPoints = numel(x);
+info.SourceIndex = src;
 end
 
 % ======================================================================
@@ -162,7 +176,7 @@ d = hypot(diff(x), diff(y));
 split = wide & ((bothIn & d > target) | oneIn);
 end
 
-function [x, y, nCuts] = breakCuts(lon, lat, x, y, crs, target)
+function [x, y, nCuts, src] = breakCuts(lon, lat, x, y, crs, target)
 %BREAKCUTS  NaN wherever the line jumps rather than bends.
 %   A segment is tested by projecting its midpoint: if neither half is
 %   shorter than the whole, the segment is not a curve that sampling can
@@ -172,6 +186,7 @@ bothIn = finite(1:end-1) & finite(2:end);
 d = hypot(diff(x), diff(y));
 candidate = find(bothIn & d > target);
 nCuts = 0;
+src = 1:numel(x);
 if isempty(candidate)
     return
 end
@@ -190,19 +205,23 @@ end
 
 newX = NaN(1, numel(x) + nCuts);
 newY = newX;
-src = 1;
+newSrc = NaN(1, numel(x) + nCuts);
+from = 1;
 dst = 1;
 for k = 1:nCuts
-    n = idx(k) - src + 1;
-    newX(dst:dst + n - 1) = x(src:idx(k));
-    newY(dst:dst + n - 1) = y(src:idx(k));
+    n = idx(k) - from + 1;
+    newX(dst:dst + n - 1) = x(from:idx(k));
+    newY(dst:dst + n - 1) = y(from:idx(k));
+    newSrc(dst:dst + n - 1) = from:idx(k);
     dst = dst + n + 1;                  % the skipped slot stays NaN
-    src = idx(k) + 1;
+    from = idx(k) + 1;
 end
-newX(dst:end) = x(src:end);
-newY(dst:end) = y(src:end);
+newX(dst:end) = x(from:end);
+newY(dst:end) = y(from:end);
+newSrc(dst:end) = from:numel(x);
 x = newX;
 y = newY;
+src = newSrc;
 end
 
 function tf = doesNotShrink(lonA, latA, lonB, latB, xa, ya, xb, yb, crs)

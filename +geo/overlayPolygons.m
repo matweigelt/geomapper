@@ -119,7 +119,8 @@ if ~isempty(values) && numel(values) ~= numel(rings)
          'mismatch means the two came from different files.'], ...
         numel(values), numel(rings));
 end
-[cLim, cmap] = colourFrom(base, options, values);
+[cLim, cmap] = geo.internal.colourScale(base, values, ...
+    Colormap = options.Colormap, CLim = options.CLim);
 
 prior = geo.internal.layout("data", axH, "polygons");
 if ~isempty(prior)
@@ -189,31 +190,6 @@ stops = find(diff([finite, false]) == -1);
 rings = cell(1, numel(starts));
 for k = 1:numel(starts)
     rings{k} = P(starts(k):stops(k), :);
-end
-end
-
-function [cLim, cmap] = colourFrom(base, options, values)
-%COLOURFROM  The basemap's scale unless told otherwise. One meaning.
-cLim = options.CLim;
-cmap = options.Colormap;
-if isempty(cmap)
-    if isempty(base)
-        cmap = geo.colormaps("get", "viridis", 256);
-    else
-        cmap = base.Colormap;
-    end
-end
-if isempty(cLim)
-    if ~isempty(base)
-        cLim = base.CLim;
-    elseif ~isempty(values) && any(isfinite(values))
-        cLim = [min(values, [], 'omitnan'), max(values, [], 'omitnan')];
-    else
-        cLim = [0 1];
-    end
-end
-if ~(diff(cLim) > 0)
-    cLim = cLim(1) + [-0.5 0.5];
 end
 end
 
