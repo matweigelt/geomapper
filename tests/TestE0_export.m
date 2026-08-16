@@ -57,6 +57,31 @@ classdef TestE0_export < GeoMapTestCase
             axis(ax, 'off');
         end
 
+        function s = imageDiff(~, fileA, fileB)
+            %IMAGEDIFF  How two produced images differ, in one string.
+            %   An "is not equal" diagnostic tells you nothing about
+            %   WHICH failure you have. A size difference is a layout
+            %   problem; a handful of channels off by one is renderer
+            %   noise; a large count is a real drift. They need different
+            %   answers, so the diagnostic names which one it is.
+            a = imread(fileA);
+            b = imread(fileB);
+            da = dir(fileA);
+            db = dir(fileB);
+            if ~isequal(size(a), size(b))
+                s = sprintf('DIMENSIONS differ: %s vs %s (%d vs %d bytes)', ...
+                    mat2str(size(a)), mat2str(size(b)), da.bytes, db.bytes);
+                return
+            end
+            d = double(a) - double(b);
+            s = sprintf(['same %s; %d of %d pixels differ (%.4f%%), ' ...
+                'max channel delta %g, mean |delta| %.4g; %d vs %d bytes'], ...
+                mat2str(size(a)), nnz(any(d ~= 0, 3)), ...
+                size(a, 1) * size(a, 2), ...
+                100 * nnz(any(d ~= 0, 3)) / (size(a, 1) * size(a, 2)), ...
+                max(abs(d(:))), mean(abs(d(:))), da.bytes, db.bytes);
+        end
+
         function w = pageWidthCm(tc, file)
             %PAGEWIDTHCM  The page box of the file, in centimetres.
             txt = fileread(file);
@@ -297,23 +322,26 @@ classdef TestE0_export < GeoMapTestCase
         function twoExportsOfOneFigureAgreeByteForByte(tc)
             d = tc.scratch();
             f = tc.exportFigure();
-            geo.export(f, fullfile(d, "r1.png"), Width = 8, Resolution = 150);
-            geo.export(f, fullfile(d, "r2.png"), Width = 8, Resolution = 150);
-            tc.verifyEqual(imread(fullfile(d, "r2.png")), ...
-                imread(fullfile(d, "r1.png")), ...
-                'the same figure exported twice must give the same image');
+            r1 = fullfile(d, "r1.png");
+            r2 = fullfile(d, "r2.png");
+            geo.export(f, r1, Width = 8, Resolution = 150);
+            geo.export(f, r2, Width = 8, Resolution = 150);
+            tc.verifyEqual(imread(r2), imread(r1), ...
+                tc.imageDiff(r1, r2));
         end
 
         function theOrderOfABatchDoesNotChangeItsFiles(tc)
             d = tc.scratch();
             f = tc.exportFigure([1 1 1]);
             g = tc.exportFigure([0.5 0.5 0.5]);
-            geo.export([f g], fullfile(d, ["f1.png" "g1.png"]), Width = 6);
-            geo.export([g f], fullfile(d, ["g2.png" "f2.png"]), Width = 6);
-            tc.verifyEqual(imread(fullfile(d, "f2.png")), ...
-                imread(fullfile(d, "f1.png")), 'first figure');
-            tc.verifyEqual(imread(fullfile(d, "g2.png")), ...
-                imread(fullfile(d, "g1.png")), 'second figure');
+            n = ["f1" "g1" "g2" "f2"];
+            p = fullfile(d, n + ".png");
+            geo.export([f g], p(1:2), Width = 6);
+            geo.export([g f], p([3 4]), Width = 6);
+            tc.verifyEqual(imread(p(4)), imread(p(1)), ...
+                "first figure: " + tc.imageDiff(p(1), p(4)));
+            tc.verifyEqual(imread(p(3)), imread(p(2)), ...
+                "second figure: " + tc.imageDiff(p(2), p(3)));
         end
     end
 
