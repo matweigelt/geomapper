@@ -181,6 +181,41 @@ classdef TestE1_map < GeoMapTestCase
             end
         end
 
+        function aRegionOutlineIsDrawnByTheOutlineElement(tc)
+            % PV-109. This was reported at E.1a as a MISSING capability
+            % and it was not missing: geo.coastline has taken
+            % Kind = "outline" since D.2, with its own colour and width,
+            % and its H1 line says so. The gap was in geo.region, which
+            % left Outline empty for a box - so the vertices to draw did
+            % not exist, and the element that would have drawn them was
+            % blamed. Both halves are asserted here.
+            for spec = {[-30 40 20 60], [-30 20; 40 20; 40 60; -30 60]}
+                H = geo.map(tc.worldGrid(), geo.crs("mollweide"), ...
+                    Region = struct('R', spec{1}), Colorbar = false);
+                tc.addTeardown(@() close(H.Figure));
+                tc.verifyTrue(isfield(H, 'Region'));
+                tc.verifyNotEmpty(H.Region.All, ...
+                    'a region outline that draws nothing is not an outline');
+            end
+        end
+
+        function theRegionOutlineSitsWhereTheRegionIs(tc)
+            % The outline must bound the region it names, not merely
+            % exist. Checked in projected coordinates against the
+            % projected corners.
+            R = geo.region([-30 40 20 60]);
+            crs = geo.crs("mollweide");
+            H = geo.map(tc.worldGrid(), crs, Region = struct('R', R), ...
+                Colorbar = false);
+            tc.addTeardown(@() close(H.Figure));
+            [xc, yc] = geo.project(R.Outline(:, 1).', R.Outline(:, 2).', crs);
+            drawn = H.Region.All(1);
+            tc.verifyEqual([min(drawn.XData) max(drawn.XData)], ...
+                [min(xc) max(xc)], AbsTol = 1e-6);
+            tc.verifyEqual([min(drawn.YData) max(drawn.YData)], ...
+                [min(yc) max(yc)], AbsTol = 1e-6);
+        end
+
         function aTitleNeedsAMapToSitAbove(tc)
             ax = axes('Parent', tc.figureFor());
             tc.verifyError(@() geo.title(ax, "nothing here"), ...

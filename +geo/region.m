@@ -225,6 +225,23 @@ lim = [max(-90, lim(1)), min(90, lim(2))];
 end
 
 function R = makeRegion(name, lonLim, latLim, outline, padding, isEmpty)
+%MAKEREGION  One constructor, and OUTLINE ALWAYS MEANS THE SAME THING.
+%   A box used to arrive here with an empty outline, so Outline meant
+%   "the polygon, if this region happened to be given as one" - a field
+%   whose meaning depended on how the region was built. Anything wanting
+%   to DRAW a region then had to ask which kind it was and derive the
+%   rectangle itself, which is how a front ends up doing geometry.
+%
+%   A box has four corners. They are computed here, once, so Outline
+%   means "the vertices of this region" for every region, and
+%   geo.coastline(Kind = "outline", Source = R.Outline) works on all of
+%   them. Closed with a repeated first vertex, because an outline that
+%   does not close draws three sides of a rectangle.
+if isempty(outline) && ~isEmpty
+    outline = [lonLim(1) latLim(1); lonLim(2) latLim(1); ...
+               lonLim(2) latLim(2); lonLim(1) latLim(2); ...
+               lonLim(1) latLim(1)];
+end
 R = struct( ...
     'Identity', "geo.region", ...
     'Name', name, ...

@@ -1169,6 +1169,10 @@ anything. R-011, PV-080.
 | C-119 | 16-Aug-2026 | **Region outline flagged as a missing L3 capability, not improvised** | PV-106. v1's `AreaOfInterest` has no v2 element. Named in `geo.map`'s LIMITATIONS rather than bent onto `geo.coastline` |
 | C-120 | 16-Aug-2026 | **A front may hand its shared typeface only to elements that draw text** | PV-107. MATLAB's `arguments` block rejects an unknown name-value pair rather than ignoring it; `geo.coastline` refused `FontSize` |
 | C-121 | 16-Aug-2026 | **Stage E checkpoint E.1a delivered and executed.** 392 points, 392 passed | R-017. `geo.map` is 128 lines against `geoImagesc`'s 3413 |
+| C-122 | 16-Aug-2026 | **PV-106 WITHDRAWN.** `geo.coastline` has drawn region outlines via `Kind = "outline"` since D.2; the claim that no element did was made from a bulk grep of its `arguments` block without reading its help | R-018. The false flag reached `geo.map`'s LIMITATIONS, R-017 and a merged PR |
+| C-123 | 16-Aug-2026 | **`geo.region` fills `Outline` for a box** — four corners, closed | PV-109. `Outline` meant "the polygon, if this region was given as one"; it now means "the vertices of this region" for every region, so `geo.map(Region = ...)` is a pure forward with no geometry in the front |
+| C-124 | 16-Aug-2026 | **A test asserted the defect.** `TestA3_region` required `isempty(named.Outline)` with the diagnostic "an empty outline is how a caller knows" | R-018. The test did not miss the gap, it specified it — a shape no single function was wrong about and nothing downstream could use |
+| C-125 | 16-Aug-2026 | **Stage E checkpoint E.1b delivered and executed.** 394 points, 394 passed | R-018 |
 
 ---
 

@@ -1224,4 +1224,62 @@ that a small miss is not worth checking.
 
 ---
 
-*Entries R-018 onward are written at each stage's green gate.*
+## R-018 — Stage E, checkpoint E.1b, 16-Aug-2026, tier A. **A finding withdrawn.**
+
+**Scope.** The region outline, and the instrument that will drive the v1
+option compatibility layer.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+394; suite size 394, per-class sum 394, 394 passed, 0 failed.** Green gate
+on all six. Audit 0 findings.
+
+**PV-106 IS WITHDRAWN. It was wrong, and it shipped.** E.1a reported that
+no L3 element draws a region outline and left `Region` out of `geo.map`
+on that basis. `geo.coastline` has taken **`Kind = "outline"`** since D.2,
+with its own colour and width, and its own H1 line reads *"Shorelines,
+rivers or an outline"*. The claim was made after reading the function's
+`arguments` block out of a bulk grep and never reading its help. It went
+into `geo.map`'s LIMITATIONS, into R-017, and into a merged PR.
+
+| id | Finding |
+|---|---|
+| PV-109 | **The gap was real but in a different place, and one layer down.** `geo.region` left `Outline` **empty for a box** and filled it only when the caller happened to pass a polygon — so `Outline` meant *"the polygon, if this region was given as one"*, a field whose meaning depended on how the value was built. There were no vertices for the outline element to draw, and the element got the blame. A box has four corners; they are now computed once in `geo.region`, closed with a repeated first vertex, and `Outline` means *the vertices of this region* for every region. `geo.map(Region = ...)` is then a pure forward to `geo.coastline(Kind = "outline")` with no geometry in the front. |
+
+**The old assertion is worth reading.** `TestA3_region` required
+`isempty(named.Outline)`, with the diagnostic *"a preset is a box; an
+empty outline is how a caller knows"*. The test did not fail to catch
+this — **it specified it**. That is the sharper lesson than the missed
+help text: a test can lock in a shape that no single function is wrong
+about and that nothing downstream can use. It was replaced with the
+corrected contract and the reason written at the assertion.
+
+**What the false flag cost, and what it did not.** It cost a wrong
+sentence in three places and one merged PR. It did not cost a wrong
+*figure*: the Stage E rule says flag rather than inline, so the response
+to the supposed gap was to leave `Region` out and say so, not to
+improvise a rectangle inside `geo.map`. **A rule that makes being wrong
+cheap is worth more than one that makes being wrong unlikely** — the
+inlined version would have been silently wrong for as long as it lived,
+and this was found the moment someone read the element properly.
+
+**Also delivered: `records/v1_option_resolution.m`**, an instrument that
+proposes a v2 destination for each v1 option and **checks it against the
+target's real `arguments` block** rather than asserting it. First pass
+over the 114 options reaching `geoImagesc`: **54 resolve mechanically, 60
+do not** — and the 60 fall into four classes, of which only the last
+needs a decision:
+
+| class | examples | needs |
+|---|---|---|
+| on/off booleans | `Coastlines`, `ShowColorbar`, `NorthArrow`, `MapInset` | map to the `geo.map` option itself as true/false |
+| prefix gaps | `AmbientStrength`→`Ambient`, `PointSizeData`→`SizeData` | more strip rules |
+| **collapsed pairs** | `NorthArrowColor1` + `Color2` → one `Colors` | the layer must MERGE, so a rename table cannot express it |
+| genuinely absent | `LatitudeLabelRotation`, `MapInsetStyle`, `MaskThresholdSide`, `VerticalExaggeration` | a decision each, and none is guessed here |
+
+The instrument is committed rather than a table, deliberately: the
+inventory's own rule is *"an option no rule matched is unmapped, never
+guessed"*, and this is what enforces it.
+
+---
+
+*Entries R-019 onward are written at each stage's green gate.*

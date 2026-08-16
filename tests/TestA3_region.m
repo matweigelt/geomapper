@@ -43,8 +43,22 @@ classdef TestA3_region < GeoMapTestCase
             tc.verifyEqual(named.Name, "northamerica", ...
                 'the space is optional, as in v1');
             tc.verifyEqual(named.LonLim, [-170 -50]);
-            tc.verifyTrue(isempty(named.Outline), ...
-                'a preset is a box; an empty outline is how a caller knows');
+            % CHANGED at E.1b, and the old assertion is worth reading:
+            % it required Outline to be EMPTY for a preset, with the
+            % diagnostic "an empty outline is how a caller knows". That
+            % made the field mean "the polygon, IF this region happened
+            % to be given as one" - a meaning that depended on how the
+            % region was built, so anything wanting to draw a region had
+            % to ask which kind it was and derive the rectangle itself.
+            % A box has four corners; they are now computed once in
+            % geo.region, and Outline means the vertices of THIS region
+            % for every region. Closed, so it draws four sides.
+            tc.verifyEqual(size(named.Outline), [5 2], ...
+                'a box carries its own corners');
+            tc.verifyEqual(named.Outline(end, :), named.Outline(1, :), ...
+                'and closes');
+            tc.verifyEqual(unique(named.Outline(:, 1))', named.LonLim);
+            tc.verifyEqual(unique(named.Outline(:, 2))', named.LatLim);
 
             box = geo.region([-25 45 34 72]);
             tc.verifyEqual(box.LatLim, [34 72]);
