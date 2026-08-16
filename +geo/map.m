@@ -74,6 +74,10 @@ function H = map(G, crs, Z, options)
 %     Graticule   true    GEO.GRATICULE
 %     Coastline   true    GEO.COASTLINE
 %     Rivers      false   GEO.COASTLINE with Kind = "river"
+%     Region      false   GEO.COASTLINE with Kind = "outline", drawing a
+%                         GEO.REGION's own vertices. v1's AreaOfInterest.
+%                         The struct's R field is the region, and takes
+%                         anything GEO.REGION takes.
 %     Track       false   GEO.OVERLAYTRACK. Struct must carry T.
 %     Points      false   GEO.OVERLAYPOINTS. Struct must carry P.
 %     Frame       true    GEO.FRAME
@@ -126,14 +130,6 @@ function H = map(G, crs, Z, options)
 %         ScaleBar = true, Export = "figure3.pdf");
 %
 %   LIMITATIONS
-%     NO REGION OUTLINE YET, and it is left out rather than improvised.
-%     v1's AreaOfInterest drew a dashed outline of a rectangle or
-%     polygon, and there is no L3 element that draws one: GEO.COASTLINE
-%     draws coastlines and GEO.OVERLAYPOLYGONS fills. The Stage E rule
-%     says a front that needs a capability flags it instead of inlining
-%     it, so this is flagged. It is the second thing the rule has caught,
-%     after the title, and unlike the title it is not resolved.
-%
 %     One grid, one axes. Several maps side by side are GEO.PANEL's job.
 %     An element drawn here cannot be given a z of its own; the ladder
 %     is fixed, which is what makes two maps comparable.
@@ -155,6 +151,7 @@ arguments
     options.Graticule = true
     options.Coastline = true
     options.Rivers = false
+    options.Region = false
     options.Track = false
     options.Points = false
     options.Frame = true
@@ -244,6 +241,8 @@ step = { ...
     "Graticule",  "",     true,  @(d, nv) geo.graticule(axH, crs, nv{:}); ...
     "Coastline",  "",     false, @(d, nv) geo.coastline(axH, crs, nv{:}); ...
     "Rivers",     "",     false, @(d, nv) geo.coastline(axH, crs, nv{:}, Kind = "river"); ...
+    "Region",     "R",    false, @(d, nv) geo.coastline(axH, crs, nv{:}, ...
+                                     Kind = "outline", Source = geo.region(d).Outline); ...
     "Track",      "T",    false, @(d, nv) geo.overlayTrack(axH, d, crs, nv{:}); ...
     "Points",     "P",    true,  @(d, nv) geo.overlayPoints(axH, d, crs, nv{:}); ...
     "Frame",      "",     false, @(d, nv) geo.frame(axH, crs, nv{:}); ...
