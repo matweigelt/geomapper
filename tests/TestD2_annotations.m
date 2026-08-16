@@ -361,16 +361,9 @@ classdef TestD2_annotations < GeoMapTestCase
                 crs = "equirectangular"
             end
             ax = tc.axesFor();
-            geo.basemap(tc.smallGrid(), crs, Parent = ax, Hillshade = "off");
+            geo.basemap(tc.demoGrid(), crs, Parent = ax, Hillshade = "off");
         end
 
-        function G = smallGrid(~)
-            lon = -177.5:5:177.5;
-            lat = (-87.5:5:87.5)';
-            G = geo.grid(lon, lat, ...
-                sind(3 * repmat(lon, numel(lat), 1)) .* ...
-                cosd(2 * repmat(lat, 1, numel(lon))));
-        end
 
         function km = walkBar(~, H, crs)
             %WALKBAR  Ground length of the drawn bar, by walking along it.
