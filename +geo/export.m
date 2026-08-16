@@ -42,6 +42,15 @@ function H = export(figs, files, options)
 %     silently changed size. The routing lives in
 %     GEO.INTERNAL.WRITEFIGUREFILE, one decision in one place.
 %
+%     THE FIGURE IS REALISED FIRST. A figure that has never been drawn
+%     exports from an unsettled layout: measured on headless Linux, the
+%     first export of a fresh figure differed from the second in 31.3%
+%     of its pixels, and the second and third were identical to the
+%     byte. The effect hides interactively, because the desktop drains
+%     the graphics queue between commands; it does not hide in a -batch
+%     run, on a worker, or in the builder form, where every figure is
+%     exported on its first render. So DRAWNOW runs before the write.
+%
 %     THE FIGURE IS RESTORED. PaperUnits, PaperPosition, PaperSize,
 %     PaperPositionMode, Units and Color are saved before the write and
 %     put back after it, through ONCLEANUP so that a failed write
@@ -329,6 +338,23 @@ restorer = onCleanup(@() restoreState(figH, saved));   %#ok<NASGU>
 
 height = pageHeight(figH, options);
 applyPage(figH, height, options);
+
+% REALISE THE FIGURE BEFORE WRITING IT, and this line is load-bearing.
+% A figure that has never been drawn is exported from an unsettled
+% layout: measured on headless Linux, the first export of a fresh
+% figure differed from the second in 31.3% of its pixels, with a max
+% channel delta of 254 - and the second and third were identical to
+% the byte. So it is not the renderer being non-reproducible; it is
+% the first render being different from every later one.
+%
+% It hides interactively, because the desktop drains the graphics
+% queue between commands and the second export is therefore always
+% preceded by an implicit flush. It does NOT hide in a -batch run, in
+% a worker, or in the builder form - where EVERY figure is exported
+% on its first render. Without this, a batch of 200 would write 200
+% first-render files while anything the user checked by hand was a
+% second-render one: the file shipped is not the figure inspected.
+drawnow;
 
 try
     method = geo.internal.writeFigureFile(figH, file, ...
