@@ -147,5 +147,5 @@ function h = hashKey(key)
 %   The struct is serialised by MATLAB, not by string concatenation, so a
 %   path that happens to contain a separator character cannot collide
 %   with a different file's key (§2.7).
-h = string(sha256OfText(char(mat2str(getByteStreamFromArray(key)))));
+h = string(geo.internal.sha256OfText(char(mat2str(getByteStreamFromArray(key)))));
 end

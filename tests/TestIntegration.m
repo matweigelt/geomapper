@@ -75,6 +75,68 @@ classdef TestIntegration < GeoMapTestCase
     end
 
     % ==================================================================
+    methods (Test, TestTags = {'contract'})
+
+        function thePackageClosureNeverLeavesThePackage(tc)
+            % THE ONLY THING HERE THAT CI CANNOT SEE FOR ITSELF.
+            % geoMapSetup puts tests/, tools/, records/ and docbuild/ on
+            % the path, so a call from +geo into any of them resolves and
+            % every suite passes. The .mltbx ships +geo, data and
+            % docs/html; the same call is undefined for everyone who
+            % installs it. Twice now: geo.readGrid reaching for
+            % geoMapRoot (PV-115), and geo.cache calling sha256OfText out
+            % of tools/ on the path that draws any coastline (PV-127),
+            % which survived eleven checkpoints under a green gate.
+            %
+            % This asks MATLAB's own dependency analyser, so it sees a
+            % call the audit's text scan cannot - including one to a file
+            % outside the repository altogether. The audit's
+            % packageClosure check reads the tree instead, because it
+            % must be provable on a fixture; two instruments reading
+            % differently is handover 2.9, not duplication.
+            root = string(geoMapRoot());
+            d = dir(fullfile(root, "+geo", "*.m"));
+            entry = fullfile({d.folder}, {d.name});
+            closure = string(matlab.codetools.requiredFilesAndProducts(entry));
+
+            inPackage = contains(closure, fullfile(root, "+geo"));
+            escaped = closure(~inPackage);
+            tc.verifyEmpty(escaped, ...
+                "+geo depends on files it does not ship: " + ...
+                strjoin(erase(escaped, root + filesep), ", "));
+
+            % HALF A CHECK IS ONE THAT ONLY EVER PASSES. Point the same
+            % predicate at a harness file and it must report an escape,
+            % or "zero escaped" above would mean nothing.
+            probe = string(matlab.codetools.requiredFilesAndProducts( ...
+                fullfile(root, "tools", "makeManifest.m")));
+            tc.verifyFalse(all(contains(probe, fullfile(root, "+geo"))), ...
+                'the predicate must be able to see a file outside +geo');
+        end
+
+        function drawingNeedsNothingButBaseMatlab(tc)
+            % The headline claim of the toolbox, asserted rather than
+            % repeated. Parallel Computing Toolbox is the one permitted
+            % entry and it is OPTIONAL: geo.export reaches parfeval only
+            % behind geo.internal.hasParallelPool, which probes for the
+            % pool instead of trusting exist('parfeval','file') - that
+            % test was true on CI with no toolbox installed, so the guard
+            % passed and gcp then failed (PV-123).
+            root = string(geoMapRoot());
+            d = dir(fullfile(root, "+geo", "*.m"));
+            entry = fullfile({d.folder}, {d.name});
+            [~, prods] = matlab.codetools.requiredFilesAndProducts(entry);
+            names = string({prods.Name});
+
+            unexpected = setdiff(names, ["MATLAB" "Parallel Computing Toolbox"]);
+            tc.verifyEmpty(unexpected, ...
+                "no-toolbox claim broken by: " + strjoin(unexpected, ", "));
+            tc.verifyTrue(any(names == "MATLAB"), ...
+                'a closure that needs no MATLAB is a closure that was not computed');
+        end
+    end
+
+    % ==================================================================
     methods (Test, TestTags = {'reference'})
 
         function composedEqualsFront(tc)

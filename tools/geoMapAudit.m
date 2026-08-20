@@ -8,7 +8,7 @@ function [ok, findings] = geoMapAudit(root, opts)
 %     [ok, findings]  = GEOMAPAUDIT(ROOT, Only = "forbiddenFunctions")
 %
 %   DESCRIPTION
-%     Thirteen checks over the tree, each encoding a defect the v1 review
+%     Fifteen checks over the tree, each encoding a defect the v1 review
 %     found (handover Part 5) or a rule the design rests on (Part 2.7).
 %     It exits zero before any ship. It is a gate: a finding blocks, it
 %     does not inform.
@@ -55,6 +55,12 @@ function [ok, findings] = geoMapAudit(root, opts)
 %                               hard rule, and it is here rather than in
 %                               a test because a rule enforced only by
 %                               review is a rule that erodes
+%       documentationSync       the shipped manual describes the code
+%                               that is here now, compared by hash
+%       packageClosure          PV-115 and PV-127: +geo may not call the
+%                               harness. It resolves in a checkout and is
+%                               undefined on every installed copy, so no
+%                               green run anywhere can see it
 %
 %   INPUTS
 %     root  (1,1) string  [geoMapRoot()]  Tree to audit.
@@ -187,7 +193,7 @@ n = ["forbiddenFunctions" "shadowedBuiltins" "arrayGrowth" ...
      "barePrinting" "identifierAgreement" "helpTemplate" ...
      "functionLength" "positionalArity" "duplicateLocalFunctions" ...
      "versionAgreement" "contractExemption" "codeAnalyzer" ...
-     "orchestrationPurity" "documentationSync"];
+     "orchestrationPurity" "documentationSync" "packageClosure"];
 end
 
 function f = runCheck(name, files, root)
@@ -206,6 +212,7 @@ switch name
     case "codeAnalyzer",            f = checkCodeAnalyzer(files);
     case "orchestrationPurity",     f = checkPurity(files);
     case "documentationSync",       f = checkDocSync(root);
+    case "packageClosure",          f = checkPackageClosure(files, root);
 end
 end
 
@@ -346,9 +353,15 @@ end
 % ======================================================================
 function f = checkForbidden(files)
 %CHECKFORBIDDEN  Toolbox-only and renderer-dependent calls inside +geo.
+% geoMapRoot WAS ON THIS LIST AND IS NOT ANY MORE. Banning it by name
+% was the narrow fix for PV-115, and a name-list can only forbid what
+% somebody already thought of: geo.cache went on calling sha256OfText
+% out of tools/ for eleven checkpoints (PV-127). packageClosure states
+% the rule instead of enumerating its instances, and owns it alone,
+% because one defect reported by two checks is F6 applied to the audit.
 banned = ["range" "prctile" "caxis" "eval" "evalin" "assignin" ...
           "setappdata" "getappdata" "findobj" "light" "material" ...
-          "shading" "geoMapRoot"];
+          "shading"];
 why = containers2( banned, [ ...
     "Statistics Toolbox (F1); the no-toolbox claim is the point" ...
     "Statistics Toolbox; use geo.quantile (F10)" ...
@@ -361,8 +374,7 @@ why = containers2( banned, [ ...
     "rediscovering a handle instead of returning it" ...
     "renderer-dependent output (F9, D-009)" ...
     "renderer-dependent output (F9, D-009)" ...
-    "renderer-dependent output (F9, D-009)" ...
-    "lives in tests/; shipped code that needs it breaks on an installed toolbox (PV-115). Use geo.internal.dataFile"]);
+    "renderer-dependent output (F9, D-009)"]);
 f = emptyFinding();
 for i = 1:numel(files)
     if ~files(i).inGeo, continue, end
@@ -512,7 +524,7 @@ while last < numel(txt) && startsWith(strtrim(txt(last + 1)), "%")
     last = last + 1;
 end
 lines = regexprep(txt(first:last), '^\s*%', '');
-h = string(sha256OfText(char(regexprep(strjoin(lines, " "), '\s+', ' '))));
+h = string(geo.internal.sha256OfText(char(regexprep(strjoin(lines, " "), '\s+', ' '))));
 end
 
 function f = checkShadowed(files)
@@ -1000,6 +1012,80 @@ for i = 1:numel(code)
         end
     end
 end
+end
+
+function f = checkPackageClosure(files, root)
+%CHECKPACKAGECLOSURE  +geo must stand alone: nothing in it may call the
+%   harness.
+%
+%   THIS DEFECT IS INVISIBLE FROM INSIDE THE REPOSITORY. Developing here,
+%   geoMapSetup puts tests/, tools/, records/ and docbuild/ on the path,
+%   so a call from +geo into any of them resolves, every test passes and
+%   CI is green. The .mltbx ships +geo, data and docs/html and nothing
+%   else, so the same call is an Undefined function error for every
+%   person who installs the toolbox. Green CI is not evidence about the
+%   thing that ships, because CI never runs the thing that ships.
+%
+%   It has now happened twice. PV-115 was geo.readGrid reaching for
+%   geoMapRoot to find its data; the fix banned that ONE NAME, which is
+%   why PV-127 - geo.cache calling sha256OfText out of tools/, on the
+%   path that draws any coastline - survived eleven more checkpoints
+%   underneath it. A list of forbidden names can only forbid the
+%   instances somebody already thought of. So this states the rule: the
+%   package's dependencies stay inside the package.
+%
+%   HOW IT READS THE TREE, and why not with dependency analysis.
+%   matlab.codetools.requiredFilesAndProducts gives the exact closure and
+%   is what found PV-127, but it resolves names against the LIVE PATH, so
+%   pointed at a fixture tree it would answer about the real +geo instead
+%   - the instrument could not then be proved on a planted defect, and
+%   handover 2.9 forbids trusting a structure claim from an instrument
+%   never seen to fire. This reads the tree: every .m outside +geo is a
+%   name +geo may not use unqualified. Exact for the failure mode that
+%   has actually occurred twice, and provable on a fixture.
+f = emptyFinding();
+outside = harnessNames(root);
+for i = 1:numel(files)
+    if ~files(i).inGeo, continue, end
+    for b = outside
+        % No dot in front: geo.internal.sha256OfText is the CORRECT form
+        % and must not be reported. No word character behind: a call, a
+        % bare reference and @handle all count, because all three break
+        % the same way, and requiring "(" is how a handle would escape.
+        hits = regexp(cellstr(files(i).code), ...
+            "(?<![\w.])" + b + "(?![\w])", 'once');
+        idx = find(~cellfun(@isempty, hits));
+        for k = idx(:)'
+            f(end+1) = finding("packageClosure", files(i).rel, k, ...
+                ['%s lives outside +geo and is not shipped in the ' ...
+                 'toolbox, so this resolves here and is undefined on ' ...
+                 'an installed copy (PV-127). Move it into ' ...
+                 '+geo/+internal, or do not call it.'], b); %#ok<AGROW>
+        end
+    end
+end
+end
+
+function names = harnessNames(root)
+%HARNESSNAMES  Every .m in the repository that the .mltbx does not ship.
+%   The folder list is geoMap.prj's exclude filter, which is the file that
+%   actually decides what a user receives; keeping a second list here
+%   would let the two disagree, and the disagreement would only show up
+%   after somebody installed the result.
+names = strings(1, 0);
+d = dir(fullfile(root, "*.m"));                  % root scripts and runners
+for k = 1:numel(d)
+    names(end+1) = string(erase(d(k).name, ".m")); %#ok<AGROW>
+end
+for folder = ["tests" "tools" "records" "docbuild"]
+    p = fullfile(root, folder);
+    if ~isfolder(p), continue, end
+    d = dir(fullfile(p, "**", "*.m"));
+    for k = 1:numel(d)
+        names(end+1) = string(erase(d(k).name, ".m")); %#ok<AGROW>
+    end
+end
+names = unique(names);
 end
 
 function toks = lineKeywords(line, words)

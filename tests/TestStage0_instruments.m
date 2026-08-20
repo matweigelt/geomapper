@@ -21,7 +21,7 @@ classdef TestStage0_instruments < GeoMapTestCase
 
     properties (Constant)
         CoveredFunctions = ["GeoMapTestCase" "geoMapTestRecord" ...
-                            "verifyManifest" "sha256OfText"]
+                            "verifyManifest" "geo.internal.sha256OfText"]
     end
 
     % ==================================================================
@@ -234,9 +234,9 @@ classdef TestStage0_instruments < GeoMapTestCase
             if ~usejava('jvm')
                 tc.assumeFail('No JVM: the strong hash path is unavailable.');
             end
-            tc.verifyEqual(char(sha256OfText('')), ...
+            tc.verifyEqual(char(geo.internal.sha256OfText('')), ...
                 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
-            tc.verifyEqual(char(sha256OfText('abc')), ...
+            tc.verifyEqual(char(geo.internal.sha256OfText('abc')), ...
                 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
         end
 

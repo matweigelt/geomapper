@@ -64,7 +64,7 @@ end
 function [n, h] = fileFingerprint(f)
 txt = fileread(f);
 n = numel(splitlines(txt));
-h = sha256OfText(txt);
+h = geo.internal.sha256OfText(txt);
 end
 
 function out = localTernary(c, a, b)
