@@ -194,6 +194,15 @@ if hasRegion && (~isempty(options.Lon) || ~isempty(options.Lat))
 end
 
 source = string(source);
+if source == "builtin"
+    % THE SHIPPED TOPOGRAPHY, NAMED THE WAY GEO.READCOASTLINE ALREADY
+    % NAMES ITS OWN. Added when geo.trackmap and geo.pointmap needed a
+    % background: without it each front would carry the data path as a
+    % literal, which is one filename in three places and a rename away
+    % from two of them being wrong. A front should ask for "the builtin
+    % topography", not know where it lives.
+    source = geo.internal.dataFile("etopo_10min_surface.mat");
+end
 [~, ~, ext] = fileparts(source);
 sel = struct('LonLim', lonLim, 'LatLim', latLim, 'Stride', options.Stride);
 switch lower(ext)
