@@ -35,7 +35,8 @@ classdef TestE0_export < GeoMapTestCase
 %   geoMap v2.0 | 16-Aug-2026 | Claude Opus 5 (Anthropic)
 
     properties (Constant)
-        CoveredFunctions = ["geo.export" "geo.internal.writeFigureFile"]
+        CoveredFunctions = ["geo.export" "geo.internal.writeFigureFile" ...
+                            "geo.internal.hasParallelPool"]
     end
 
     methods (TestClassSetup)
@@ -202,6 +203,32 @@ classdef TestE0_export < GeoMapTestCase
             g = tc.exportFigure();
             tc.verifyError(@() geo.export([f g], ["a.png" "b.png"], ...
                 UseParallel = "always"), 'geo:export:HandlesCannotCross');
+        end
+
+        function theParallelProbeAnswersInsteadOfThrowing(tc)
+            % PV-123. The old guard asked the FILE SYSTEM whether the
+            % toolbox was there - exist('parfeval','file') > 0 - and on
+            % CI, which has no Parallel Computing Toolbox, that was
+            % TRUE. The short circuit never fired, gcp was called, and
+            % the run died with "Undefined function 'gcp'" instead of
+            % geo:export:NoParallel. A guard written to produce a
+            % helpful error produced an unhelpful one on the exact
+            % configuration it existed for.
+            %
+            % The probe must therefore answer on every machine, with or
+            % without the toolbox, and never raise. That is asserted
+            % here rather than assumed, because the machine this runs on
+            % is the one where it already worked.
+            [tf, why] = geo.internal.hasParallelPool();
+            tc.verifyClass(tf, 'logical');
+            tc.verifyClass(why, 'string');
+            tc.verifyEqual(strlength(why) == 0, tf, ...
+                'a reason when false, none when true');
+            [tf2, why2] = geo.internal.hasParallelPool(true);
+            tc.verifyClass(tf2, 'logical');
+            tc.verifyTrue(tf2 || strlength(why2) > 0);
+            tc.verifyFalse(tf2 && ~tf, ...
+                'a running pool implies an available toolbox');
         end
 
         function aBuilderMustReturnItsFigure(tc)

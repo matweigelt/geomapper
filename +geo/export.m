@@ -260,7 +260,14 @@ end
 % ======================================================================
 function runParallel = decideParallel(want, isBuilder, n)
 %DECIDEPARALLEL  Ask for it explicitly and you are told why it cannot.
-havePool = exist('parfeval', 'file') > 0 && exist('gcp', 'file') > 0;
+% PROBED, NOT GUESSED FROM THE FILE SYSTEM. This line read
+% exist('parfeval','file') > 0 && exist('gcp','file') > 0, and on CI -
+% which has no Parallel Computing Toolbox - it PASSED, so the next line
+% died with "Undefined function 'gcp'". A guard written to produce a
+% helpful error produced an unhelpful one on the exact configuration it
+% existed for (PV-123). EXIST answers a question about files, and MATLAB
+% ships stubs for toolboxes it does not have.
+havePool = geo.internal.hasParallelPool();
 if want == "always"
     if ~isBuilder
         error('geo:export:HandlesCannotCross', ...
