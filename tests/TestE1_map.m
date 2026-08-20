@@ -165,20 +165,11 @@ classdef TestE1_map < GeoMapTestCase
             tc.verifyEqual(b.CRS.Name, a.CRS.Name);
         end
 
-        function theFrontDeclaresItselfAndDrawsNothing(tc)
+        function geoMapIsAPureFront(tc)
             % The Stage E rule, read off the file. The audit enforces
             % this on every push; asserting it here too puts the rule
             % where a reader of the tests will meet it.
-            src = string(splitlines(fileread(which('geo.map'))));
-            tc.verifyTrue(any(strtrim(erase(src, "%")) == "L4-FRONT"), ...
-                'geo.map must declare itself an L4 front');
-            code = regexprep(src, '%.*$', '');
-            for b = ["surf" "patch" "line" "text" "scatter" "plot" ...
-                     "colorbar" "annotation" "title"]
-                tc.verifyEmpty(find(~cellfun(@isempty, regexp(cellstr(code), ...
-                    "(?<![\w.])" + b + "\s*\(", 'once')), 1), ...
-                    "bare " + b + "() in an L4 front");
-            end
+            tc.verifyIsAPureFront("geo.map");
         end
 
         function aRegionOutlineIsDrawnByTheOutlineElement(tc)
@@ -309,14 +300,26 @@ classdef TestE1_map < GeoMapTestCase
         end
 
         function drawingTwiceReplacesRatherThanDuplicates(tc)
+            % STRENGTHENED at E.4. This asserted only that the first
+            % axes' child count had not grown - which is trivially true
+            % when the second call goes to a DIFFERENT FIGURE, and that
+            % is exactly what was happening: Parent was declared,
+            % documented and never read (PV-121). An assertion that
+            % cannot distinguish "reused the axes" from "ignored the
+            % argument" tests neither, so the reuse is asserted first.
             G = tc.worldGrid();
             crs = geo.crs("mollweide");
             H = geo.map(G, crs, Title = "first", Colorbar = false);
             tc.addTeardown(@() close(H.Figure));
             before = numel(H.Axes.Children);
-            geo.map(G, crs, Title = "second", Colorbar = false, ...
+            nFig = numel(findall(groot, 'Type', 'figure'));
+            H2 = geo.map(G, crs, Title = "second", Colorbar = false, ...
                 Parent = H.Axes);
-            tc.verifyEqual(numel(H.Axes.Children), before);
+            tc.verifyEqual(H2.Axes, H.Axes, 'Parent must be honoured');
+            tc.verifyEqual(numel(findall(groot, 'Type', 'figure')), nFig, ...
+                'and no new figure created');
+            tc.verifyEqual(numel(H.Axes.Children), before, ...
+                'and the elements replaced rather than duplicated');
         end
 
         function anEmptyTitleLeavesNoTitle(tc)

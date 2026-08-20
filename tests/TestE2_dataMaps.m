@@ -59,18 +59,12 @@ classdef TestE2_dataMaps < GeoMapTestCase
     methods (Test, TestTags = {'contract'})
 
         function bothFrontsDeclareThemselvesAndDrawNothing(tc)
-            for fn = ["geo.trackmap" "geo.pointmap"]
-                src = string(splitlines(fileread(which(fn))));
-                tc.verifyTrue(any(strtrim(erase(src, "%")) == "L4-FRONT"), ...
-                    fn + " must declare itself an L4 front");
-                code = regexprep(src, '%.*$', '');
-                for b = ["surf" "patch" "line" "text" "scatter" "plot" ...
-                         "colorbar" "annotation" "title"]
-                    tc.verifyEmpty(find(~cellfun(@isempty, ...
-                        regexp(cellstr(code), "(?<![\w.])" + b + "\s*\(", ...
-                        'once')), 1), "bare " + b + "() in " + fn);
-                end
-            end
+            % STRENGTHENED at E.4: this carried its own shorter banned
+            % list, so neither front was ever checked for ylabel,
+            % xlabel, legend or sgtitle. Four copies had drifted; there
+            % is one list now.
+            tc.verifyIsAPureFront("geo.trackmap");
+            tc.verifyIsAPureFront("geo.pointmap");
         end
 
         function bothFrontsOwnExactlyTheSameOptions(tc)
