@@ -1282,4 +1282,99 @@ guessed"*, and this is what enforces it.
 
 ---
 
-*Entries R-019 onward are written at each stage's green gate.*
+## R-019 — Stage E, checkpoint E.1c, 16-Aug-2026, tier A. **V9 discharged.**
+
+**Scope.** `geo.internal.v1OptionTable`, `geo.internal.v1Options`,
+`geo.v1.imagesc`. Every one of v1 `geoImagesc`'s options is accounted
+for.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+410; suite size 410, per-class sum 410, 410 passed, 0 failed.** Green gate
+on all six. Audit 0 findings, mcheck 0, provenance 0.
+
+**The claim, and it is exact.** Every option `geoImagesc` declares either
+translates to a v2 option **that exists**, or raises with the replacement
+named. There is no third outcome — in particular **no v1 option is
+silently ignored**, which is the failure a migration layer exists to
+prevent. Both sides are read from source in the test: the v1 names out of
+`geoImagesc.m`'s own `arguments` block, the v2 names out of each
+element's, so neither list can drift from the code it describes.
+
+| | |
+|---|---|
+| options `geoImagesc` declares | **120** |
+| rows in the table | **120**, and `setdiff` is empty both ways |
+| translate to an option that exists | **92** |
+| raise `NoEquivalent`, replacement named | **28** |
+
+**Findings — four, and the first is about the instrument itself.**
+
+| id | Finding |
+|---|---|
+| PV-110 | **The instrument read the wrong authority, and was wrong in both directions.** `records/v1_option_resolution.m` took its v1 names from the Stage 0 inventory's "fronts" column with a **prefix match**, so `geoImagescPoints` and `geoImagescTrack` counted as `geoImagesc`. It reported 114 options, including `SizeData`, `ShowLegend`, `GridOn` and `SharedColorbar`, which `geoImagesc` has never had — and being a summary, the inventory could equally have omitted ones it does. The authority on a function's option names is that function's source. Read that way, the count is **120 exactly**. The instrument had the right principle on the v2 side from the first line and the wrong one on the v1 side. |
+| PV-111 | **`geo.map` read `CRS = ...` only in the raw-triplet form.** Written narrow, it worked for `geo.map(lon, lat, Z, CRS = c)` and was **silently ignored** by `geo.map(G, CRS = c)` — which is exactly the shape the translator produces, because v1 spelled the projection as an option and not as an argument. The map drew, in the default projection, without complaint. Found by the first end-to-end `geo.v1.imagesc` call, not by any unit test: the two-argument form had always been given its crs positionally. |
+| PV-112 | **Nine v1 names are also v2 names, and that broke idempotence.** `Graticule`, `Rivers`, `Points`, `NorthArrow`, `ScaleBar`, `Title`, `Parent`, `FontName` and `FontSize` are spelled identically in both — not an accident, v1 got them right and v2 kept them. But a *translated* list therefore still contains names the table recognises, so `Graticule = struct(StepLon = 60)` came back through as a toggle and was asked to evaluate a struct as a logical. A struct is already v2 spelling and now passes through. Asserted: translating twice changes nothing. |
+| PV-113 | **A `for` over a column runs once, with the whole column.** The V9 test wrote `for name = declared'` and MATLAB dutifully bound all 120 names to `name` in a single iteration, so `[T.V1] == name` broadcast to 120×120 and the test errored instead of checking anything. It failed loudly, which is the only reason it was caught — the same transpose in a loop that merely *accumulates* would have passed while testing one thing instead of 120. |
+
+**What a rename table could not have done.** Three of the six kinds are
+not substitutions. `NorthArrowColor1` and `NorthArrowColor2` are rows 1
+and 2 of one `Colors` matrix, so the layer **accumulates** and setting one
+leaves the other at the element's default rather than at zero. v1's six
+loose projection settings — which had to agree with each other and were
+checked nowhere — are gathered into one `geo.crs` that validates them
+together, so a conic without a standard parallel now fails at
+translation. And 28 have no equivalent at all, each raising with an
+instruction rather than "unrecognised argument".
+
+**`geo.v1.imagesc`, not `geoImagesc`.** OB-7 keeps v1 installed until
+Stage F, and a file of that name would shadow it or be shadowed by it
+depending on path order — the worst failure available, because which
+toolbox drew the figure would depend on something nobody set
+deliberately. The name changes; no option does.
+
+---
+
+## PV-114 — open. PV-104's conclusion does not survive its own fix.
+
+**Status: OPEN, and the E.1c PR is red on it.** Not merged, not patched.
+
+`TestE0_export/repeatedExportsOfARealisedFigureAreIdentical` discards one
+export to settle the figure and then compares the next two. It passed on
+CI for three checkpoints and then failed with numbers **byte-identical**
+to the original PV-104 measurement — which says the warm-up did not take,
+not that the renderer became noisy. Rather than guess, the test was made
+to report both pairs. One CI run, and the answer is unambiguous:
+
+| pair | pixels differing |
+|---|---|
+| 1 v 2 | 42 176 of 134 805 — **31.2867%**, max channel delta 254 |
+| 2 v 3 | **0**, exactly |
+
+**With a discarded warm-up export already performed.** So the renders in
+this test are the figure's second, third and fourth, and the *second*
+still differs from the third while the third and fourth agree. PV-104
+concluded the first render differs and every later one is identical; that
+cannot both be true and produce this.
+
+Two readings fit, and they are distinguishable:
+
+1. **It takes more than one export to settle**, and PV-104's original
+   "2 v 3 identical" was itself an intermittent pass.
+2. **The warm-up is not running as intended** — the discarded export
+   does something different from the asserted ones, or is not reaching
+   the figure under test at all.
+
+The same commit passed on the push trigger and failed on the
+pull_request trigger, so it is **intermittent in occurrence while exactly
+deterministic in magnitude** — the same 42 176 pixels every time it
+appears. That pattern is itself evidence: a genuinely noisy rasteriser
+would not repeat a number.
+
+**Next step, and it is one cycle:** instrument the warm-up itself —
+assert the discarded file exists and compare it against r1 — which
+separates reading 1 from reading 2 without changing any behaviour.
+Nothing about `geo.export` is being altered until that answer is in.
+
+---
+
+*Entries R-020 onward are written at each stage's green gate.*

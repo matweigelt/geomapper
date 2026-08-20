@@ -374,11 +374,22 @@ classdef TestE0_export < GeoMapTestCase
             d = tc.scratch();
             f = tc.exportFigure();
             tc.realise(f, d);
-            r = fullfile(d, ["r1.png" "r2.png"]);
-            geo.export(f, r(1), Width = 8, Resolution = 150);
-            geo.export(f, r(2), Width = 8, Resolution = 150);
+            r = fullfile(d, ["r1.png" "r2.png" "r3.png"]);
+            for k = 1:3
+                geo.export(f, r(k), Width = 8, Resolution = 150);
+            end
+            % THREE, AND BOTH PAIRS REPORTED, because this test passed on
+            % CI for three checkpoints and then failed with numbers
+            % byte-identical to the original PV-104 measurement - which
+            % says the warm-up export above did not take, not that the
+            % renderer became noisy. If 1-vs-2 differs and 2-vs-3 does
+            % not, the settling is not one-shot per figure and the
+            % warm-up is the wrong shape of fix; if both differ, it is
+            % nondeterminism and PV-104's conclusion needs revisiting.
+            % Guessing between those two would have been a coin flip.
             tc.verifyEqual(imread(r(2)), imread(r(1)), ...
-                tc.imageDiff(r(1), r(2)));
+                "1v2 " + tc.imageDiff(r(1), r(2)) + ...
+                " || 2v3 " + tc.imageDiff(r(2), r(3)));
         end
 
         function theOrderOfABatchDoesNotChangeItsFiles(tc)
