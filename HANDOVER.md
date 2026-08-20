@@ -1206,6 +1206,10 @@ anything. R-011, PV-080.
 | C-156 | 20-Aug-2026 | **O11 carried openly.** The GRACE scenario uses a field labelled synthetic in the code | A plausible-looking invented number is indistinguishable from a real one, which is what the oracle register exists to prevent |
 | C-158 | 20-Aug-2026 | **`geo.internal.hasParallelPool` replaces `exist('parfeval','file')`** as the capability test | PV-123. `exist(name,'file')` was TRUE on a machine with no Parallel Computing Toolbox — MATLAB ships stubs — so the guard passed and `gcp` then failed with an undefined-function error instead of `geo:export:NoParallel`. A capability is established by trying it |
 | C-157 | 20-Aug-2026 | **Stage F checkpoint F.1 delivered and executed.** 477 points, 476 passed, 1 filtered | R-023 |
+| C-159 | 20-Aug-2026 | **`docbuild/build_help.m` counts completeness in the WRITTEN HTML**, not in its parse tree | F1. 43 functions, 398 of 398 arguments rendered, 0 broken links, 0 unparseable examples. A builder reporting from its own model is reporting on its parser |
+| C-160 | 20-Aug-2026 | **`geoMapSetup.m` is the one path list** | PV-126. Six copies existed across `ci.yml`, `gates.sh` and `buildfile.m`; adding `docbuild/` broke a seventh. F6 where the duplicate-local check cannot see, because two copies are not MATLAB |
+| C-161 | 20-Aug-2026 | **The index, the Help TOC and `Contents.m` come from one grouping** | Read out of `Contents.m` at build time, so no two of them can disagree |
+| C-162 | 20-Aug-2026 | **Stage F checkpoint F.2 delivered and executed.** 487 points, 486 passed, 1 filtered | R-024 |
 
 ---
 

@@ -25,8 +25,8 @@ if command -v matlab >/dev/null 2>&1; then
   # here that proves every one of its checks against a planted defect
   # before reporting, and a red audit then costs seconds rather than a
   # full suite run.
-  matlab -batch "addpath(pwd,fullfile(pwd,'tests'),fullfile(pwd,'tools'),fullfile(pwd,'records')); ok=geoMapAudit(); exit(~ok)" || { echo ">>> GATE FAILED"; fail=1; }
-  matlab -batch "addpath(pwd,fullfile(pwd,'tests'),fullfile(pwd,'tools'),fullfile(pwd,'records')); makeManifest; ok=rungeoMapTests(\"all\"); exit(~ok)" || { echo ">>> GATE FAILED"; fail=1; }
+  matlab -batch "addpath(pwd); geoMapSetup; ok=geoMapAudit(); exit(~ok)" || { echo ">>> GATE FAILED"; fail=1; }
+  matlab -batch "addpath(pwd); geoMapSetup; makeManifest; ok=rungeoMapTests(\"all\"); exit(~ok)" || { echo ">>> GATE FAILED"; fail=1; }
 else
   echo ">>> SKIPPED: no 'matlab' on PATH."
   echo ">>> This gate did NOT run. Do not read the summary below as if it did."

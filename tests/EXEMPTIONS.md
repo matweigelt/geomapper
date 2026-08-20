@@ -93,6 +93,9 @@ become false is a finding.
 | geo.internal.avoidRectCollisions | vectorisation | Moves one rectangle. |
 | geo.internal.avoidRectCollisions | speed | At most eight passes over a handful of rectangles; a budget would measure the timer. |
 | geo.internal.avoidRectCollisions | metamorphic | Order-dependent BY DESIGN - it is a greedy solver and obstacle order changes the result. Asserting a permutation invariance would assert something false. |
+| build_help | precision | Its one number — the fraction of documented arguments rendered — is a COUNT of strings found in files, asserted under `reference` at exactly 0 missing. A count has no error to bound; it is right or it is wrong. |
+| build_help | vectorisation | It walks 43 functions once and writes 46 files. There is no batched form of "render the manual", and a second one would be a second renderer. |
+| build_help | speed | It runs once per release, takes a few seconds, and its cost is dominated by `checkcode` on the examples — which is MATLAB's, not ours. A budget here would measure the Code Analyzer. |
 | geo.internal.hasParallelPool | precision | It returns a logical. There is no number and therefore no error to bound. |
 | geo.internal.hasParallelPool | vectorisation | One question, one answer. |
 | geo.panel | precision | Its two numbers — the map heights agreeing and the series box matching — are asserted under `reference`, the first at v1's 2% visual threshold and the second at 1e-12. The 2% is deliberately not tightened: it is the point at which a reader stops seeing two panels as the same size, not a measurement. |
