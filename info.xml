@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Registers geoMap under Supplemental Software, so that `doc geoMap`
+  resolves and the Help browser shows the generated tree.
+
+  NO VERSION IS DECLARED HERE, deliberately. Contents.m is the version
+  authority and tools/geoMapAudit.m checks every other file that names a
+  version against it. A file that repeats the version is a file that will
+  eventually disagree with it, and the disagreement surfaces at release.
+  The matlabrelease element below is the MATLAB release this was built
+  and tested against, which is a different fact.
+
+  help_location points at the directory docbuild/build_help.m writes,
+  and helptoc.xml is generated there by the same run - so the browser
+  tree, the index page and Contents.m all come from one grouping.
+
+  geoMap v2.0 | 20-Aug-2026 | Claude Opus 5 (Anthropic)
+-->
+<productinfo>
+   <matlabrelease>R2026a</matlabrelease>
+   <name>geoMap</name>
+   <type>toolbox</type>
+   <icon>$toolbox/matlab/icons/matlabicon.gif</icon>
+   <help_location>docs/html</help_location>
+   <help_contents_icon>$toolbox/matlab/icons/book_mat.gif</help_contents_icon>
+</productinfo>

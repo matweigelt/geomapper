@@ -170,8 +170,7 @@ jobs:
             n = numel(dir(fullfile('tests','*.m')));
             fprintf('files in tests: %d\n', n);
             assert(n >= 6, 'repo layout: only %d files in tests', n);
-            addpath(pwd, fullfile(pwd,'tests'), fullfile(pwd,'tools'), ...
-                    fullfile(pwd,'records'));
+            addpath(pwd); geoMapSetup;
             % The audit first, with its own self-test on: it is the only
             % gate here that proves every one of its checks against a
             % planted defect before reporting anything. A red audit then

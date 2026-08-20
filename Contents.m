@@ -1,5 +1,5 @@
 % geoMap — cartographic visualisation in base MATLAB
-% Version 2.0.477-alpha.1 20-Aug-2026
+% Version 2.0.487-alpha.1 20-Aug-2026
 %
 %   THIS FILE IS THE VERSION AUTHORITY.
 %
@@ -12,7 +12,7 @@
 %   THE PATCH COMPONENT IS THE VERIFIED TEST-POINT COUNT (handover 6.7).
 %   It moves when the EVIDENCE moves, so a pure rename correctly bumps
 %   nothing and adding a checkpoint's tests bumps it by exactly what they
-%   added. 477 is the count `rungeoMapTests("all")` reconciles three ways.
+%   added. 487 is the count `rungeoMapTests("all")` reconciles three ways.
 %   The -alpha.n suffix carries until the Stage F release checklist is
 %   complete.
 %

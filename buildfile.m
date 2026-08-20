@@ -27,7 +27,7 @@ end
 
 function checkTask(~)
 %CHECKTASK  Static analysis. Fails the build on any error-level issue.
-addpath(pwd, fullfile(pwd, 'tests'), fullfile(pwd, 'tools'));
+addpath(pwd); geoMapSetup;
 targets = ["tests", "tools"];
 if isfolder("+geo")
     targets(end+1) = "+geo";
@@ -45,7 +45,7 @@ end
 
 function testTask(~)
 %TESTTASK  Correctness tiers.
-addpath(pwd, fullfile(pwd, 'tests'), fullfile(pwd, 'tools'));
+addpath(pwd); geoMapSetup;
 makeManifest;
 ok = rungeoMapTests();
 assert(ok, 'geo:build:GateFailed', 'Green gate failed; read the log.');
@@ -53,7 +53,7 @@ end
 
 function testallTask(~)
 %TESTALLTASK  All tiers including speed budgets.
-addpath(pwd, fullfile(pwd, 'tests'), fullfile(pwd, 'tools'));
+addpath(pwd); geoMapSetup;
 makeManifest;
 ok = rungeoMapTests("all");
 assert(ok, 'geo:build:GateFailed', 'Green gate failed; read the log.');

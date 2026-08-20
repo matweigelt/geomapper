@@ -1698,4 +1698,63 @@ oracle register exists to prevent.
 
 ---
 
-*Entries R-024 onward are written at each stage's green gate.*
+## R-024 — Stage F, checkpoint F.2, 20-Aug-2026, tier A
+
+**Scope.** `docbuild/build_help.m`, `info.xml`, the generated
+`helptoc.xml`, `geoMapSetup.m`, and `tests/TestF2_docbuild.m`.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+487; suite size 487, per-class sum 487, 486 passed, 1 filtered.** Green
+gate on all six. Version moved to `2.0.487-alpha.1` in the same edit.
+
+**The manual, counted in the artefact:**
+
+| | |
+|---|---|
+| functions rendered | **43** |
+| arguments documented | **398** |
+| arguments **found in the written HTML** | **398** |
+| completeness | **100%** |
+| broken See-also links | **0** |
+| examples that do not parse | **0** |
+| required headers missing | **0** |
+| pages | 46, 284 kB |
+
+**Rendered is the number that can be wrong**, and that is the whole
+design. A reference project parsed argument descriptions into its
+documentation model for years while the renderer never read the field;
+every audit stayed green because there was no text anywhere to disagree
+with (F1). So each page is **read back off disk** and every documented
+name is counted where it actually appears, inside a table cell. A
+builder reporting 398 of 398 from its own parse tree would be reporting
+on its parser.
+
+**Findings — three, and all three were in the instrument.**
+
+| id | Finding |
+|---|---|
+| PV-124 | **The See-also resolver deleted the dot inside every package name.** Written as `erase(txt, ".")` to strip the trailing full stop, it turned `GEO.COASTLINE` into `GEOCOASTLINE` — so the first clean build reported **117 broken cross-references**, every one of them a link that was fine. A link checker whose first act is to corrupt the link it is checking will report a catastrophe and be believed, because 117 looks like a real problem. Only the trailing stop is stripped now. |
+| PV-125 | **A parser with no terminator reads until it runs out, and what it reads last is whatever happens to be there.** The `See also` section had no end marker, so it swallowed the version footer, and the resolver then handed `"Claude Opus 5 (Anthropic)"` to `which` — which tries *command syntax* on anything that is not a valid name and **raises**. The build died. Two fixes, both needed: the `%   ------` separator now ends the help block, and `resolvesToAFunction` validates the name before asking. **A resolver that can be made to throw by the text it is resolving is not a resolver.** |
+| PV-126 | **The path list existed in SIX places, and adding a folder broke the seventh.** `.github/workflows/ci.yml` once, `tools/gates.sh` twice, `buildfile.m` three times. Adding `docbuild/` made the new tests pass locally and they would have failed on CI, because the copies have no way of learning about each other — **F6 in the one part of the project the duplicate-local check cannot see, since two of the copies are not MATLAB**. `geoMapSetup.m` is now the one list. The scratch runner used for every confirming run in this project turned out to be a seventh copy, and it failed on the very next run — which is how the count came back 476 + 10 + 11 against a suite of 487 and the reconcile refused to add up. |
+
+**The reconcile earned its place again.** An errored test counts as both
+failed and incomplete, so the sum **exceeded** the suite size — 497
+against 487. That inequality is itself a signal: it says "these tests did
+not merely fail, they did not run", which is a different diagnosis and
+points at the environment rather than the assertions.
+
+**What the manual contains.** Per-function pages with typed input,
+option and output tables, a highlighted ACCURACY block, errors as a
+definition list, a linted example and resolved links; an index grouped by
+layer; a projection guide; and a GRACE workflow. The index, the Help
+browser TOC and `Contents.m` all come from **one grouping**, read out of
+`Contents.m`, so no two of them can disagree.
+
+**The guide says the thing that matters.** Asserted by test: the
+projection guide must contain the word `SPHERE`, the figure `0.3%`, and
+the phrase `not a survey tool`. A projection guide that omitted those
+would invite someone to survey with a visualisation tool.
+
+---
+
+*Entries R-025 onward are written at each stage's green gate.*
