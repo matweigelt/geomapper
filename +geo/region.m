@@ -60,6 +60,12 @@ function R = region(spec, options)
 %          Name      (1,1) string   Preset name, or "" for the others.
 %          LonLim    (1,2) double   [min max], NaN NaN for an empty spec.
 %          LatLim    (1,2) double   [min max], clamped to [-90, 90].
+%          IsBox     (1,1) logical  True when the spec was a 1x4 box or a
+%                                   preset name. Outline says what to
+%                                   DRAW; IsBox says what to TEST
+%                                   against, and a rectangle is tested
+%                                   with four comparisons rather than a
+%                                   point-in-polygon.
 %          Outline   (N,2) double   The polygon if one was given, else
 %                                   0x2 empty. Presets and boxes have no
 %                                   outline, and an empty one is how a
@@ -251,7 +257,16 @@ function R = makeRegion(name, lonLim, latLim, outline, padding, isEmpty)
 %   geo.coastline(Kind = "outline", Source = R.Outline) works on all of
 %   them. Closed with a repeated first vertex, because an outline that
 %   does not close draws three sides of a rectangle.
-if isempty(outline) && ~isEmpty
+%   ISBOX RECORDS WHICH IT WAS, and that is not bookkeeping. Filling
+%   Outline for a box (PV-109) made every region carry vertices, which
+%   is what a drawer needs - but it also made GEO.SPLITTRACKS' fast
+%   rectangle test unreachable, because that branch keys on Outline
+%   being empty. A point-in-polygon over a rectangle gives the same
+%   answer more slowly, so nothing broke and nothing said so. The flag
+%   keeps both paths honest: Outline says what to DRAW, IsBox says what
+%   to TEST against.
+isBox = isempty(outline) && ~isEmpty;
+if isBox
     outline = [lonLim(1) latLim(1); lonLim(2) latLim(1); ...
                lonLim(2) latLim(2); lonLim(1) latLim(2); ...
                lonLim(1) latLim(1)];
@@ -263,5 +278,6 @@ R = struct( ...
     'LatLim', double(latLim(:)).', ...
     'Outline', outline, ...
     'Padding', padding, ...
+    'IsBox', isBox, ...
     'IsEmpty', isEmpty);
 end

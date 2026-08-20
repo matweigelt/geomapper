@@ -307,7 +307,11 @@ if R.IsEmpty
     tf = true(size(lon));
     return
 end
-if isempty(R.Outline)
+% ISBOX, NOT ISEMPTY(OUTLINE). Every region carries vertices now, so
+% keying on the outline made this branch unreachable and quietly routed
+% every rectangle through inpolygon - the same answer, more slowly, and
+% nothing to say it had happened (PV-118).
+if R.IsBox
     tf = lon >= R.LonLim(1) & lon <= R.LonLim(2) & ...
          lat >= R.LatLim(1) & lat <= R.LatLim(2);
     return
