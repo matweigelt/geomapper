@@ -1334,4 +1334,47 @@ deliberately. The name changes; no option does.
 
 ---
 
+## PV-114 — open. PV-104's conclusion does not survive its own fix.
+
+**Status: OPEN, and the E.1c PR is red on it.** Not merged, not patched.
+
+`TestE0_export/repeatedExportsOfARealisedFigureAreIdentical` discards one
+export to settle the figure and then compares the next two. It passed on
+CI for three checkpoints and then failed with numbers **byte-identical**
+to the original PV-104 measurement — which says the warm-up did not take,
+not that the renderer became noisy. Rather than guess, the test was made
+to report both pairs. One CI run, and the answer is unambiguous:
+
+| pair | pixels differing |
+|---|---|
+| 1 v 2 | 42 176 of 134 805 — **31.2867%**, max channel delta 254 |
+| 2 v 3 | **0**, exactly |
+
+**With a discarded warm-up export already performed.** So the renders in
+this test are the figure's second, third and fourth, and the *second*
+still differs from the third while the third and fourth agree. PV-104
+concluded the first render differs and every later one is identical; that
+cannot both be true and produce this.
+
+Two readings fit, and they are distinguishable:
+
+1. **It takes more than one export to settle**, and PV-104's original
+   "2 v 3 identical" was itself an intermittent pass.
+2. **The warm-up is not running as intended** — the discarded export
+   does something different from the asserted ones, or is not reaching
+   the figure under test at all.
+
+The same commit passed on the push trigger and failed on the
+pull_request trigger, so it is **intermittent in occurrence while exactly
+deterministic in magnitude** — the same 42 176 pixels every time it
+appears. That pattern is itself evidence: a genuinely noisy rasteriser
+would not repeat a number.
+
+**Next step, and it is one cycle:** instrument the warm-up itself —
+assert the discarded file exists and compare it against r1 — which
+separates reading 1 from reading 2 without changing any behaviour.
+Nothing about `geo.export` is being altered until that answer is in.
+
+---
+
 *Entries R-020 onward are written at each stage's green gate.*
