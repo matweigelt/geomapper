@@ -372,33 +372,43 @@ classdef TestE0_export < GeoMapTestCase
         % below, on its own.
 
         function repeatedExportsOfARealisedFigureAreIdentical(tc)
+            % PV-114. FOUR FIGURES, NOT ONE, and the reason is the whole
+            % finding. This assertion fails on CI intermittently - five
+            % runs so far have gone fail, pass, fail, pass, pass - but
+            % when it fails the magnitude is EXACTLY reproducible: 42 176
+            % of 134 805 pixels, every time, on both triggers. A noisy
+            % rasteriser does not repeat a number. So the difference is
+            % deterministic and it is the OCCURRENCE that varies, which
+            % means one figure per run is a sample size of one and the
+            % diagnostic only arrives on the runs that happen to fail.
+            %
+            % Sampling four independent figures makes the observation
+            % likely in a single run and, when they all agree, bounds the
+            % rate. The loop reports every figure, so a failure names
+            % which one and how it differed rather than merely that it
+            % did.
             d = tc.scratch();
-            f = tc.exportFigure();
-            warm = tc.realise(f, d);
-            r = fullfile(d, ["r1.png" "r2.png" "r3.png"]);
-            for k = 1:3
-                geo.export(f, r(k), Width = 8, Resolution = 150);
+            worst = "";
+            bad = 0;
+            for i = 1:4
+                f = tc.exportFigure();
+                warm = tc.realise(f, d);
+                r = fullfile(d, "f" + i + "_" + (1:3) + ".png");
+                for k = 1:3
+                    geo.export(f, r(k), Width = 8, Resolution = 150);
+                end
+                if ~isequal(imread(r(1)), imread(r(2)))
+                    bad = bad + 1;
+                    worst = worst + sprintf('[figure %d] warm-v1 %s | warm-v2 %s | 1v2 %s | 2v3 %s\n', ...
+                        i, tc.imageDiff(warm, r(1)), tc.imageDiff(warm, r(2)), ...
+                        tc.imageDiff(r(1), r(2)), tc.imageDiff(r(2), r(3)));
+                end
             end
-            % THREE, AND BOTH PAIRS REPORTED, because this test passed on
-            % CI for three checkpoints and then failed with numbers
-            % byte-identical to the original PV-104 measurement - which
-            % says the warm-up export above did not take, not that the
-            % renderer became noisy. If 1-vs-2 differs and 2-vs-3 does
-            % not, the settling is not one-shot per figure and the
-            % warm-up is the wrong shape of fix; if both differ, it is
-            % nondeterminism and PV-104's conclusion needs revisiting.
-            % Guessing between those two would have been a coin flip.
-            % PV-114. The warm-up file is compared too, because the
-            % previous cycle proved 1v2 differs and 2v3 does not EVEN
-            % WITH the warm-up in place - so the cold render is export
-            % TWO, not export one, and the only way to tell whether the
-            % warm-up rendered at all is to look at what it wrote.
-            tc.verifyEqual(imread(r(2)), imread(r(1)), ...
-                "warm-vs-1 " + tc.imageDiff(warm, r(1)) + ...
-                " || warm-vs-2 " + tc.imageDiff(warm, r(2)) + ...
-                " || 1v2 " + tc.imageDiff(r(1), r(2)) + ...
-                " || 2v3 " + tc.imageDiff(r(2), r(3)));
+            tc.verifyEqual(bad, 0, ...
+                sprintf('%d of 4 figures differed between their second and third export:\n%s', ...
+                    bad, worst));
         end
+
 
         function theOrderOfABatchDoesNotChangeItsFiles(tc)
             d = tc.scratch();
@@ -466,3 +476,4 @@ classdef TestE0_export < GeoMapTestCase
         end
     end
 end
+
