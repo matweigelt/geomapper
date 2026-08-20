@@ -93,6 +93,19 @@ become false is a finding.
 | geo.internal.avoidRectCollisions | vectorisation | Moves one rectangle. |
 | geo.internal.avoidRectCollisions | speed | At most eight passes over a handful of rectangles; a budget would measure the timer. |
 | geo.internal.avoidRectCollisions | metamorphic | Order-dependent BY DESIGN - it is a greedy solver and obstacle order changes the result. Asserting a permutation invariance would assert something false. |
+| geo.internal.v1Options | precision | It moves names and carries values across unchanged. There is no arithmetic and therefore no error to bound; the one value it rewrites, `Illuminate` to a `Hillshade` string, is a substitution asserted exactly under `contract`. |
+| geo.internal.v1Options | vectorisation | Walks one option list once. |
+| geo.internal.v1Options | speed | It runs once per figure over at most 120 names, against a map that takes seconds to draw. A budget here would measure the timer. |
+| geo.internal.v1OptionTable | precision | A table of strings. |
+| geo.internal.v1OptionTable | vectorisation | A table of strings. |
+| geo.internal.v1OptionTable | speed | A table of strings, built once. |
+| geo.internal.v1OptionTable | metamorphic | It is a constant. There is no input to vary. |
+| geo.internal.v1OptionTable | robustness | It takes no input, so there is no malformed one to survive. Its own consistency — every row present, unique, and pointing at an option that exists — is asserted under `contract`. |
+| geo.v1.imagesc | precision | Three lines of forwarding. Every number belongs to `geo.map` and its elements. |
+| geo.v1.imagesc | vectorisation | One call draws one map. |
+| geo.v1.imagesc | speed | Budgeted where the cost is, in `geo.map`. |
+| geo.v1.imagesc | metamorphic | Its invariances are the translator's and are asserted there; it adds no state of its own. |
+| geo.v1.imagesc | reference | v1 is the thing being replaced and is not an authority on correctness — several of its pictures were wrong, which is why v2 exists. That the OPTION NAMES match v1 exactly is asserted under `contract` against v1's own source, which is the only claim v1 can certify. |
 | geo.map | precision | It computes nothing. Every number on the figure belongs to an element and is asserted where that element is; what a front can get wrong is COMPOSITION, which is asserted under `reference` against the same map built by hand. A precision test here would re-assert geo.basemap's arithmetic through one more layer. |
 | geo.map | vectorisation | One call draws one map. Several maps side by side are `geo.panel`. |
 | geo.title | precision | Its one number - the clearance above the map - is exact arithmetic on the plotted box and is asserted under `reference` at 1e-9 relative. There is no second, finer claim. |

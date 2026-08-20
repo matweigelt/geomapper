@@ -198,9 +198,18 @@ function [G, crs] = resolveInput(G, crs, Z, crsOption)
 %RESOLVEINPUT  Two call shapes, one grid and one crs out.
 if ~isempty(Z)
     G = geo.grid(G, crs, Z);      % the raw triplet: lon, lat, Z
-    crs = crsOption;
+    crs = [];
 end
 G = geo.grid(G);
+% CRS = ... FILLS THE POSITIONAL SLOT WHENEVER IT IS EMPTY, not only in
+% the triplet form. Written the narrow way first, it worked for
+% geo.map(lon, lat, Z, CRS = c) and was SILENTLY IGNORED by
+% geo.map(G, CRS = c) - which is the shape the v1 translator produces,
+% because v1 spelled the projection as an option and not as an
+% argument. The map drew, in the wrong projection, without complaint.
+if isempty(crs)
+    crs = crsOption;
+end
 if isempty(crs)
     crs = "equirectangular";
 end

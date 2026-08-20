@@ -1173,6 +1173,12 @@ anything. R-011, PV-080.
 | C-123 | 16-Aug-2026 | **`geo.region` fills `Outline` for a box** — four corners, closed | PV-109. `Outline` meant "the polygon, if this region was given as one"; it now means "the vertices of this region" for every region, so `geo.map(Region = ...)` is a pure forward with no geometry in the front |
 | C-124 | 16-Aug-2026 | **A test asserted the defect.** `TestA3_region` required `isempty(named.Outline)` with the diagnostic "an empty outline is how a caller knows" | R-018. The test did not miss the gap, it specified it — a shape no single function was wrong about and nothing downstream could use |
 | C-125 | 16-Aug-2026 | **Stage E checkpoint E.1b delivered and executed.** 394 points, 394 passed | R-018 |
+| C-126 | 16-Aug-2026 | **V9 DISCHARGED.** All 120 `geoImagesc` options translate to an option that exists or raise with the replacement named; 92 and 28 | R-019. Both lists read from source, so neither can drift from the code |
+| C-127 | 16-Aug-2026 | **The option authority is v1's source, not the Stage 0 inventory** | PV-110. The inventory's "fronts" column matched by prefix, so `geoImagescPoints` counted as `geoImagesc`; the count was 114 and is 120 |
+| C-128 | 16-Aug-2026 | **`geo.map` honours `CRS =` in every call shape** | PV-111. Written narrow it worked only for the raw triplet and was silently ignored by `geo.map(G, CRS = c)` — the shape the translator produces |
+| C-129 | 16-Aug-2026 | **A struct value passes through the translator untouched** | PV-112. Nine v1 names are also v2 names, so a translated list still contains names the table recognises. Translating twice now changes nothing, and that is asserted |
+| C-130 | 16-Aug-2026 | **`geo.v1.imagesc`, deliberately not `geoImagesc`** | OB-7 keeps v1 installed until Stage F; a file of that name would shadow it or be shadowed by it depending on path order |
+| C-131 | 16-Aug-2026 | **Stage E checkpoint E.1c delivered and executed.** 410 points, 410 passed | R-019 |
 
 ---
 
