@@ -101,12 +101,13 @@ classdef TestE0_export < GeoMapTestCase
                 max(abs(d(:))), mean(abs(d(:))), da.bytes, db.bytes);
         end
 
-        function realise(~, figH, folder)
+        function file = realise(~, figH, folder)
             %REALISE  One discarded export, so the figure is settled.
             %   See the metamorphic block for why this is part of the
-            %   test rather than a tolerance.
-            geo.export(figH, fullfile(folder, "warm.png"), ...
-                Width = 8, Resolution = 150);
+            %   test rather than a tolerance. Returns the path it wrote,
+            %   so PV-114 can ask whether it rendered at all.
+            file = fullfile(folder, "warm.png");
+            geo.export(figH, file, Width = 8, Resolution = 150);
         end
 
         function w = pageWidthCm(tc, file)
@@ -373,7 +374,7 @@ classdef TestE0_export < GeoMapTestCase
         function repeatedExportsOfARealisedFigureAreIdentical(tc)
             d = tc.scratch();
             f = tc.exportFigure();
-            tc.realise(f, d);
+            warm = tc.realise(f, d);
             r = fullfile(d, ["r1.png" "r2.png" "r3.png"]);
             for k = 1:3
                 geo.export(f, r(k), Width = 8, Resolution = 150);
@@ -387,8 +388,15 @@ classdef TestE0_export < GeoMapTestCase
             % warm-up is the wrong shape of fix; if both differ, it is
             % nondeterminism and PV-104's conclusion needs revisiting.
             % Guessing between those two would have been a coin flip.
+            % PV-114. The warm-up file is compared too, because the
+            % previous cycle proved 1v2 differs and 2v3 does not EVEN
+            % WITH the warm-up in place - so the cold render is export
+            % TWO, not export one, and the only way to tell whether the
+            % warm-up rendered at all is to look at what it wrote.
             tc.verifyEqual(imread(r(2)), imread(r(1)), ...
-                "1v2 " + tc.imageDiff(r(1), r(2)) + ...
+                "warm-vs-1 " + tc.imageDiff(warm, r(1)) + ...
+                " || warm-vs-2 " + tc.imageDiff(warm, r(2)) + ...
+                " || 1v2 " + tc.imageDiff(r(1), r(2)) + ...
                 " || 2v3 " + tc.imageDiff(r(2), r(3)));
         end
 
