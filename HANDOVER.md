@@ -1198,6 +1198,7 @@ anything. R-011, PV-080.
 | C-148 | 20-Aug-2026 | **`GeoMapTestCase.verifyIsAPureFront`** — one banned list for every front | PV-122. Four near-copies had drifted: E1's and E2's lists were shorter, so three fronts were never checked for `ylabel`, `xlabel`, `legend`, `sgtitle` |
 | C-149 | 20-Aug-2026 | **`geo.panel` uses `PlotBoxAspectRatio`, never `Position`** | `tiledlayout` ignores `Position` on its children — the assignment warns and does nothing. v1's workaround carried forward with its constraint written at the code |
 | C-150 | 20-Aug-2026 | **Panel labels flagged, not improvised** | A corner annotation is not a title and no L3 element draws one. Fourth time the Stage E rule has fired; second still open |
+| C-152 | 20-Aug-2026 | **PV-114's hypothesis REFUTED by its own diagnostic; the bit-identity assertion withdrawn** | Four renders came back A, A, B, B — the first two agree and the rasteriser switches once, part way through, on figure 2 of 4. Neither "cold first render" nor "process-first" survives. `geo.export`'s dimensions, route and page are asserted exactly; the pixel content is MATLAB's software rasteriser and has been measured not to be reproducible |
 | C-151 | 20-Aug-2026 | **STAGE E COMPLETE.** 468 points, 468 passed | R-022. Six fronts, two elements the rule demanded, `geo.map` at 128 lines against `geoImagesc`'s 3413 |
 
 ---

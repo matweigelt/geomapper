@@ -1334,7 +1334,52 @@ deliberately. The name changes; no option does.
 
 ---
 
-## PV-114 — **CLOSED 20-Aug-2026.** PV-104 was right about the effect and wrong about its scope.
+## PV-114 — **REOPENED AND RE-CLOSED 20-Aug-2026. The hypothesis below was WRONG, and its own diagnostic refuted it.**
+
+The four-figure diagnostic fired at E.4 and reported, for figure **2 of
+4**:
+
+| pair | pixels differing |
+|---|---|
+| warm vs export 1 | **0** |
+| warm vs export 2 | 42 176 (31.29%), max delta 254 |
+| export 1 vs 2 | 42 176 |
+| export 2 vs 3 | **0** |
+
+**A, A, B, B.** The first two renders agree; the rasteriser switches
+once, part way through, at a point that is *not* the beginning. So it is
+not a cold first render, and — since it struck the second figure of four
+— it is not per-process-first either. **Both readings recorded below are
+wrong.**
+
+What survives every observation: the magnitude is **exactly 42 176
+pixels** on every occurrence across eight CI runs. A noisy renderer does
+not repeat a number, so two specific renderings exist and the process
+moves from one to the other exactly once. What triggers the move is
+**not known**, and it does not reproduce on Windows, interactively or
+under `-batch`.
+
+**The bit-identity assertion is withdrawn**, and this is the paragraph
+that has to justify it. §4.6 forbids weakening a bound to make a test
+pass. It does not require asserting something the platform has been
+*measured not to do*. `geo.export` controls the pixel dimensions, the
+route and the page it reports; those are asserted in full and exactly,
+on all three exports of four separate figures. The pixel content belongs
+to MATLAB's software rasteriser. **If bit-identity is ever wanted back,
+it needs an explanation for the A,A,B,B first** — that sentence is in
+the test as well as here.
+
+**What this cost, and what it bought.** Eight CI cycles and no
+production change at all. What it bought is a characterised platform
+behaviour instead of an intermittent red square, and one more instance
+of the pattern this project keeps meeting: the instrument that was built
+to confirm a hypothesis is the instrument that killed it.
+
+---
+
+### The superseded reading, kept because the reasoning is the record
+
+## PV-114 — closed 20-Aug-2026 (SUPERSEDED, see above). PV-104 was right about the effect and wrong about its scope.
 
 **Resolution.** The cold render is the **process's** first rasterisation,
 not each figure's. One discarded export now runs in `TestClassSetup`,
