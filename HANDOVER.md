@@ -1204,7 +1204,8 @@ anything. R-011, PV-080.
 | C-154 | 20-Aug-2026 | **The composition guarantee is a test**: `geo.map` and the same map built by hand give identical CData, `clim` and registered elements | Stage F deliverable 1. Without it "L4 orchestrates L3" is a diagram, and no unit test can see it |
 | C-155 | 20-Aug-2026 | **The parallel scenario was proved with a live pool before being left to filter** | A test never seen to pass is not evidence. 3 of 3 with 16 workers, images byte-identical to the serial path |
 | C-156 | 20-Aug-2026 | **O11 carried openly.** The GRACE scenario uses a field labelled synthetic in the code | A plausible-looking invented number is indistinguishable from a real one, which is what the oracle register exists to prevent |
-| C-157 | 20-Aug-2026 | **Stage F checkpoint F.1 delivered and executed.** 476 points, 475 passed, 1 filtered | R-023 |
+| C-158 | 20-Aug-2026 | **`geo.internal.hasParallelPool` replaces `exist('parfeval','file')`** as the capability test | PV-123. `exist(name,'file')` was TRUE on a machine with no Parallel Computing Toolbox — MATLAB ships stubs — so the guard passed and `gcp` then failed with an undefined-function error instead of `geo:export:NoParallel`. A capability is established by trying it |
+| C-157 | 20-Aug-2026 | **Stage F checkpoint F.1 delivered and executed.** 477 points, 476 passed, 1 filtered | R-023 |
 
 ---
 

@@ -1637,8 +1637,21 @@ open). Not one of them was inlined.
 catalogue authority, and `tests/TestContentsConsistency.m`.
 
 **Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
-476; suite size 476, per-class sum 476, 475 passed, 1 filtered.** Green
-gate on all six.
+477; suite size 477, per-class sum 477, 476 passed, 1 filtered.** Green
+gate on all six. Also green on `glnxa64` CI — which for this checkpoint
+found something Windows could not.
+
+| id | Finding |
+|---|---|
+| PV-123 | **The toolbox-presence guard did not guard, on the only configuration it existed for.** `geo.export` decided whether the parallel path was available with `exist('parfeval','file') > 0 && exist('gcp','file') > 0`. On CI, which has **no Parallel Computing Toolbox**, that expression is **true** — MATLAB ships dispatch stubs and help files for toolboxes it does not have, and `exist(name,'file')` answers a question about the file system, not about whether a function can be CALLED. So the short circuit never fired, `gcp` was called, and the run died with *"Undefined function 'gcp' for input arguments of type 'char'"* instead of raising `geo:export:NoParallel` with its explanation. **A guard written to produce a helpful error produced an unhelpful one, precisely where it mattered.** The same expression had been copied into the integration test's `assumeTrue`, so the test errored rather than filtering. Replaced by `geo.internal.hasParallelPool`, which **tries the call** and treats any failure as "no" — the one place where swallowing an error is right, because the question being asked *is* whether the error happens. |
+
+**Why Windows could not find this.** This machine has the toolbox
+licensed, so both `exist` calls and the `gcp` call all succeeded and the
+guard looked correct for the entire life of `geo.export`. The defect is
+only reachable from a machine without PCT, and the project has exactly
+one of those: CI. That is the argument for running the gates somewhere
+other than the developer's own box, stated as a measurement rather than
+as a principle.
 
 **The version now carries the evidence.** `Contents.m` reads
 `Version 2.0.476-alpha.1`, and the patch component **is** the verified

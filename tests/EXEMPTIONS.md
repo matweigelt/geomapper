@@ -93,6 +93,8 @@ become false is a finding.
 | geo.internal.avoidRectCollisions | vectorisation | Moves one rectangle. |
 | geo.internal.avoidRectCollisions | speed | At most eight passes over a handful of rectangles; a budget would measure the timer. |
 | geo.internal.avoidRectCollisions | metamorphic | Order-dependent BY DESIGN - it is a greedy solver and obstacle order changes the result. Asserting a permutation invariance would assert something false. |
+| geo.internal.hasParallelPool | precision | It returns a logical. There is no number and therefore no error to bound. |
+| geo.internal.hasParallelPool | vectorisation | One question, one answer. |
 | geo.panel | precision | Its two numbers — the map heights agreeing and the series box matching — are asserted under `reference`, the first at v1's 2% visual threshold and the second at 1e-12. The 2% is deliberately not tightened: it is the point at which a reader stops seeing two panels as the same size, not a measurement. |
 | geo.panel | vectorisation | One call draws one figure; the per-tile loop is the layout. |
 | geo.series | precision | Its one numerical claim — the drawn ordinate is Obs plus Offset — is asserted under `reference` at exactly 0, on the stack `geo.timeseries` builds, because that is where an offset means anything. A precision test here would assert the same addition through one less layer. |
