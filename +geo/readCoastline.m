@@ -363,7 +363,10 @@ function xy = builtinCoast()
 %   It is a FALLBACK, not a recommendation. GSHHG is the better
 %   coastline and GEO.COASTLINE will read one; this is what you get when
 %   you have not said which shoreline you want.
-p = fullfile(geoMapRoot(), "data", "coast_110m.mat");
+% NOT geoMapRoot(): that lives in tests/, which an installed toolbox
+% does not have on its path, and this line failed there for as long as
+% it existed (PV-115). The data is found from the code's own location.
+p = geo.internal.dataFile("coast_110m.mat");
 if ~isfile(p)
     error('geo:readCoastline:BuiltinMissing', ...
         ['The shipped coastline is not at %s. It is built by ' ...

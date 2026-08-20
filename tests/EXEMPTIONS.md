@@ -93,6 +93,32 @@ become false is a finding.
 | geo.internal.avoidRectCollisions | vectorisation | Moves one rectangle. |
 | geo.internal.avoidRectCollisions | speed | At most eight passes over a handful of rectangles; a budget would measure the timer. |
 | geo.internal.avoidRectCollisions | metamorphic | Order-dependent BY DESIGN - it is a greedy solver and obstacle order changes the result. Asserting a permutation invariance would assert something false. |
+| geo.trackmap | precision | Its one number - the pad - is exact and asserted under `reference` at 1e-12 relative. Everything else on the figure belongs to an element. |
+| geo.trackmap | vectorisation | One call draws one map. |
+| geo.pointmap | precision | As `geo.trackmap`: the same resolver, the same claim, asserted once for both. |
+| geo.pointmap | vectorisation | One call draws one map. |
+| geo.pointmap | speed | Budgeted once, in `geo.trackmap`, because the two share every line that costs anything. Timing both would time `geo.map` twice. |
+| geo.internal.mapBackdrop | precision | Its one numerical claim — the pad — is asserted under `reference` at 1e-12 relative, on the limits both fronts return, because that is where a reader looks for it. The arithmetic itself is `geo.region`'s: this function chooses which spec form to hand it and deliberately owns no second padding rule. |
+| geo.internal.mapBackdrop | vectorisation | Resolves one extent and reads one window. |
+| geo.internal.mapBackdrop | speed | Its cost is `geo.readGrid`'s and `geo.regrid`'s, budgeted where those are. What it adds is four comparisons. |
+| geo.internal.splitOptions | precision | Partitions a list by name equality. No arithmetic. |
+| geo.internal.splitOptions | vectorisation | Walks one option list once. |
+| geo.internal.splitOptions | speed | At most a few dozen names, once per figure. |
+| geo.internal.splitOptions | reference | Nothing external certifies how a name-value list should be partitioned; the partition IS the specification and is asserted under `contract`. |
+| geo.internal.withData | precision | Writes absent struct fields. No arithmetic. |
+| geo.internal.withData | vectorisation | One struct. |
+| geo.internal.withData | speed | One struct. |
+| geo.internal.withData | reference | As `splitOptions`: the merge rule is the specification. |
+| geo.internal.backdropOptions | precision | A list of names. |
+| geo.internal.backdropOptions | vectorisation | A list of names. |
+| geo.internal.backdropOptions | speed | A list of names. |
+| geo.internal.backdropOptions | reference | A list of names, and the only claim about it - that it has no duplicates and that both fronts use it rather than a literal - is asserted under `contract`. |
+| geo.internal.backdropOptions | robustness | Takes no input, so there is no malformed one to survive. |
+| geo.internal.backdropOptions | metamorphic | A constant. There is no input to vary. |
+| geo.internal.dataFile | precision | Returns a path. A path is right or it is not. |
+| geo.internal.dataFile | vectorisation | One name. |
+| geo.internal.dataFile | speed | One `fileparts`. |
+| geo.internal.dataFile | metamorphic | Its output depends only on the name, and that it is independent of the MATLAB path is the whole point - asserted under `reference`, which is the stronger statement. |
 | geo.internal.v1Options | precision | It moves names and carries values across unchanged. There is no arithmetic and therefore no error to bound; the one value it rewrites, `Illuminate` to a `Hillshade` string, is a substitution asserted exactly under `contract`. |
 | geo.internal.v1Options | vectorisation | Walks one option list once. |
 | geo.internal.v1Options | speed | It runs once per figure over at most 120 names, against a map that takes seconds to draw. A budget here would measure the timer. |

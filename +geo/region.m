@@ -43,7 +43,11 @@ function R = region(spec, options)
 %             (1,1) struct   a geo.region, for the idempotent form
 %
 %   OPTIONS
-%     Padding  (1,1) double  [0.05]  Fraction of the outline's own span
+%     Padding  (1,1) double  [0.05]  APPLIES TO AN OUTLINE ONLY - an Nx2
+%              spec or a coordinate file. A 1x4 box and a preset name are
+%              STATED EXTENTS and are used as given; the returned Padding
+%              is then 0, because it reports what was applied and not what
+%              was asked for. Fraction of the outline's own span
 %                                    added on each side. Applied to
 %                                    OUTLINE and FILE specs only: a box
 %                                    the caller wrote out is taken as
@@ -141,8 +145,16 @@ if isnumeric(spec) && isreal(spec) && isequal(size(spec), [1 4])
              'written with lonMax beyond 180, e.g. [170 190 -10 10].'], ...
             spec(1), spec(2), spec(3), spec(4));
     end
+    % PADDING IS 0 HERE, NOT options.Padding, and the difference is that
+    % this struct now tells the truth. A 1x4 box is a STATED EXTENT, so
+    % it is not padded - that is defensible and stays. What was not
+    % defensible is that the field documented as "As applied" reported
+    % the value that had been ignored, so a caller who asked for a 5%
+    % margin was told they had one. Measured: geo.region([-20 40 12.7
+    % 50], Padding = 0.05) returned those limits unchanged with Padding
+    % = 0.05 (PV-116). Pad an OUTLINE, or widen the box yourself.
     R = makeRegion("", spec(1:2), clampLat(spec(3:4)), ...
-                   double.empty(0, 2), options.Padding, false);
+                   double.empty(0, 2), 0, false);
     return
 end
 
@@ -165,8 +177,10 @@ key = lower(erase(strtrim(name), " "));
 P = presetTable();
 hit = find([P.name] == key, 1);
 if ~isempty(hit)
+    % 0, not PADDING: a preset's box is its definition, so it is not
+    % padded, and the struct must not claim otherwise (PV-116).
     R = makeRegion(P(hit).name, P(hit).box(1:2), clampLat(P(hit).box(3:4)), ...
-                   double.empty(0, 2), padding, false);
+                   double.empty(0, 2), 0, false);
     return
 end
 

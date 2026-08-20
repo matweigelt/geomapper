@@ -1181,6 +1181,12 @@ anything. R-011, PV-080.
 | C-131 | 16-Aug-2026 | **Stage E checkpoint E.1c delivered and executed.** 410 points, 410 passed | R-019 |
 | C-132 | 20-Aug-2026 | **PV-114 closed: the cold render is the PROCESS's first rasterisation, not each figure's.** One discarded export in `TestClassSetup` | Four independent figures at three exports each came back clean in one run, which rules out per-figure. Intermittent in occurrence, exactly reproducible in magnitude — 42 176 pixels every time — and a noisy rasteriser does not repeat a number |
 | C-133 | 20-Aug-2026 | **No change to `geo.export`.** Six CI cycles, one line of test setup | The `drawnow` tried at PV-104 was removed when it changed nothing and nothing replaced it. A platform-scheduling artefact is absorbed where it arises, not tolerated in an assertion (§4.6) |
+| C-134 | 20-Aug-2026 | **`geo.internal.dataFile` locates shipped data from the package, not the path**; `geoMapRoot` banned inside `+geo` | PV-115. `geo.readCoastline("builtin")` failed on an installed toolbox because `geoMapRoot` lives in `tests/`. Every test passed for as long as it existed |
+| C-135 | 20-Aug-2026 | **`geo.readGrid("builtin")`** added, matching `geo.readCoastline`'s idiom | A front should ask for the builtin topography, not know where it lives |
+| C-136 | 20-Aug-2026 | **`geo.region` reports the padding it APPLIED, not the one it was given** | PV-116. A box and a preset are stated extents and are still not padded; the struct no longer claims otherwise, and the help states the rule |
+| C-137 | 20-Aug-2026 | **The data fronts share one option list, one resolver and one merge rule** — `backdropOptions`, `mapBackdrop`, `withData` | v1's two data fronts each carried their own extent logic and the copies disagreed about the pad. `geo.trackmap` and `geo.pointmap` are 17 executable lines each |
+| C-138 | 20-Aug-2026 | **Every text-level check strips comments before matching** | PV-117, the fourth occurrence of "prose about a token is not the token" — this time in the test written to catch PV-115 |
+| C-139 | 20-Aug-2026 | **Stage E checkpoint E.2 delivered and executed.** 431 points, 431 passed | R-020 |
 
 ---
 

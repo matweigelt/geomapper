@@ -1421,4 +1421,42 @@ Nothing about `geo.export` is being altered until that answer is in.
 
 ---
 
-*Entries R-020 onward are written at each stage's green gate.*
+## R-020 — Stage E, checkpoint E.2, 20-Aug-2026, tier A
+
+**Scope.** `geo.trackmap`, `geo.pointmap`, and the five internals they
+share.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+431 after correcting a first prediction of 430; suite size 431,
+per-class sum 431, 431 passed, 0 failed.** Green gate on all six.
+
+| | |
+|---|---|
+| v1 `geoImagescTrack` | 75 options, a near-clone of a 3413-line function |
+| v1 `geoImagescPoints` | 82 options, the other near-clone |
+| `geo.trackmap`, executable | **17 lines** |
+| `geo.pointmap`, executable | **17 lines** |
+| auto-extent margin vs Pad × span | **5.55e-17** relative, bound 1e-12 |
+
+The two fronts differ by one word. Everything they share — the extent
+precedence, the background, the option split — is in one internal each,
+which is the entire difference from v1: there, the same extent logic
+existed twice **and the two copies disagreed about the pad.**
+
+**Findings — three, and two are defects that would have shipped.**
+
+| id | Finding |
+|---|---|
+| PV-115 | **The shipped toolbox could not find its own data.** `geo.readCoastline` located the builtin coastline with `fullfile(geoMapRoot(), "data", ...)` — and `geoMapRoot` lives in **tests/**. Measured by restoring the default path and adding only the toolbox root, which is what a user's session looks like: `geo.readCoastline("builtin")` failed with *"Unrecognized function or variable 'geoMapRoot'"*. Every test passed for as long as this existed, because the harness always has `tests/` on the path — **the shape of defect a test suite is structurally blind to unless it looks at the question directly.** `geo.internal.dataFile` now resolves from `mfilename('fullpath')`, the pattern `geo.internal.cvdColormap` already used correctly, and `geoMapRoot` joined the audit's banned list inside `+geo`. Found only because `geo.trackmap` needed a background and the shortest way to give it one was the same broken line. |
+| PV-116 | **`geo.region` accepted a `Padding` it did not apply, and reported it as applied.** Padding works on an *outline*; on a 1×4 box or a preset name it was stored and ignored, while the returned field — documented *"As applied"* — carried the value that had been discarded. Measured: `geo.region([-20 40 12.7 50], Padding = 0.05)` returned those limits unchanged with `Padding = 0.05`, so `geo.trackmap`'s pad came out **exactly zero on both axes** on its first run. A box is a stated extent and is still not padded; the struct now says 0, and the help states the rule. `geo.internal.mapBackdrop` passes its two corners as the outline they are, so the toolbox has one padding rule rather than a second one written in a front. |
+| PV-117 | **"Prose about a token is not the token" — the fourth occurrence, and this time in my own test.** The PV-115 regression test asserted `~contains(source, "geoMapRoot(")` and failed on `geo.readCoastline`, whose new comment *explains that `geoMapRoot` must not be used there*. PV-102 was the same thing on the `L4-FRONT` marker; `arrayGrowth` met it on the file documenting the AGROW ban; `checkPrinting` carries a comment about it. Four times, in four different instruments, written by someone who had already recorded it three times. **The pattern is not a lesson that can be learned once** — every text-level check needs its comments stripped, structurally, and that is now what this one does. |
+
+**A missed prediction, again, and the same way.** E.2 was predicted at 20
+points and came in at 21: the contract block has ten methods, not nine.
+That is the second consecutive checkpoint miscounted in the same
+direction and in the same block. Counting by reading is the part that
+fails; the reconcile is what catches it.
+
+---
+
+*Entries R-021 onward are written at each stage's green gate.*
