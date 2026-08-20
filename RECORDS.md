@@ -1459,4 +1459,58 @@ fails; the reconcile is what catches it.
 
 ---
 
-*Entries R-021 onward are written at each stage's green gate.*
+## R-021 — Stage E, checkpoint E.3, 20-Aug-2026, tier A
+
+**Scope.** `geo.series`, the L3 element a time series needed, and
+`geo.timeseries`, the front that stacks them.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+450; suite size 450, per-class sum 450, 450 passed, 0 failed.** Green
+gate on all six. **The prediction was counted mechanically this time and
+was right** — after two consecutive misses from counting by reading.
+
+| | measured | bound |
+|---|---|---|
+| stacked ordinate vs Obs + the reported offset | **0** | ≤ 0 |
+| stack spacing vs the reported Spacing | **0** | ≤ 1e-12 |
+
+Both are exact, and the first is the one that matters: a stacked plot is
+read by **subtracting the offsets by eye**, so a plot whose offsets were
+not exactly what it reported would be wrong in a way no reader could
+detect.
+
+**The rule fired a third time, and the answer was the same.**
+`geo.timeseries` is a front, a front draws nothing, and nothing drew a
+series — so `geo.series` was written rather than the plotting inlined,
+exactly as `geo.title` was at E.1a. The **reference lines go through the
+same element**, because a horizontal line at a constant value over the
+time span *is* a series; treating it as one is why there is no second
+line-drawing path in the front.
+
+**Findings — three.**
+
+| id | Finding |
+|---|---|
+| PV-118 | **Filling `Outline` for boxes made `geo.splitTracks`' fast rectangle test unreachable.** PV-109 gave every region vertices, which is what a drawer needs — and the region filter keys on `Outline` being *empty* to choose between four comparisons and a point-in-polygon. Every rectangle silently started going through `inpolygon`: same answer, more slowly, nothing to say it had happened. `geo.region` now carries `IsBox`, so **`Outline` says what to DRAW and `IsBox` says what to TEST against**. A fix that makes a branch dead is a fix that needs looking at twice. |
+| PV-119 | **`geo.quantile` could not do the one thing its help promises.** *"Z any size; treated as a flat collection"* — and `geo.quantile(Z(:), [5 95])`, a matrix and two percentages, **raised** *"number of elements must not change"*. `Z(isfinite(Z))` is a column whenever Z is a matrix or a column; indexing a column with a row index returns a column; so `v(lo)` was (2,1) while `(h - lo)` was (1,2), implicit expansion silently built a **2×2**, and the final reshape failed. It never showed because **every existing caller passes a scalar p**, where the expansion is 1×1 and invisible. A documented contract that held only for the shapes its own callers happened to use. Both sides are forced to columns now and the shape of `p` is restored at the end. |
+| PV-120 | **F6 for the SIXTH time**, and PV-099 with it. A four-line `keep` helper was identical in `TestE2_dataMaps` and `TestE3_series`; the duplicate-local check rejected the second copy inside the checkpoint that wrote it. Promoting it to `GeoMapTestCase` required removing **both** private copies, not one — PV-099 recorded that a base-class method colliding with a suite's private one makes the framework **drop that suite** and report it as a warning. Six rejections, every one inside the round that wrote it, against v1's six duplicated locals shipped for four years. |
+
+**Two smaller things worth the ink.** The default stack spacing is the
+**median** of the per-station 5–95 ranges, not the maximum: v1 used the
+maximum, so one noisy station pushed every trace apart and the quiet ones
+became flat lines — asserted here by adding a station ten times noisier
+and requiring the spacing not to triple. And the series colours come from
+**viridis in stack order** rather than an invented qualitative palette,
+because a palette is data and data belongs in `geo.colormaps` with its
+provenance, not as a literal inside a front.
+
+**One narrow distinction, stated rather than inferred.**
+`geo.timeseries` writes `axH.YLabel.String` and `axH.Title.String`
+directly. That is *configuration* of objects the axes already owns — no
+graphics object is created, exactly as with `XLim`. Calling `ylabel()`
+would create one, which is why `ylabel` is on the audit's banned list and
+this is not.
+
+---
+
+*Entries R-022 onward are written at each stage's green gate.*

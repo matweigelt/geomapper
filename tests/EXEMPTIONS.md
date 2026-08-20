@@ -93,6 +93,12 @@ become false is a finding.
 | geo.internal.avoidRectCollisions | vectorisation | Moves one rectangle. |
 | geo.internal.avoidRectCollisions | speed | At most eight passes over a handful of rectangles; a budget would measure the timer. |
 | geo.internal.avoidRectCollisions | metamorphic | Order-dependent BY DESIGN - it is a greedy solver and obstacle order changes the result. Asserting a permutation invariance would assert something false. |
+| geo.series | precision | Its one numerical claim — the drawn ordinate is Obs plus Offset — is asserted under `reference` at exactly 0, on the stack `geo.timeseries` builds, because that is where an offset means anything. A precision test here would assert the same addition through one less layer. |
+| geo.series | vectorisation | Draws one series. The band's per-run loop IS the interface: a run is a stretch with data in it, and there is no batched form of "one station". |
+| geo.series | speed | Its cost is one `plot3` and one `patch` per run. Budgeted where the total is, in `geo.timeseries`. |
+| geo.series | metamorphic | Its invariances are the gap rule's, and the gap rule is `geo.splitTracks`', asserted there. What this adds — that the band breaks where the line does — is asserted under `robustness` because it is a statement about one drawing, not about two. |
+| geo.timeseries | precision | Its two numbers, the ordinate and the spacing, are asserted under `reference` at 0 and 1e-12. There is no third claim for a precision test to make. |
+| geo.timeseries | vectorisation | One call draws one stack; the per-station loop is the stack. |
 | geo.trackmap | precision | Its one number - the pad - is exact and asserted under `reference` at 1e-12 relative. Everything else on the figure belongs to an element. |
 | geo.trackmap | vectorisation | One call draws one map. |
 | geo.pointmap | precision | As `geo.trackmap`: the same resolver, the same claim, asserted once for both. |

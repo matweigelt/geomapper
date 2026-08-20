@@ -1187,6 +1187,13 @@ anything. R-011, PV-080.
 | C-137 | 20-Aug-2026 | **The data fronts share one option list, one resolver and one merge rule** — `backdropOptions`, `mapBackdrop`, `withData` | v1's two data fronts each carried their own extent logic and the copies disagreed about the pad. `geo.trackmap` and `geo.pointmap` are 17 executable lines each |
 | C-138 | 20-Aug-2026 | **Every text-level check strips comments before matching** | PV-117, the fourth occurrence of "prose about a token is not the token" — this time in the test written to catch PV-115 |
 | C-139 | 20-Aug-2026 | **Stage E checkpoint E.2 delivered and executed.** 431 points, 431 passed | R-020 |
+| C-140 | 20-Aug-2026 | **`geo.series` added as an L3 element**; reference lines are drawn as series | The Stage E rule fired a third time: `geo.timeseries` is a front, a front draws nothing, and nothing drew a series. A horizontal line at a constant value over the time span IS one |
+| C-141 | 20-Aug-2026 | **`geo.region` carries `IsBox`** | PV-118. Filling `Outline` for boxes made `geo.splitTracks`' rectangle test unreachable. `Outline` says what to draw, `IsBox` says what to test against |
+| C-142 | 20-Aug-2026 | **`geo.quantile` forces both sides to columns and restores the shape of `p`** | PV-119. It documented "Z any size" and raised on a matrix with two percentages; implicit expansion built a 2×2. Invisible because every caller passed a scalar `p` |
+| C-143 | 20-Aug-2026 | **Stack spacing is the MEDIAN of the per-station 5–95 ranges, not the maximum** | v1's maximum let one noisy station flatten every other trace. Asserted by adding a station ten times noisier |
+| C-144 | 20-Aug-2026 | **A front may write `axH.YLabel.String`; it may not call `ylabel()`** | Configuration of an object the axes already owns creates nothing; the function call creates a Text. The distinction is narrow enough to state rather than infer |
+| C-145 | 20-Aug-2026 | **`keep` promoted to `GeoMapTestCase`, both private copies removed** | PV-120. F6 for the sixth time, and PV-099 says a base-class method colliding with a suite's private one makes the framework drop that suite |
+| C-146 | 20-Aug-2026 | **Stage E checkpoint E.3 delivered and executed.** 450 points, 450 passed | R-021. Prediction counted mechanically and correct, after two misses |
 
 ---
 

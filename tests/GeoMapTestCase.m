@@ -112,6 +112,22 @@ classdef GeoMapTestCase < matlab.unittest.TestCase
             tc.addTeardown(@() closeIfValid(f));
         end
 
+        function H = keep(tc, H)
+            %KEEP  Close a front's figure on teardown, and pass it on.
+            %   Here rather than in two suites: the duplicate-local check
+            %   rejected the second copy, which is the sixth time it has
+            %   done that and the sixth time it was inside the checkpoint
+            %   that wrote it.
+            %
+            %   BOTH PRIVATE COPIES WERE REMOVED, not just one. PV-099:
+            %   a method promoted to this class while a suite still has a
+            %   private one of the same name makes the framework DROP
+            %   that suite for an access-permission mismatch, and report
+            %   it as a warning. The suite would run smaller and still
+            %   call itself green.
+            tc.addTeardown(@() closeIfValid(H.Figure));
+        end
+
         function G = demoGrid(~)
             %DEMOGRID  The 5-degree global field every Stage D suite draws.
             %   Here rather than in three suites: the duplicate-local

@@ -53,9 +53,6 @@ classdef TestE2_dataMaps < GeoMapTestCase
                 Obs = [1 -2 3 0.5], SizeData = [1 2 3 4]);
         end
 
-        function H = keep(tc, H)
-            tc.addTeardown(@() close(H.Figure));
-        end
     end
 
     % ==================================================================

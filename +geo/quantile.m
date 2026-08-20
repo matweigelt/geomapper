@@ -68,14 +68,26 @@ if any(p(:) < 0 | p(:) > 100)
         min(p(:)), max(p(:)));
 end
 
+% BOTH SIDES FORCED TO COLUMNS, AND THE SHAPE RESTORED AT THE END.
+% Written without the (:), this promised "Z any size, treated as a flat
+% collection" and delivered it only for the shapes its own callers
+% happened to use. Z(isfinite(Z)) is a COLUMN whenever Z is a matrix or
+% a column vector, and indexing a column with a row index returns a
+% column - so v(lo) came out (2,1) while (h - lo) was (1,2), implicit
+% expansion silently built a 2x2, and RESHAPE then failed with "number
+% of elements must not change". geo.quantile(Z(:), [5 95]) - a matrix
+% and two percentages, which is the documented use - could not be
+% called at all (PV-119). It never showed because every existing caller
+% passes a scalar p, where the expansion is 1x1 and invisible.
 v = sort(Z(isfinite(Z)));
+v = v(:);
 if isempty(v)
     q = nan(size(p));
     return
 end
 
 n = numel(v);
-h = (n - 1) * p / 100 + 1;          % type 7
+h = (n - 1) * p(:) / 100 + 1;       % type 7, as a column
 lo = floor(h);
 hi = ceil(h);
 lo = min(max(lo, 1), n);
