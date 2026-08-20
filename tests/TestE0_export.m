@@ -38,6 +38,53 @@ classdef TestE0_export < GeoMapTestCase
         CoveredFunctions = ["geo.export" "geo.internal.writeFigureFile"]
     end
 
+    methods (TestClassSetup)
+
+        function rasteriseOnceBeforeAnythingIsMeasured(tc)
+            %RASTERISEONCEBEFOREANYTHINGISMEASURED  PV-114's resolution.
+            %   ONE discarded export before any test in this class runs.
+            %
+            %   The evidence it rests on, in order. PV-104 found that a
+            %   figure's first export differs from its second by 31.29%
+            %   of pixels on software OpenGL, so a per-FIGURE warm-up was
+            %   added. That was not enough: the assertion still failed
+            %   intermittently, and when it failed the magnitude was
+            %   EXACTLY reproducible - 42 176 of 134 805 pixels, every
+            %   time, on both CI triggers. A noisy rasteriser does not
+            %   repeat a number, so the difference was deterministic and
+            %   only its occurrence varied.
+            %
+            %   Sampling FOUR independent figures at three exports each
+            %   then came back completely clean in a single run. That
+            %   rules out "every figure's second render differs": if it
+            %   were per figure, four chances would have caught it.
+            %
+            %   What fits all of it is that the cold render is the
+            %   PROCESS's first rasterisation - the software GL context
+            %   is built lazily on first use - and whether it lands
+            %   inside a measured comparison depends only on which suite
+            %   happens to rasterise first. That is scheduling, not
+            %   geoMap, and it is absorbed here rather than tolerated in
+            %   an assertion.
+            %
+            %   HONEST RESIDUAL: this is the hypothesis that survives the
+            %   evidence, not one that has been isolated directly - the
+            %   effect has never been reproduced on Windows, so it cannot
+            %   be stepped through. If the assertion fails again, the
+            %   hypothesis is wrong and the four-figure diagnostic below
+            %   will say how.
+            f = figure('Visible', 'off', 'Color', 'w');
+            c = onCleanup(@() close(f));
+            ax = axes('Parent', f);
+            surface(ax, peaks(10), 'EdgeColor', 'none');
+            d = string(tempname());
+            mkdir(d);
+            tc.addTeardown(@() rmdir(d, 's'));
+            geo.export(f, fullfile(d, "classwarm.png"), Width = 4, ...
+                Resolution = 100);
+        end
+    end
+
     methods (TestMethodSetup)
 
         function noGpuIsAMachineFactNotADefect(tc)
