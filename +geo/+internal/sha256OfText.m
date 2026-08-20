@@ -1,10 +1,22 @@
 function h = sha256OfText(txt)
 %SHA256OFTEXT  SHA-256 of a char vector, as lowercase hex.
 %
+%   SYNTAX
+%     h = GEO.INTERNAL.SHA256OFTEXT(TXT)
+%
 %   DESCRIPTION
 %     Used by the transfer manifest so a truncated or altered file is a
 %     legible message at the top of the runner log rather than a
-%     mysterious test failure discovered rounds later.
+%     mysterious test failure discovered rounds later, and by GEO.CACHE
+%     to key a parsed coastline.
+%
+%     IT LIVES IN +geo/+internal BECAUSE GEO.CACHE NEEDS IT. It sat in
+%     tools/ for eleven checkpoints, which meant a toolbox installed
+%     without tools/ - that is, every installed toolbox - raised
+%     "Undefined function 'sha256OfText'" the first time anything drew a
+%     coastline (finding PV-127). The harness now calls the package's
+%     copy rather than the package borrowing the harness's, because the
+%     shipped code is the side that must stand alone.
 %
 %     Uses the JVM's MessageDigest, which is present in desktop MATLAB.
 %     Where the JVM is unavailable (-nojvm), falls back to a weaker
@@ -17,13 +29,29 @@ function h = sha256OfText(txt)
 %   OUTPUTS
 %     h    (1,1) string  64 hex characters, or "weak:<n>" on fallback.
 %
-%   EXAMPLE
-%     sha256OfText(fileread('README.md'))
+%   ACCURACY
+%     Exact, and verified against the NIST vectors for "" and "abc" in
+%     TestStage0_instruments rather than against itself. A hash checked
+%     only for self-consistency would agree with its own mistakes.
 %
-%   See also MAKEMANIFEST, RUNGEOMAPTESTS.
+%     THE FALLBACK IS NOT SHA-256 AND SAYS SO IN ITS OWN RETURN VALUE.
+%     Under -nojvm it returns "weak:<hex>", an FNV-1a checksum, so a
+%     caller comparing two digests still gets a correct answer and a
+%     caller printing one cannot mistake it for the strong instrument.
+%     It is a change-detector, not a cryptographic one.
+%
+%   ERRORS
+%     MATLAB:validation:UnableToConvert - txt is not convertible to
+%                                         (1,:) char
+%     (nothing else; the JVM path is guarded rather than caught)
+%
+%   EXAMPLE
+%     geo.internal.sha256OfText(fileread('README.md'))
+%
+%   See also GEO.CACHE, MAKEMANIFEST, RUNGEOMAPTESTS.
 %
 %   ---------------------------------------------------------------------
-%   geoMap v2.0 | 13-Aug-2026 | Claude Opus 5 (Anthropic)
+%   geoMap v2.0 | 20-Aug-2026 | Claude Opus 5 (Anthropic)
 
 arguments
     txt (1,:) char

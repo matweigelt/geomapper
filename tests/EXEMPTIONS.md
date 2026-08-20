@@ -27,10 +27,10 @@ become false is a finding.
 | verifyManifest | metamorphic | File order in the manifest is fixed by the generator. |
 | verifyManifest | speed | I/O bound on a fixture of a few files; a ratio would measure the filesystem cache. |
 | verifyManifest | precision | No numerical claim; the hash comparison is exact by construction. |
-| sha256OfText | metamorphic | A hash has no invariance worth asserting beyond determinism, covered under contract. |
-| sha256OfText | speed | Not on any hot path. |
-| sha256OfText | precision | Exact by construction. |
-| sha256OfText | vectorisation | Single char-vector interface. |
+| geo.internal.sha256OfText | metamorphic | A hash has no invariance worth asserting beyond determinism, which is covered under `contract`. Re-read 20-Aug-2026 when the function moved into +geo (PV-127) and still true: SHA-256 is deliberately not homomorphic, so there is no relation between the digest of a part and the digest of the whole to assert. |
+| geo.internal.sha256OfText | speed | Not on any hot path. `geo.cache` calls it once per coastline key, against a read that takes orders of magnitude longer. A budget would measure the JVM. |
+| geo.internal.sha256OfText | precision | Exact by construction, and asserted against the NIST vectors rather than against itself under `reference`. |
+| geo.internal.sha256OfText | vectorisation | Single char-vector interface. There is no array-of-strings form, and adding one to satisfy a category would be inventing an interface nothing calls. |
 | geoMapAudit | precision | No numerical claim; its criterion is behavioural and is asserted under contract and reference. |
 | geoMapAudit | vectorisation | Operates on one tree. There is no batched form to compare against. |
 | geoMapAudit | speed | Its cost is dominated by file I/O and by MATLAB's Code Analyzer, neither of which this project owns; a ratio would measure the filesystem cache and the analyser's version. |

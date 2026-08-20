@@ -1214,6 +1214,9 @@ anything. R-011, PV-080.
 | C-164 | 20-Aug-2026 | **`CHANGELOG.md` cites a probe result per F-number**, and lists F17 as `blocked` | A defect claimed fixed that never reproduced is not a fix. F16's illustration corrected to its measured value |
 | C-165 | 20-Aug-2026 | **`GettingStarted.m`, README migration table, `geoMap.prj`** | 92 of 120 v1 options translate and 28 raise with the replacement named; `geo.v1.imagesc` runs a v1 script with one edit |
 | C-166 | 20-Aug-2026 | **Stage F checkpoint F.3 delivered and executed.** 489 points, 488 passed, 1 filtered | R-025 |
+| C-167 | 20-Aug-2026 | **PV-127 fixed: `sha256OfText` moved from `tools/` into `+geo/+internal/`,** and the harness now calls the package's copy rather than the package borrowing the harness's. Reproduced, then verified by running `GettingStarted` with only the toolbox root on the path | PV-127 |
+| C-168 | 20-Aug-2026 | **Audit check 15, `packageClosure`:** +geo may not reference any `.m` the `.mltbx` does not ship. States the rule instead of enumerating names; `geoMapRoot` removed from `banned` so one defect has one authority. Fixture `escapes`; 17 fixtures | PV-128 |
+| C-169 | 20-Aug-2026 | **Two integration tests read the closure a second way,** via `matlab.codetools.requiredFilesAndProducts` — which sees a dependency outside the repository that the audit's text scan cannot — and assert the product list is MATLAB plus at most the optional, guarded PCT. 491 points, 486 passed, 5 filtered | PV-127, PV-129 |
 
 ---
 

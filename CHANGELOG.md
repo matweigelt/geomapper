@@ -9,6 +9,24 @@ It moves when the evidence moves.
 
 ---
 
+## Unreleased — 2.0.491-alpha.1
+
+### Fixed
+- **The toolbox now runs when installed.** `geo.cache` called `sha256OfText`
+  from `tools/`, which the `.mltbx` does not ship, so drawing a coastline
+  raised `Undefined function 'sha256OfText'` on every installed copy while
+  passing every test in the repository (PV-127). The function now lives in
+  `+geo/+internal/`, and the harness calls the package's copy rather than the
+  reverse.
+
+### Added
+- Audit check `packageClosure`: nothing in `+geo` may reference a file the
+  toolbox does not ship. It states the rule rather than listing names, which
+  is what let the same defect recur after PV-115 (PV-128).
+- Two integration tests reading the same closure through MATLAB's dependency
+  analyser, and asserting that drawing needs base MATLAB plus at most the
+  optional Parallel Computing Toolbox.
+
 ## 2.0.0 — unreleased (Stage F in progress)
 
 A complete rewrite. v1 (`geoImagescToolbox`) is replaced, not extended.

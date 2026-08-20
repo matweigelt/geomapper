@@ -11,7 +11,7 @@ Base MATLAB only: no Mapping, Image Processing or Statistics Toolbox. Sixteen pr
 
 The model is a SPHERE (authalic radius 6371.0072 km), good to about 0.3%. This is a visualisation tool, not a survey tool.</param.description>
     <param.screenshot />
-    <param.version>2.0.489-alpha.1</param.version>
+    <param.version>2.0.491-alpha.1</param.version>
     <param.output>${PROJECT_ROOT}/geoMap.mltbx</param.output>
     <param.products.name />
     <param.products.id />
@@ -23,7 +23,7 @@ The model is a SPHERE (authalic radius 6371.0072 km), good to about 0.3%. This i
 % manual; the harness, the mirror and the working records stay in the
 % repository where they are useful.
 %
-% NOTE the version above is 2.0.489-alpha.1 and Contents.m is the
+% NOTE the version above is 2.0.491-alpha.1 and Contents.m is the
 % authority for it. tools/geoMapAudit.m checks this file against
 % Contents.m; it is not maintained independently.
 tests/

@@ -63,7 +63,7 @@ lines = strings(numel(files), 1);
 for i = 1:numel(files)
     txt = fileread(fullfile(root, files(i)));
     lines(i) = sprintf('%s\t%d\t%s', files(i), ...
-        numel(splitlines(txt)), sha256OfText(txt));
+        numel(splitlines(txt)), geo.internal.sha256OfText(txt));
 end
 
 hdr = [ ...

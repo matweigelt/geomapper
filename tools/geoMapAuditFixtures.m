@@ -131,6 +131,8 @@ reg = [ ...
       "F8 by accretion: a front over the 200-line orchestration budget") ...
     r("staledoc", "documentationSync", ...
       "a shipped manual page describing a help block that has since changed") ...
+    r("escapes", "packageClosure", ...
+      "PV-127: +geo calling a tools/ helper - green here, undefined once installed") ...
     ];
 end
 
@@ -215,6 +217,21 @@ switch name
         % the front is a plotter; 3413 lines of them and it is F8.
         appendToBody(fullfile(d, '+geo', 'frontish.m'), ...
             "text(0, 0, 'a label the front drew itself');");
+    case "escapes"
+        % The defect exactly as it occurred: a helper in tools/, called
+        % unqualified from inside the package. Nothing here is a parse
+        % error and nothing is stylistically wrong - in a checkout it
+        % runs, and that is precisely why it survived eleven checkpoints
+        % in geo.cache. It fails only where nobody was looking, on an
+        % installed toolbox, which ships +geo and not tools/.
+        mkdir(fullfile(d, 'tools'));
+        writeText(fullfile(d, 'tools', 'harnessHelper.m'), ...
+            join(["function y = harnessHelper(x)"
+                  "%HARNESSHELPER  A harness utility. Not shipped."
+                  "y = x;"
+                  "end"], newline));
+        appendToBody(fullfile(d, '+geo', 'healthy.m'), ...
+            "y = harnessHelper(y);");
     case "staledoc"
         % A page that renders, reads well, and describes a help block
         % that no longer exists. Nothing else in the tree is wrong -

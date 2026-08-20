@@ -208,7 +208,7 @@ function h = helpHash(lines)
 %   Whitespace-normalised so that reflowing a paragraph does not read as
 %   a content change, and so the same source gives the same hash on
 %   every platform whatever its line endings.
-h = string(sha256OfText(char(regexprep(strjoin(lines, " "), '\s+', ' '))));
+h = string(geo.internal.sha256OfText(char(regexprep(strjoin(lines, " "), '\s+', ' '))));
 end
 
 function tf = isRenderedIn(html, name)
