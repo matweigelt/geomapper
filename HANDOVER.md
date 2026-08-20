@@ -1179,6 +1179,8 @@ anything. R-011, PV-080.
 | C-129 | 16-Aug-2026 | **A struct value passes through the translator untouched** | PV-112. Nine v1 names are also v2 names, so a translated list still contains names the table recognises. Translating twice now changes nothing, and that is asserted |
 | C-130 | 16-Aug-2026 | **`geo.v1.imagesc`, deliberately not `geoImagesc`** | OB-7 keeps v1 installed until Stage F; a file of that name would shadow it or be shadowed by it depending on path order |
 | C-131 | 16-Aug-2026 | **Stage E checkpoint E.1c delivered and executed.** 410 points, 410 passed | R-019 |
+| C-132 | 20-Aug-2026 | **PV-114 closed: the cold render is the PROCESS's first rasterisation, not each figure's.** One discarded export in `TestClassSetup` | Four independent figures at three exports each came back clean in one run, which rules out per-figure. Intermittent in occurrence, exactly reproducible in magnitude — 42 176 pixels every time — and a noisy rasteriser does not repeat a number |
+| C-133 | 20-Aug-2026 | **No change to `geo.export`.** Six CI cycles, one line of test setup | The `drawnow` tried at PV-104 was removed when it changed nothing and nothing replaced it. A platform-scheduling artefact is absorbed where it arises, not tolerated in an assertion (§4.6) |
 
 ---
 

@@ -1334,9 +1334,53 @@ deliberately. The name changes; no option does.
 
 ---
 
-## PV-114 — open. PV-104's conclusion does not survive its own fix.
+## PV-114 — **CLOSED 20-Aug-2026.** PV-104 was right about the effect and wrong about its scope.
 
-**Status: OPEN, and the E.1c PR is red on it.** Not merged, not patched.
+**Resolution.** The cold render is the **process's** first rasterisation,
+not each figure's. One discarded export now runs in `TestClassSetup`,
+before any test in the class measures anything.
+
+**How that was reached, and every step was a measurement.**
+
+| step | what it showed |
+|---|---|
+| PV-104: 3 exports, one figure | 1v2 differs 31.29%, 2v3 exactly 0 → read as *per figure* |
+| per-figure warm-up added | passed 3 checkpoints, then failed **with byte-identical numbers** |
+| both pairs reported | 1v2 = 42 176 px, 2v3 = 0 — *with* the warm-up in place |
+| warm-up file compared too | run went green; no diagnostic |
+| **4 independent figures × 3 exports** | **all clean in one run** |
+
+The last row is the one that decided it. If the difference were each
+figure's second render, four chances would have caught it. It caught
+none — so it is not per figure, and the only scope left that fits an
+occurrence which is intermittent across runs while **exactly
+reproducible in magnitude** (42 176 pixels, every time, on both CI
+triggers) is once per process: the software GL context is built lazily
+on first use, and whether that lands inside a measured comparison
+depends on which suite happens to rasterise first. That is scheduling,
+not geoMap.
+
+**A noisy rasteriser does not repeat a number.** That observation is what
+kept this from being written off as flakiness and tolerated with a
+loosened comparison, which §4.6 forbids and which would have quietly
+destroyed the determinism claim `geo.export` rests on.
+
+**Honest residual, recorded at the fix.** This is the hypothesis that
+survives the evidence, not one isolated directly — the effect has never
+reproduced on Windows, interactively or under `-batch`, so it cannot be
+stepped through. If the assertion fails again the hypothesis is wrong,
+and the four-figure diagnostic will say how. That sentence is in the
+test, not only here.
+
+**Cost:** six CI cycles and no change to `geo.export` whatsoever. The
+`drawnow` tried at PV-104 was removed when it changed nothing; nothing
+replaced it.
+
+---
+
+### The original entry, kept because the reasoning is the record
+
+**Status when written: OPEN, and the E.1c PR was red on it.**
 
 `TestE0_export/repeatedExportsOfARealisedFigureAreIdentical` discards one
 export to settle the figure and then compares the next two. It passed on

@@ -38,6 +38,53 @@ classdef TestE0_export < GeoMapTestCase
         CoveredFunctions = ["geo.export" "geo.internal.writeFigureFile"]
     end
 
+    methods (TestClassSetup)
+
+        function rasteriseOnceBeforeAnythingIsMeasured(tc)
+            %RASTERISEONCEBEFOREANYTHINGISMEASURED  PV-114's resolution.
+            %   ONE discarded export before any test in this class runs.
+            %
+            %   The evidence it rests on, in order. PV-104 found that a
+            %   figure's first export differs from its second by 31.29%
+            %   of pixels on software OpenGL, so a per-FIGURE warm-up was
+            %   added. That was not enough: the assertion still failed
+            %   intermittently, and when it failed the magnitude was
+            %   EXACTLY reproducible - 42 176 of 134 805 pixels, every
+            %   time, on both CI triggers. A noisy rasteriser does not
+            %   repeat a number, so the difference was deterministic and
+            %   only its occurrence varied.
+            %
+            %   Sampling FOUR independent figures at three exports each
+            %   then came back completely clean in a single run. That
+            %   rules out "every figure's second render differs": if it
+            %   were per figure, four chances would have caught it.
+            %
+            %   What fits all of it is that the cold render is the
+            %   PROCESS's first rasterisation - the software GL context
+            %   is built lazily on first use - and whether it lands
+            %   inside a measured comparison depends only on which suite
+            %   happens to rasterise first. That is scheduling, not
+            %   geoMap, and it is absorbed here rather than tolerated in
+            %   an assertion.
+            %
+            %   HONEST RESIDUAL: this is the hypothesis that survives the
+            %   evidence, not one that has been isolated directly - the
+            %   effect has never been reproduced on Windows, so it cannot
+            %   be stepped through. If the assertion fails again, the
+            %   hypothesis is wrong and the four-figure diagnostic below
+            %   will say how.
+            f = figure('Visible', 'off', 'Color', 'w');
+            c = onCleanup(@() close(f));
+            ax = axes('Parent', f);
+            surface(ax, peaks(10), 'EdgeColor', 'none');
+            d = string(tempname());
+            mkdir(d);
+            tc.addTeardown(@() rmdir(d, 's'));
+            geo.export(f, fullfile(d, "classwarm.png"), Width = 4, ...
+                Resolution = 100);
+        end
+    end
+
     methods (TestMethodSetup)
 
         function noGpuIsAMachineFactNotADefect(tc)
@@ -101,12 +148,13 @@ classdef TestE0_export < GeoMapTestCase
                 max(abs(d(:))), mean(abs(d(:))), da.bytes, db.bytes);
         end
 
-        function realise(~, figH, folder)
+        function file = realise(~, figH, folder)
             %REALISE  One discarded export, so the figure is settled.
             %   See the metamorphic block for why this is part of the
-            %   test rather than a tolerance.
-            geo.export(figH, fullfile(folder, "warm.png"), ...
-                Width = 8, Resolution = 150);
+            %   test rather than a tolerance. Returns the path it wrote,
+            %   so PV-114 can ask whether it rendered at all.
+            file = fullfile(folder, "warm.png");
+            geo.export(figH, file, Width = 8, Resolution = 150);
         end
 
         function w = pageWidthCm(tc, file)
@@ -371,26 +419,43 @@ classdef TestE0_export < GeoMapTestCase
         % below, on its own.
 
         function repeatedExportsOfARealisedFigureAreIdentical(tc)
+            % PV-114. FOUR FIGURES, NOT ONE, and the reason is the whole
+            % finding. This assertion fails on CI intermittently - five
+            % runs so far have gone fail, pass, fail, pass, pass - but
+            % when it fails the magnitude is EXACTLY reproducible: 42 176
+            % of 134 805 pixels, every time, on both triggers. A noisy
+            % rasteriser does not repeat a number. So the difference is
+            % deterministic and it is the OCCURRENCE that varies, which
+            % means one figure per run is a sample size of one and the
+            % diagnostic only arrives on the runs that happen to fail.
+            %
+            % Sampling four independent figures makes the observation
+            % likely in a single run and, when they all agree, bounds the
+            % rate. The loop reports every figure, so a failure names
+            % which one and how it differed rather than merely that it
+            % did.
             d = tc.scratch();
-            f = tc.exportFigure();
-            tc.realise(f, d);
-            r = fullfile(d, ["r1.png" "r2.png" "r3.png"]);
-            for k = 1:3
-                geo.export(f, r(k), Width = 8, Resolution = 150);
+            worst = "";
+            bad = 0;
+            for i = 1:4
+                f = tc.exportFigure();
+                warm = tc.realise(f, d);
+                r = fullfile(d, "f" + i + "_" + (1:3) + ".png");
+                for k = 1:3
+                    geo.export(f, r(k), Width = 8, Resolution = 150);
+                end
+                if ~isequal(imread(r(1)), imread(r(2)))
+                    bad = bad + 1;
+                    worst = worst + sprintf('[figure %d] warm-v1 %s | warm-v2 %s | 1v2 %s | 2v3 %s\n', ...
+                        i, tc.imageDiff(warm, r(1)), tc.imageDiff(warm, r(2)), ...
+                        tc.imageDiff(r(1), r(2)), tc.imageDiff(r(2), r(3)));
+                end
             end
-            % THREE, AND BOTH PAIRS REPORTED, because this test passed on
-            % CI for three checkpoints and then failed with numbers
-            % byte-identical to the original PV-104 measurement - which
-            % says the warm-up export above did not take, not that the
-            % renderer became noisy. If 1-vs-2 differs and 2-vs-3 does
-            % not, the settling is not one-shot per figure and the
-            % warm-up is the wrong shape of fix; if both differ, it is
-            % nondeterminism and PV-104's conclusion needs revisiting.
-            % Guessing between those two would have been a coin flip.
-            tc.verifyEqual(imread(r(2)), imread(r(1)), ...
-                "1v2 " + tc.imageDiff(r(1), r(2)) + ...
-                " || 2v3 " + tc.imageDiff(r(2), r(3)));
+            tc.verifyEqual(bad, 0, ...
+                sprintf('%d of 4 figures differed between their second and third export:\n%s', ...
+                    bad, worst));
         end
+
 
         function theOrderOfABatchDoesNotChangeItsFiles(tc)
             d = tc.scratch();
@@ -458,3 +523,4 @@ classdef TestE0_export < GeoMapTestCase
         end
     end
 end
+
