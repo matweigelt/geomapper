@@ -187,7 +187,7 @@ n = ["forbiddenFunctions" "shadowedBuiltins" "arrayGrowth" ...
      "barePrinting" "identifierAgreement" "helpTemplate" ...
      "functionLength" "positionalArity" "duplicateLocalFunctions" ...
      "versionAgreement" "contractExemption" "codeAnalyzer" ...
-     "orchestrationPurity"];
+     "orchestrationPurity" "documentationSync"];
 end
 
 function f = runCheck(name, files, root)
@@ -205,6 +205,7 @@ switch name
     case "contractExemption",       f = checkContractExemption(files, root);
     case "codeAnalyzer",            f = checkCodeAnalyzer(files);
     case "orchestrationPurity",     f = checkPurity(files);
+    case "documentationSync",       f = checkDocSync(root);
 end
 end
 
@@ -437,6 +438,81 @@ for i = 1:numel(files)
             nCode, budget); %#ok<AGROW>
     end
 end
+end
+
+function f = checkDocSync(root)
+%CHECKDOCSYNC  The shipped manual describes the code that is here now.
+%   A DOCUMENTATION PAGE DOES NOT ROT LOUDLY. It was correct when it was
+%   built, it still renders, it still reads well, and it describes a
+%   function that has since changed. Nothing in a test suite notices,
+%   because the page is not code and the help is not executed. The only
+%   thing that can notice is a comparison between the page and the
+%   source it came from.
+%
+%   So docbuild/build_help.m embeds the SHA-256 of the help block each
+%   page was built from, and this recomputes it. Prose cannot be
+%   compared to prose; a hash can.
+%
+%   THE ABSENCE OF THE MANUAL IS NOT A FINDING. docs/html is a build
+%   artefact, and a fresh clone that has not run the builder has no
+%   pages to be stale. Reporting that as a defect would train people to
+%   ignore this check. It reports only DISAGREEMENT: a page that exists
+%   and no longer matches, or a page missing while its siblings are
+%   present.
+f = emptyFinding();
+htmlDir = fullfile(root, "docs", "html");
+if ~isfolder(htmlDir) || isempty(dir(fullfile(htmlDir, "geo_*.html")))
+    return                              % never built here; not a defect
+end
+cp = fullfile(root, "Contents.m");
+if ~isfile(cp), return, end
+
+L = string(splitlines(fileread(cp)));
+rows = regexp(L, '^%\s+(geo\.[\w.]+)\s+-\s', 'tokens', 'once');
+rows = rows(~cellfun(@isempty, rows));
+for k = 1:numel(rows)
+    name = string(rows{k}{1});
+    page = fullfile(htmlDir, replace(name, ".", "_") + ".html");
+    if ~isfile(page)
+        f(end+1) = finding("documentationSync", "docs/html", 0, ...
+            ['%s is in the catalogue and has no page, while its ' ...
+             'siblings do. Run docbuild/build_help.'], name); %#ok<AGROW>
+        continue
+    end
+    want = currentHelpHash(name);
+    got = regexp(string(fileread(page)), ...
+        '<!--\s*helpsha256:\s*(\w+)\s*-->', 'tokens', 'once');
+    if isempty(got)
+        f(end+1) = finding("documentationSync", "docs/html", 0, ...
+            ['%s''s page carries no help hash, so it cannot be shown ' ...
+             'to match its source. Rebuild with the current builder.'], ...
+            name); %#ok<AGROW>
+        continue
+    end
+    if string(got{1}) ~= want
+        f(end+1) = finding("documentationSync", "docs/html", 0, ...
+            ['%s''s help has changed since its page was built. The ' ...
+             'shipped manual describes a function that no longer ' ...
+             'exists in that form. Run docbuild/build_help.'], ...
+            name); %#ok<AGROW>
+    end
+end
+end
+
+function h = currentHelpHash(name)
+%CURRENTHELPHASH  The same digest the builder computes, from the source.
+h = "";
+p = which(name);
+if isempty(p), return, end
+txt = string(splitlines(fileread(p)));
+first = find(startsWith(strtrim(txt), "%"), 1);
+if isempty(first), return, end
+last = first;
+while last < numel(txt) && startsWith(strtrim(txt(last + 1)), "%")
+    last = last + 1;
+end
+lines = regexprep(txt(first:last), '^\s*%', '');
+h = string(sha256OfText(char(regexprep(strjoin(lines, " "), '\s+', ' '))));
 end
 
 function f = checkShadowed(files)

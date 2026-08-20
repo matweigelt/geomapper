@@ -129,6 +129,8 @@ reg = [ ...
       "F8: an L4 front that draws instead of orchestrating - one text()") ...
     r("puritylength", "orchestrationPurity", ...
       "F8 by accretion: a front over the 200-line orchestration budget") ...
+    r("staledoc", "documentationSync", ...
+      "a shipped manual page describing a help block that has since changed") ...
     ];
 end
 
@@ -213,6 +215,19 @@ switch name
         % the front is a plotter; 3413 lines of them and it is F8.
         appendToBody(fullfile(d, '+geo', 'frontish.m'), ...
             "text(0, 0, 'a label the front drew itself');");
+    case "staledoc"
+        % A page that renders, reads well, and describes a help block
+        % that no longer exists. Nothing else in the tree is wrong -
+        % which is the point: this is the defect that a test suite
+        % cannot see, because the page is not code.
+        mkdir(fullfile(d, 'docs', 'html'));
+        writeText(fullfile(d, 'docs', 'html', 'geo_healthy.html'), ...
+            join(["<!DOCTYPE html><html><body><h1>geo.healthy</h1>"
+                  "<p>Scale a vector, as a control for the static audit.</p>"
+                  "</body></html>"
+                  "<!-- helpsha256: " + repmat('a', 1, 64) + " -->"], newline));
+        appendToContents(fullfile(d, 'Contents.m'), ...
+            "%     geo.healthy  - Scale a vector, as a control for the static audit.");
     case "puritylength"
         % No forbidden call anywhere - only length. A front can violate
         % the rule without ever naming a primitive, by accumulating
@@ -552,6 +567,12 @@ if fid < 0
 end
 c = onCleanup(@() fclose(fid));
 fwrite(fid, char(s));
+end
+
+function appendToContents(p, row)
+%APPENDTOCONTENTS  One catalogue row, so the doc check has a subject.
+lines = string(splitlines(string(fileread(p))));
+writeText(p, join([lines; row], newline));
 end
 
 function appendToBody(p, snippet)

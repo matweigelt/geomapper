@@ -13,20 +13,65 @@ at fifteen sites.
 
 ---
 
-## Status: pre-alpha. Nothing here draws a map yet.
+## Status: Stage F. Every stage green; the release checklist is open.
 
 | Stage | Contents | State |
 |---|---|---|
-| **0** | Test harness, Python mirror, static audit, runner | mirror **executed**; MATLAB harness **written, never run** |
-| A | Data model, CRS, longitude topology | not started |
-| B | 16 projections forward and inverse, regrid, hillshade | not started |
-| C | Coastline and grid readers, caching | not started |
-| D | Basemap, graticule, frame, overlays | not started |
-| E | One-call fronts, export | not started |
-| F | Documentation, packaging, release | not started |
+| **0** | Test harness, Python mirror, static audit, runner | **green** |
+| **A** | Data model, CRS, longitude topology | **green** |
+| **B** | 16 projections forward and inverse, regrid, hillshade | **green** |
+| **C** | Coastline and grid readers, caching | **green** |
+| **D** | Basemap, graticule, frame, overlays | **green** |
+| **E** | One-call fronts, export | **green** |
+| F | Documentation, packaging, release, independent audit | **in progress** |
+
+**489 test points**, reconciled three ways on every run, across seven
+categories. Fourteen static checks, each proved against a planted defect
+before it reports. The version's patch component IS the test-point count,
+so the number above and the one in [`Contents.m`](Contents.m) cannot
+drift apart.
 
 The authoritative status lives in [`HANDOVER.md`](HANDOVER.md) Part 1 and
 nowhere else. **This table is a courtesy and may lag.**
+
+---
+
+## Coming from v1
+
+Every option name that survived kept its exact spelling, and the ones
+that did not **raise with the replacement named** rather than being
+silently ignored. All 120 of `geoImagesc`'s options are accounted for:
+**92 translate, 28 raise**, none is dropped in silence. The mapping is
+machine-checked against v1's own source, not against recollection.
+
+| v1 | v2 |
+|---|---|
+| ``geoImagesc(lon, lat, Z, ...)`` | ``geo.map(geo.grid(lon, lat, Z), crs, ...)`` |
+| ``geoImagescTrack(T, ...)`` | ``geo.trackmap(T, crs, ...)`` |
+| ``geoImagescPoints(P, ...)`` | ``geo.pointmap(P, crs, ...)`` |
+| ``geoImagescTimeSeries(T, ...)`` | ``geo.timeseries(T, ...)`` |
+| ``geoImagescMulti(panels, ...)`` | ``geo.panel(spec, ...)`` |
+| ``geoProject(lon, lat, name, lon0, lat0)`` | ``geo.project(lon, lat, geo.crs(name, CenterLongitude = lon0))`` |
+
+**The one change that is not a rename.** v1 took `Projection`,
+`CenterLongitude`, `CenterLatitude`, `Hemisphere`, `StandardParallel`
+and `StandardParallel2` as six loose options that had to agree with each
+other and were checked nowhere. v2 takes one `geo.crs`, which validates
+them together and can be handed to every overlay so a track lands in the
+same coordinate system as the map beneath it. Passing `Projection`
+raises `geo:map:ProjectionOption`, which names the replacement.
+
+To run a v1 script with one edit, change the function name:
+
+```matlab
+geo.v1.imagesc(lon, lat, Z, 'Projection', 'mollweide', ...  % v1 spelling
+    'ShowColorbar', true, 'GraticuleStepLon', 60);
+```
+
+It is not called `geoImagesc` on purpose: v1 stays installed until this
+release ships, and a file of that name would shadow it or be shadowed by
+it depending on path order — which would make the toolbox that drew your
+figure depend on something nobody set deliberately.
 
 ---
 
@@ -183,3 +228,5 @@ MIT. See [`LICENSE`](LICENSE).
 
 See [`CITATION.cff`](CITATION.cff). Please cite the version you used; the
 patch component tracks the evidence, not the prose.
+
+

@@ -186,6 +186,12 @@ page.Broken = broken;
 page.BadExample = badExample;
 
 html = functionPage(name, S, inRows, optRows, outRows, seeHtml, exHtml);
+% THE HASH OF THE HELP BLOCK THIS PAGE WAS BUILT FROM. It is what makes
+% staleness detectable at all: a page whose source help has since been
+% edited is a page that LIES, and it lies plausibly, because it was
+% correct when it was written. Comparing rendered prose to source prose
+% is guesswork; comparing a hash is not.
+html = html + newline + "<!-- helpsha256: " + helpHash(help) + " -->";
 file = fullfile(outDir, pageName(name));
 writeText(file, html);
 
@@ -195,6 +201,14 @@ writeText(file, html);
 written = string(fileread(file));
 page.Documented = numel(documented);
 page.Rendered = nnz(arrayfun(@(n) isRenderedIn(written, n), documented));
+end
+
+function h = helpHash(lines)
+%HELPHASH  A stable digest of a help block.
+%   Whitespace-normalised so that reflowing a paragraph does not read as
+%   a content change, and so the same source gives the same hash on
+%   every platform whatever its line endings.
+h = string(sha256OfText(char(regexprep(strjoin(lines, " "), '\s+', ' '))));
 end
 
 function tf = isRenderedIn(html, name)
