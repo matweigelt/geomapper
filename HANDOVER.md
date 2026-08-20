@@ -1210,6 +1210,10 @@ anything. R-011, PV-080.
 | C-160 | 20-Aug-2026 | **`geoMapSetup.m` is the one path list** | PV-126. Six copies existed across `ci.yml`, `gates.sh` and `buildfile.m`; adding `docbuild/` broke a seventh. F6 where the duplicate-local check cannot see, because two copies are not MATLAB |
 | C-161 | 20-Aug-2026 | **The index, the Help TOC and `Contents.m` come from one grouping** | Read out of `Contents.m` at build time, so no two of them can disagree |
 | C-162 | 20-Aug-2026 | **Stage F checkpoint F.2 delivered and executed.** 487 points, 486 passed, 1 filtered | R-024 |
+| C-163 | 20-Aug-2026 | **Audit check 14: `documentationSync`**, staleness by help-block SHA-256 embedded in each page | A page does not rot loudly — it renders, reads well, and describes a function that has changed. Prose cannot be compared to prose; a hash can. Absence of `docs/html` is not a finding, only disagreement is |
+| C-164 | 20-Aug-2026 | **`CHANGELOG.md` cites a probe result per F-number**, and lists F17 as `blocked` | A defect claimed fixed that never reproduced is not a fix. F16's illustration corrected to its measured value |
+| C-165 | 20-Aug-2026 | **`GettingStarted.m`, README migration table, `geoMap.prj`** | 92 of 120 v1 options translate and 28 raise with the replacement named; `geo.v1.imagesc` runs a v1 script with one edit |
+| C-166 | 20-Aug-2026 | **Stage F checkpoint F.3 delivered and executed.** 489 points, 488 passed, 1 filtered | R-025 |
 
 ---
 

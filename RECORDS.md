@@ -1757,4 +1757,56 @@ would invite someone to survey with a visualisation tool.
 
 ---
 
-*Entries R-025 onward are written at each stage's green gate.*
+## R-025 — Stage F, checkpoint F.3, 20-Aug-2026, tier A
+
+**Scope.** The documentation sync gate, `GettingStarted.m`, the README
+migration table, `geoMap.prj` and the v2.0.0 `CHANGELOG`.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+489; suite size 489, per-class sum 489, 488 passed, 1 filtered.** Green
+gate on all six. Audit: **14 checks, 16 fixtures, every check proved.**
+Version `2.0.489-alpha.1` across `Contents.m`, `CITATION.cff`,
+`geoMap.prj` and the README in one edit.
+
+**A documentation page does not rot loudly.** It was correct when it was
+built, it still renders, it still reads well, and it describes a function
+that has since changed. Nothing in a test suite notices, because the page
+is not code and the help is not executed. The only thing that can notice
+is a comparison between the page and the source it came from — and prose
+cannot be compared to prose.
+
+So `build_help` embeds the **SHA-256 of the help block each page was
+built from**, whitespace-normalised so reflowing a paragraph is not a
+content change, and the audit's fourteenth check recomputes it. Proved by
+direct fault injection: corrupting one page's hash produced *"geo.title's
+help has changed since its page was built"*, and restoring it returned
+the tree to clean.
+
+**The absence of the manual is not a finding**, and that is deliberate.
+`docs/html` is a build artefact; a fresh clone that has not run the
+builder has no pages to be stale. Reporting that as a defect would train
+people to ignore the check. It reports only **disagreement**.
+
+**The changelog cites a probe result for every defect it claims to fix.**
+All eighteen F-numbers, each with the measurement: 32 `range()` sites not
+~15; Robinson returning 5.293 where ≈ −0.0148 was correct; Mercator's
+y(87°) − y(85°) = exactly 0; the type-7 quantile of `[1 2]` being 1.5
+where v1 gave 1.0. **F17 is listed as `blocked`, not fixed** — it needs
+oracle O6, a real GSHHG binary, and a defect claimed fixed that never
+reproduced is not a fix. **F16's illustration is corrected against its
+own measurement**: the handover said "3 or 11 lines"; the measured worst
+is 10, so the defect reproduces and the illustration does not.
+
+**Known gaps are in the changelog, not only in the records** — O11 and O6
+unfilled, no panel labels, and the export pixel content measured not to
+be reproducible on software OpenGL. A release note that lists only what
+works is an advertisement.
+
+**`geoMap.prj` excludes everything that verifies the toolbox** and
+nothing it needs to run: `tests/`, `tools/`, `records/`, `mirror/`,
+`docbuild/`, the handover and the records. A user installing this gets
+the code, its data and its manual.
+
+---
+
+*Entries R-026 onward are written at each stage's green gate.*

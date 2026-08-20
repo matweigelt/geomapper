@@ -1,88 +1,99 @@
 # Changelog
 
-Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Versioning: semantic, with one project-specific rule — **the patch
-component is the count of verified test points**, so it moves when the
-evidence moves and a pure rename correctly bumps nothing.
+All notable changes to geoMap. The version authority is
+[`Contents.m`](Contents.m); this file is checked against it and never
+maintained beside it.
 
-## [Unreleased]
+The patch component of the version **is the verified test-point count**.
+It moves when the evidence moves.
 
-### Added — Stage 0, checkpoint 0.1 (mirror), 2026-08-13
-- Python mirror (`mirror/geomap_mirror/`): all 16 map projections forward
-  and inverse on a sphere, plus an independent PROJ oracle kept in a
-  separate module so agreement between them is evidence rather than
-  tautology.
-- Frozen acceptance criteria (`mirror/acceptance.json`) and their checker,
-  covering 55 numerical criteria including two pinned regressions for the
-  predecessor's Robinson-wrap and Mercator-clamp defects.
-- `mirror/LIMITS.md`, recording what the mirror cannot see.
+---
 
-### Added — Stage 0, checkpoint 0.2 (harness), 2026-08-13
-- `tests/GeoMapTestCase.m` with the project's single timing instrument,
-  `assertRatioBudget`: ratios rather than absolutes, both points timed
-  inside one repeat, order rotated, median of per-repeat ratios reported
-  with its band.
-- `tests/rungeoMapTests.m`, the one runner, gating on manifest, load
-  completeness, warning inventory, speed budgets and category coverage.
-- Static structural checker and attribution sweep, each with a
-  fault-injection self-test that must pass in the same invocation.
-- CI workflow: static gates first, runtime second, twin triggers.
+## 2.0.0 — unreleased (Stage F in progress)
 
-### Fixed — in the design, before implementation
-Four numerical claims in the project's own design document were refuted by
-the first mirror run and corrected. See `RECORDS.md` R-002.
-- Polar stereographic ρ(70°) at SP=71: 0.6116372 → **0.3430474163**.
-- LCC cone constant for parallels 33/45: the quoted 0.6304962 is the
-  *ellipsoidal* value; the spherical value is **0.6304776973**.
-- Robinson at lat 50: X **0.8679**, Y **0.6176** (the quoted figures were
-  X-table entries from latitudes 35 and 85).
-- Robinson round-trip tolerance: the 5e-4° exception was an artefact of
-  the prescribed inversion method, not of the projection. Withdrawn;
-  measured 1.4e-13° with root-finding on the forward interpolant.
+A complete rewrite. v1 (`geoImagescToolbox`) is replaced, not extended.
 
-### Added — Stage 0, checkpoint 0.3 (audit, oracles, v1 probes), 2026-08-15
-- `tools/geoMapAudit.m`: twelve static checks over the tree, each shipping
-  a fault-injection fixture in `tools/geoMapAuditFixtures.m` that plants
-  its defect in the form the defect actually takes — plus a healthy
-  control on which nothing may fire. The audit refuses to report a clean
-  tree unless all thirteen fixtures pass in the same invocation, and it is
-  now part of the green gate.
-- `mirror/geomap_mirror/gdal_oracle.py`: **oracle rows O7 and O8 filled.**
-  Reaches `GDALDEMProcessing` and `GDALWarp` through `osgeo`, the CLI, or
-  the libgdal bundled in the `rasterio` wheel, and records which route ran
-  with every measurement. Proved on an analytically known plane first.
-- `mirror/geomap_mirror/regrid.py`: conservative area-weighted remap, and
-  the measurement that **discharges debt V7** — the achievable
-  double-precision mass-closure floor at 2161×4321 → 181×361 is
-  **2.15e-14** over the worst of three summation orders, so `TolMass` is
-  set to 1e-13, tighter than the guess it replaces.
-- `mirror/geomap_mirror/hillshade.py`: Horn hillshade with the spherical
-  `cos(lat)` metric. Reproduces `gdaldem hillshade`'s uint8 output
-  **exactly** over 18 094 interior pixels; slope agrees to 4.2e-5°.
-- `records/v1_defect_probes.m`: **discharges debt V4.** One probe per
-  defect row, run against the installed predecessor — 17 reproduced,
-  0 refuted, 1 blocked on a missing oracle.
-- `records/v1_option_inventory.m`: **discharges debt V9.** 177 options
-  across five front functions; 159 carried, 15 renamed, 3 dropped,
-  **0 unmapped**.
-- `Contents.m`, now the single version authority.
-- `.gitattributes`, after `tools/gates.sh` was found to be unrunnable from
-  a Windows working copy — the local gate had never once run locally.
+### Every claimed defect was measured before it was designed against
 
-### Fixed — Stage 0.3
-- Every `PROVISIONAL` stamp removed: eleven files, false since the first
-  green run on 15-Aug-2026.
-- `oracle O7` demoted from authority to corroboration.
-  `gdalwarp -r average` is an unweighted pixel-centre mean, not a
-  conservative remap, and differs from one by 21% of signal RMS globally.
-  The weights are certified against an analytic oracle instead.
+Part 5 of the handover listed eighteen defects derived by **reading** v1.
+Before any of them was used to justify a design, each was **probed against
+the installed v1** — because a design justified by a defect that does not
+exist is a design without a reason. Result: **17 reproduced, 0 refuted,
+1 blocked**. `blocked` is never reported as a pass.
 
-### Known debt
-- No coastline, grid or projection code exists yet.
-- Two oracle rows remain unfilled: a real Natural Earth shapefile (O5) and
-  a real GSHHG binary (O6); a GRACE mascon release (O11) is still to be
-  named. Defect probe F17 is blocked on O6.
-- Every speed budget in the design is still a *prediction*; only the three
-  harness self-test ratios are measured.
+| # | Defect | Probe | What was measured | Fixed by |
+|---|---|---|---|---|
+| F1 | Statistics Toolbox called while claiming none | counted | **32** call sites of `range()` across 5 files — the handover said ~15 | `geo.quantile`, base MATLAB only, enforced by the audit's banned list |
+| F2 | Robinson used unwrapped longitude | executed | `geoProject(359, 10, "robinson")` returned x = **5.293**; correct is ≈ −0.0148. Wrong by about 200 map widths | `geo.wrapLongitude`, asserted exactly |
+| F3 | Mercator clamped where others return NaN | executed | y(87°) − y(85°) = **0.000e+00** — data at 87° drawn on the parallel of 85°, 222 km out of place, silently | domain table returns NaN outside; clip is declared and queryable |
+| F4 | `regrid` not longitude-periodic | executed | at lon 179.5 returned the **hull-edge value to 0.0e+00** — extrapolation, not interpolation. Control at lon −0.5 exact, so the probe measures the seam | periodic wrap, mass closure asserted at 2.6e-14 |
+| F5 | No inverse projection anywhere | counted | 36 files, **none** named for an inverse | `geo.unproject` for all sixteen |
+| F6 | Local functions duplicated across plotters | counted | **3 bodies** in more than one file | duplicate-local check — has now rejected **seven** copies, every one inside the round that wrote it |
+| F7 | 15 positional arguments | counted | `geoNorthArrow`, **15** | D-003: three, enforced |
+| F8 | One 3413-line function, two near-clones | counted | `geoImagesc` **3414**, Track 1159, Points 1320 | `geo.map` **128** executable lines; `trackmap`/`pointmap` **17** each |
+| F9 | Renderer-dependent OpenGL hillshading | counted | `light` + `shading interp` + `FaceAlpha` co-occur in **3 files**. *The co-occurrence is measured; the renderer dependence it implies is inferred, and Stage B settles it against oracle O8* | `geo.hillshade`, analytic, no lights anywhere in `+geo` |
+| F10 | Percentile by index rounding | executed | `geoPercentileRange([1 2], 50)` → **1.0**; the type-7 quantile is **1.5**. An index rule cannot return a value between two samples | `geo.quantile`, type 7 |
+| F11 | Variable `clim` shadowed `clim()` | counted | **7** assignments across 2 files, forcing deprecated `caxis` | banned; `clim` and four block keywords watched |
+| F12 | Domain clipping by magic literals | counted | **7** bare `cosc` thresholds in one file, each both a guard and a cosmetic clip with nothing saying which | one domain table, three arguments, queryable |
+| F13 | Array growth in the record loop | counted | **5** growth pragmas across three readers; full GSHHG is ~180 MB | banned in `+geo`; accumulate and join once |
+| F14 | No caching | counted | `persistent` appears **0** times in 36 files | `geo.cache`; cold/warm ratio measured at **629×** |
+| F15 | appdata and manual callback chaining | counted | **3** appdata calls; any other toolbox setting the same property breaks the chain | one listener per figure, `geo.internal.layout` |
+| F16 | Graticule step snapped to nearest | executed | over 13 spans it differs at 4; worst **10 lines against a target of 6**. *The handover illustrated this as "3 or 11"; the measured worst is 10, so the defect reproduces and the illustration does not* | ceiling policy, never overshoots |
+| F17 | GSHHG pole closure unhandled | **blocked** | needs oracle O6, a real GSHHG `.b` file, still unfilled. **Reported as blocked, never as passed**; the reader ships with provenance `unverified` | debt V3 stays open |
+| F18 | Tests were smoke tests | counted | `test_geoImagesc.m`: **0** assert/verify calls, **0** round-trip mentions | 487 points, seven categories, reconciled three ways |
 
-[Unreleased]: https://github.com/matweigelt/GeoMapper/commits/main
+### Added
+
+- Sixteen projections **forward and inverse**, with a queryable domain per
+  projection: singularities, clip limits, and whether the clip is
+  cosmetic or mathematical.
+- Value structs validated once — `geo.crs`, `geo.grid`, `geo.track`,
+  `geo.points`, `geo.region` — so nothing downstream re-checks them.
+- Fifteen composable elements, each drawing one thing into an axes on a
+  documented z-ladder.
+- Six one-call fronts: `map`, `trackmap`, `pointmap`, `timeseries`,
+  `panel`, `export`.
+- `geo.export`, which delivers a page in **centimetres**. `exportgraphics`
+  ignores `PaperPosition` and crops to content: a 17.0 cm request measured
+  **12.58 cm** in one configuration and **27.7 cm** in another. `print`
+  with an explicit page gives **17.004 cm**.
+- CVD-safe colormaps with provenance, and truecolor mapping in one place.
+- A documentation build that counts completeness **in the written HTML**:
+  43 functions, **398 of 398** arguments rendered, 0 broken links.
+- `geo.v1.imagesc`, so a v1 script runs with one edit.
+
+### Changed
+
+- The six loose projection options become one `geo.crs`. Passing
+  `Projection` raises `geo:map:ProjectionOption`, naming the replacement.
+- Topography reading leaves the plotter's locals and becomes
+  `geo.readGrid`.
+- Colour limits, gap detection and the plotted-box computation each have
+  **one** owner instead of five.
+
+### Removed
+
+- `Material` and `SpecularStrength` — renderer-dependent (D-009).
+- v1's `Style` preset bundle: three options are set as three options,
+  because a preset that silently moved settings a caller had not named
+  was worth losing.
+
+### Known gaps, carried openly
+
+- **O11 unfilled.** No published GRACE mascon product is checked against.
+  The integration scenario uses a field labelled *synthetic in the code*.
+  An invented number here would be indistinguishable from a real one.
+- **O6 unfilled**, so F17 stays blocked and the GSHHG reader ships
+  `unverified`.
+- **No panel labels** — (a), (b), (c). A corner annotation is not a title
+  and no element draws one; flagged rather than improvised.
+- **Export pixel content is not reproducible on software OpenGL.** Four
+  renders came back A, A, B, B, differing by exactly 42 176 pixels every
+  time. Page size, route and dimensions are asserted exactly; the pixel
+  content is the rasteriser's and has been measured not to be stable.
+
+---
+
+## 1.x
+
+See the v1 repository. Not maintained.

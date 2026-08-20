@@ -54,6 +54,16 @@ classdef TestF2_docbuild < GeoMapTestCase
         end
     end
 
+    methods (Static, Access = private)
+
+        function writeBack(page, text)
+            %WRITEBACK  Put a fault-injected file back as it was.
+            fid = fopen(page, 'w');
+            fwrite(fid, text);
+            fclose(fid);
+        end
+    end
+
     % ==================================================================
     methods (Test, TestTags = {'contract'})
 
@@ -162,6 +172,46 @@ classdef TestF2_docbuild < GeoMapTestCase
                 'a documented option must appear as a table cell');
             tc.verifyFalse(contains(page, "<td><code>NoSuchOption</code>"), ...
                 'and a name that is not documented must not');
+        end
+
+        function theSyncGateCatchesAStalePage(tc)
+            % A DOCUMENTATION PAGE DOES NOT ROT LOUDLY. It was correct
+            % when built, it still renders, it still reads well, and it
+            % describes a function that has since changed. No test
+            % suite notices, because the page is not code and the help
+            % is not executed.
+            %
+            % So each page carries the SHA-256 of the help block it was
+            % built from, and the audit recomputes it. Proved here by
+            % corrupting one page and putting it back: a check never
+            % seen to fire is not a check.
+            page = fullfile(geoMapRoot(), "docs", "html", "geo_title.html");
+            tc.assumeTrue(isfile(page), ...
+                'docs/html has not been built in this tree, so there is nothing to be stale.');
+            orig = fileread(page);
+            restore = onCleanup(@() TestF2_docbuild.writeBack(page, orig)); %#ok<NASGU>
+
+            [okBefore, ~] = geoMapAudit(geoMapRoot(), Verbose = false, SelfTest = false);
+            tc.verifyTrue(okBefore, 'the tree must be clean before it is broken');
+
+            fid = fopen(page, 'w');
+            fwrite(fid, strrep(orig, 'helpsha256: ', 'helpsha256: ff'));
+            fclose(fid);
+            [okAfter, found] = geoMapAudit(geoMapRoot(), Verbose = false, SelfTest = false);
+            tc.verifyFalse(okAfter, 'a stale page must fail the audit');
+            tc.verifyTrue(any([found.check] == "documentationSync"), ...
+                'and must fail it as a documentation finding');
+        end
+
+        function theGettingStartedGuideParses(tc)
+            % It is published as the toolbox's front door. One that does
+            % not parse is a front door that does not open.
+            issues = checkcode(which('GettingStarted'), '-struct');
+            bad = issues(contains(lower(string({issues.message})), ...
+                ["parse error" "unbalanced" "invalid"]));
+            tc.verifyEmpty(bad, ...
+                "GettingStarted.m does not parse: " + ...
+                strjoin(string({bad.message}), "; "));
         end
 
         function buildingIntoAMissingFolderCreatesIt(tc)
