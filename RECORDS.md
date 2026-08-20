@@ -1513,4 +1513,77 @@ this is not.
 
 ---
 
-*Entries R-022 onward are written at each stage's green gate.*
+## R-022 — Stage E, checkpoint E.4, 20-Aug-2026, tier A. **STAGE E CLOSES.**
+
+**Scope.** `geo.panel`, the last of the six fronts.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+468; suite size 468, per-class sum 468, 468 passed, 0 failed.** Green
+gate on all six. Prediction counted mechanically and correct, twice
+running.
+
+| | measured | bound |
+|---|---|---|
+| panel map plotted heights, spread over three tiles | **0** | ≤ 0.02 |
+| series plot-box height vs the map's plotted height | **4.86e-16** | ≤ 1e-12 |
+
+The 2% is **v1's own criterion, carried forward deliberately and not
+tightened**. It is a visual-equality threshold — the point at which a
+reader stops seeing two panels as the same size — and tightening it to
+look rigorous would have replaced a meaningful number with a
+meaningless one.
+
+**The constraint that shapes this file.** A map axes uses `axis equal`
+and fills only a centred sub-rectangle of its tile; a series axes fills
+the whole tile, so two equal tiles look like two different heights. The
+obvious repair is unavailable: **`tiledlayout` forbids setting
+`Position` on its children — the assignment warns and is ignored**, so
+the fix appears to work and changes nothing. v1 found this and reshaped
+the axes with `PlotBoxAspectRatio` instead. That workaround is carried
+forward rather than rediscovered, its constraint is written at the code,
+and `TestE4_panel` exists partly to stop someone "fixing" it back.
+
+**Findings — two.**
+
+| id | Finding |
+|---|---|
+| PV-121 | **`geo.map`'s `Parent` option was declared, documented, and never read.** `geo.map(G, crs, Parent = ax)` drew a whole **new figure** and left the axes it was handed untouched. It surfaced only when `geo.panel` needed to draw into a tile. **The E.1a test that should have caught it passed for the wrong reason**: it drew twice with `Parent` and asserted the first axes' child count had not grown — trivially true when the second call goes to a different figure entirely. An assertion that cannot distinguish "reused the axes" from "ignored the argument" tests neither. The test now asserts the axes identity and the figure count first. |
+| PV-122 | **F6 for the SEVENTH time, and the copies had drifted.** The Stage E purity self-check had accumulated four near-copies, one per front suite; the duplicate-local check rejected the fourth. Worse than the duplication: E1's and E2's banned lists were **shorter** than E3's and E4's, so `geo.map`, `geo.trackmap` and `geo.pointmap` were never checked for `ylabel`, `xlabel`, `legend` or `sgtitle`. Promoted to `GeoMapTestCase.verifyIsAPureFront`, one list, every front held to all of it. **A duplicated check does not merely repeat work — it decays into checking different things under the same name.** |
+
+**PV-077 recurred a fourth time** — `verifyEqual(a, b, AbsTol = t,
+'diagnostic')`. Four checkpoints, four occurrences, one suite load lost
+each time.
+
+**`geo.panel` used 197 of its 200 executable lines**, and that is worth
+recording rather than rounding off: it is the only front that came close
+to the budget, which is a fair signal that a panel is the most a front
+should be asked to do.
+
+**One thing left out rather than improvised.** There are **no panel
+labels** — (a), (b), (c). A corner annotation is not a title and no L3
+element draws one, so the Stage E rule says flag it, and it is flagged in
+`geo.panel`'s LIMITATIONS. The letter goes in each tile's own Title
+meanwhile.
+
+---
+
+## Stage E, complete
+
+| | |
+|---|---|
+| fronts | `map`, `trackmap`, `pointmap`, `timeseries`, `panel`, and `export` as the L4 utility |
+| elements added because the rule demanded them | `geo.title`, `geo.series` |
+| v1 code replaced | `geoImagesc` 3413 lines, `geoImagescTrack` 75 options, `geoImagescPoints` 82, `geoImagescTimeSeries`, `geoImagescMulti` |
+| `geo.map`, executable | **128** lines |
+| `geo.trackmap` / `geo.pointmap` | **17** lines each |
+| `geo.panel` | **197** lines, the only one near the budget |
+| suite | 468 points |
+| V9 | discharged at E.1c |
+
+**The rule bit four times and was right four times** — a title, a region
+outline (wrongly, and withdrawn), a series, and panel labels (still
+open). Not one of them was inlined.
+
+---
+
+*Entries R-023 onward are written at each stage's green gate.*

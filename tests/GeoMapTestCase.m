@@ -112,6 +112,40 @@ classdef GeoMapTestCase < matlab.unittest.TestCase
             tc.addTeardown(@() closeIfValid(f));
         end
 
+        function verifyIsAPureFront(tc, fn)
+            %VERIFYISAPUREFRONT  The Stage E rule, asserted on one file.
+            %   A front declares itself and calls no drawing primitive.
+            %   The audit enforces this on every push; asserting it here
+            %   too puts the rule where a reader of the tests meets it.
+            %
+            %   HERE RATHER THAN IN FOUR SUITES. Four near-copies had
+            %   accumulated - E1, E2, E3, E4 - and the duplicate-local
+            %   check rejected the fourth, which is the SEVENTH time it
+            %   has done that. Worse than the duplication: the copies had
+            %   DRIFTED. E1's and E2's banned lists were shorter than
+            %   E3's and E4's, so `geo.map` and the two data fronts were
+            %   never checked for ylabel, xlabel, legend or sgtitle. One
+            %   list, and every front is held to all of it.
+            %
+            %   COMMENTS ARE STRIPPED FIRST. Prose about a token is not
+            %   the token, and this project has met that four times
+            %   (PV-102, PV-117 and two before them).
+            src = string(splitlines(fileread(which(fn))));
+            tc.verifyTrue(any(strtrim(erase(src, "%")) == "L4-FRONT"), ...
+                fn + " must declare itself an L4 front");
+            code = regexprep(src, '%.*$', '');
+            banned = ["surf" "surface" "patch" "line" "text" "scatter" ...
+                      "scatter3" "plot" "plot3" "colorbar" "annotation" ...
+                      "imagesc" "image" "fill" "contour" "contourf" ...
+                      "rectangle" "quiver" "title" "xlabel" "ylabel" ...
+                      "legend" "sgtitle"];
+            for b = banned
+                tc.verifyEmpty(find(~cellfun(@isempty, regexp(cellstr(code), ...
+                    "(?<![\w.])" + b + "\s*\(", 'once')), 1), ...
+                    "bare " + b + "() in " + fn);
+            end
+        end
+
         function H = keep(tc, H)
             %KEEP  Close a front's figure on teardown, and pass it on.
             %   Here rather than in two suites: the duplicate-local check

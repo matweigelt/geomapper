@@ -1194,6 +1194,11 @@ anything. R-011, PV-080.
 | C-144 | 20-Aug-2026 | **A front may write `axH.YLabel.String`; it may not call `ylabel()`** | Configuration of an object the axes already owns creates nothing; the function call creates a Text. The distinction is narrow enough to state rather than infer |
 | C-145 | 20-Aug-2026 | **`keep` promoted to `GeoMapTestCase`, both private copies removed** | PV-120. F6 for the sixth time, and PV-099 says a base-class method colliding with a suite's private one makes the framework drop that suite |
 | C-146 | 20-Aug-2026 | **Stage E checkpoint E.3 delivered and executed.** 450 points, 450 passed | R-021. Prediction counted mechanically and correct, after two misses |
+| C-147 | 20-Aug-2026 | **`geo.map` forwards `Parent` to `geo.basemap`** | PV-121. The option was declared, documented and never read; `geo.map(G, crs, Parent = ax)` drew a new figure. The E.1a test passed for the wrong reason and now asserts the axes identity |
+| C-148 | 20-Aug-2026 | **`GeoMapTestCase.verifyIsAPureFront`** — one banned list for every front | PV-122. Four near-copies had drifted: E1's and E2's lists were shorter, so three fronts were never checked for `ylabel`, `xlabel`, `legend`, `sgtitle` |
+| C-149 | 20-Aug-2026 | **`geo.panel` uses `PlotBoxAspectRatio`, never `Position`** | `tiledlayout` ignores `Position` on its children — the assignment warns and does nothing. v1's workaround carried forward with its constraint written at the code |
+| C-150 | 20-Aug-2026 | **Panel labels flagged, not improvised** | A corner annotation is not a title and no L3 element draws one. Fourth time the Stage E rule has fired; second still open |
+| C-151 | 20-Aug-2026 | **STAGE E COMPLETE.** 468 points, 468 passed | R-022. Six fronts, two elements the rule demanded, `geo.map` at 128 lines against `geoImagesc`'s 3413 |
 
 ---
 

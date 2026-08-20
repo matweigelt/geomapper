@@ -61,18 +61,8 @@ classdef TestE3_series < GeoMapTestCase
     % ==================================================================
     methods (Test, TestTags = {'contract'})
 
-        function theFrontDeclaresItselfAndDrawsNothing(tc)
-            src = string(splitlines(fileread(which('geo.timeseries'))));
-            tc.verifyTrue(any(strtrim(erase(src, "%")) == "L4-FRONT"), ...
-                'geo.timeseries must declare itself an L4 front');
-            code = regexprep(src, '%.*$', '');
-            for b = ["surf" "patch" "line" "text" "scatter" "plot" ...
-                     "plot3" "colorbar" "annotation" "title" "ylabel" ...
-                     "xlabel" "legend"]
-                tc.verifyEmpty(find(~cellfun(@isempty, regexp(cellstr(code), ...
-                    "(?<![\w.])" + b + "\s*\(", 'once')), 1), ...
-                    "bare " + b + "() in geo.timeseries");
-            end
+        function geoTimeseriesIsAPureFront(tc)
+            tc.verifyIsAPureFront("geo.timeseries");
         end
 
         function aSeriesNeedsTimeAndObs(tc)

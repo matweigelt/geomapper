@@ -230,6 +230,19 @@ function [figH, axH, H] = drawLadder(G, crs, options)
 %   look like: decide whether the element is wanted, hand it the
 %   caller's options plus the shared typeface, keep what it returned.
 baseNv = nvFor(options.Basemap, options, false);
+% PARENT REACHES GEO.BASEMAP, which it did not. The option was declared,
+% documented and never read: geo.map(G, crs, Parent = ax) drew a whole
+% NEW FIGURE and left the axes it was handed untouched. It surfaced only
+% when geo.panel needed to draw into a tile.
+%
+% The E.1a test that should have caught it PASSED FOR THE WRONG REASON.
+% It drew twice with Parent and asserted the first axes' child count had
+% not grown - which is trivially true when the second call goes to a
+% different figure entirely. An assertion that cannot distinguish
+% "reused the axes" from "ignored the argument" tests neither (PV-121).
+if ~isempty(options.Parent) && ~any(string(baseNv(1:2:end)) == "Parent")
+    baseNv = [baseNv, {'Parent'}, {options.Parent}];
+end
 [figH, axH, base] = geo.basemap(G, crs, baseNv{:});
 
 % Name, the field its data arrives in, whether it draws text, and the
