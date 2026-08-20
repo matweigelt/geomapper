@@ -1,0 +1,176 @@
+classdef TestIntegration < GeoMapTestCase
+%TESTINTEGRATION  Stage F: three scenarios that use the whole stack.
+%
+%   DESCRIPTION
+%     Every other suite tests one function against its own contract.
+%     These three run the toolbox the way a user does, end to end, and
+%     each one is here because a specific class of failure is invisible
+%     from inside a unit test.
+%
+%     ONE OF THEM MATTERS MORE THAN THE OTHER TWO. "Composed equals
+%     front" builds the same map twice - once with GEO.MAP and once by
+%     hand from GEO.BASEMAP plus elements in z-order - and requires
+%     identical surface CData and identical colour limits. That is the
+%     central guarantee of the whole architecture: the fronts add no
+%     behaviour of their own, so anything you can do in one call you can
+%     also do element by element, and the two are the same map. Without
+%     it, "L4 orchestrates L3" is a diagram rather than a fact.
+%
+%     NO COVEREDFUNCTIONS IS DECLARED, deliberately. These scenarios
+%     cover no single function - that is what makes them integration
+%     tests - and claiming one would mean promising all seven categories
+%     for it here, where they belong in that function's own suite. The
+%     runner prints "no CoveredFunctions declared - skipped", which is
+%     visible rather than silent.
+%
+%   ACCURACY
+%     The composition guarantee is EXACT: isequal on CData, isequal on
+%     clim. The exported file is checked for existence and a floor on
+%     size, which is a smoke test and is labelled as one - there is no
+%     automated oracle for "the figure is right", and pretending
+%     otherwise would be worse than saying so.
+%
+%   ERRORS
+%     (none raised; this is a test class)
+%
+%   EXAMPLE
+%     rungeoMapTests("TestIntegration");
+%
+%   LIMITATIONS
+%     The GRACE-style scenario uses a SYNTHETIC anomaly field. Checking
+%     sign, magnitude and pattern against a published mascon product is
+%     oracle O11, which needs a named release and its data file; that
+%     debt is carried openly rather than faked with a plausible-looking
+%     number.
+%
+%   See also GEO.MAP, GEO.BASEMAP, GEO.REGRID.
+%
+%   ---------------------------------------------------------------------
+%   geoMap v2.0 | 20-Aug-2026 | Claude Opus 5 (Anthropic)
+
+    methods (Access = private)
+
+        function G = ewhAnomaly(~)
+            %EWHANOMALY  A synthetic signed field with the shape of one.
+            %   Two negative lobes over Greenland and West Antarctica and
+            %   a positive one over the Amazon - not a measurement, and
+            %   not offered as one. It exists so the colour scale has a
+            %   sign to be symmetric about and the stipple has something
+            %   to be significant over.
+            lon = -180:2:180;
+            lat = -88:2:88;
+            [LON, LAT] = meshgrid(lon, lat);
+            blob = @(l0, b0, w, a) a * exp(-((LON - l0).^2 + ...
+                (LAT - b0).^2) / (2 * w^2));
+            Z = blob(-42, 72, 9, -18) + blob(-105, -78, 11, -22) + ...
+                blob(-60, -5, 12, 14);
+            G = geo.grid(lon, lat, Z, Units = "cm");
+        end
+
+        function S = significance(tc)
+            %SIGNIFICANCE  A mask grid: where the anomaly exceeds 5 cm.
+            G = tc.ewhAnomaly();
+            S = geo.grid(G.Lon, G.Lat, double(abs(G.Z) > 5));
+        end
+    end
+
+    % ==================================================================
+    methods (Test, TestTags = {'reference'})
+
+        function composedEqualsFront(tc)
+            % THE CENTRAL GUARANTEE. If this fails, "L4 orchestrates L3"
+            % is a diagram and not a fact.
+            G = tc.ewhAnomaly();
+            crs = geo.crs("mollweide");
+
+            H = geo.map(G, crs, Colorbar = false, ScaleBar = false);
+            tc.addTeardown(@() close(H.Figure));
+
+            [f2, ax2, base2] = geo.basemap(G, crs);
+            tc.addTeardown(@() close(f2));
+            geo.graticule(ax2, crs, FontName = "Helvetica", FontSize = 9);
+            geo.coastline(ax2, crs);
+            geo.frame(ax2, crs);
+
+            tc.verifyTrue(isequal(base2.Surface.CData, ...
+                H.Basemap.Surface.CData), ...
+                'one call and element by element must give the same colours');
+            tc.verifyEqual(clim(ax2), clim(H.Axes), ...
+                'and the same colour limits');
+            tc.verifyEqual(sort(geo.internal.layout("kinds", f2)), ...
+                sort(geo.internal.layout("kinds", H.Figure)), ...
+                'and the same elements registered');
+        end
+    end
+
+    % ==================================================================
+    methods (Test, TestTags = {'robustness'})
+
+        function aGraceStyleFigureExportsAPdf(tc)
+            % A smoke test, and labelled as one: it proves the whole
+            % stack runs together and writes a real file. It does not
+            % prove the figure is right, and nothing automated can.
+            tc.suppressWarning('MATLAB:graphics:HardwareUnavailable');
+            d = string(tempname());
+            mkdir(d);
+            tc.addTeardown(@() rmdir(d, 's'));
+            file = fullfile(d, "grace.pdf");
+
+            G = tc.ewhAnomaly();
+            H = geo.map(G, geo.crs("mollweide"), ...
+                Basemap = struct('ColormapName', "divergent", ...
+                                 'CLim', [-25 25]), ...
+                Stipple = struct('G', tc.significance(), 'Density', 8), ...
+                Colorbar = struct('Style', "gmt", 'Label', "EWH (cm)"), ...
+                Title = "Equivalent water height anomaly", ...
+                Export = file, ...
+                ExportOptions = struct('Width', 17, 'Resolution', 200));
+            tc.addTeardown(@() close(H.Figure));
+
+            tc.verifyTrue(isfile(file), 'the export must write a file');
+            info = dir(file);
+            tc.verifyGreaterThan(info.bytes, 10e3, ...
+                'a PDF under 10 kB has no map in it');
+            for kind = ["Basemap" "Graticule" "Coastline" "Stipple" ...
+                        "Frame" "Colorbar" "Title"]
+                tc.verifyTrue(isfield(H, kind), ...
+                    kind + " is missing from the figure");
+            end
+        end
+    end
+
+    % ==================================================================
+    methods (Test, TestTags = {'metamorphic'})
+
+        function serialEqualsParallel(tc)
+            % The parallel path must be an optimisation, not a variant.
+            % Filtered rather than skipped where there is no pool: a
+            % test that cannot run says so.
+            tc.assumeTrue(exist('parfeval', 'file') > 0 && ...
+                ~isempty(gcp('nocreate')), ...
+                ['No parallel pool in this session, so the parallel ' ...
+                 'export path is unreachable. Filtered, not passed - ' ...
+                 'geoMap needs base MATLAB only and the pool is an ' ...
+                 'option, never a requirement.']);
+            d = string(tempname());
+            mkdir(d);
+            tc.addTeardown(@() rmdir(d, 's'));
+            builders = {@() figure('Visible', 'off', 'Color', [1 0 0]), ...
+                        @() figure('Visible', 'off', 'Color', [0 0 1])};
+            files = fullfile(d, ["a.png" "b.png"]);
+            other = fullfile(d, ["c.png" "d.png"]);
+
+            a = geo.export(builders, files, Width = 6, Resolution = 100, ...
+                UseParallel = "never");
+            b = geo.export(builders, other, Width = 6, Resolution = 100, ...
+                UseParallel = "always");
+            tc.verifyTrue(b.Parallel, 'the parallel path must have run');
+            tc.verifyEqual(b.Method, a.Method);
+            tc.verifyEqual(b.Height, a.Height, AbsTol = 1e-12);
+            for k = 1:2
+                tc.verifyTrue(isequal(imread(other(k)), imread(files(k))), ...
+                    "worker " + k + " wrote a different image");
+            end
+        end
+    end
+end

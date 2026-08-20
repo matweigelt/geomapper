@@ -1631,4 +1631,58 @@ open). Not one of them was inlined.
 
 ---
 
-*Entries R-023 onward are written at each stage's green gate.*
+## R-023 — Stage F, checkpoint F.1, 20-Aug-2026, tier A
+
+**Scope.** `tests/TestIntegration.m`, `Contents.m` as the version and
+catalogue authority, and `tests/TestContentsConsistency.m`.
+
+**Confirming run.** `win64 | R2026a Update 4 | 16 threads`. **Predicted
+476; suite size 476, per-class sum 476, 475 passed, 1 filtered.** Green
+gate on all six.
+
+**The version now carries the evidence.** `Contents.m` reads
+`Version 2.0.476-alpha.1`, and the patch component **is** the verified
+test-point count. It moves when the evidence moves: a pure rename bumps
+nothing, and a checkpoint bumps it by exactly what its tests added.
+`CITATION.cff` is checked against it, never maintained beside it.
+
+**The central guarantee is now a test.** `composedEqualsFront` builds one
+map with `geo.map` and the same map by hand from `geo.basemap` plus
+elements in z-order, and requires **identical surface CData, identical
+`clim`, and the same registered elements**. Without it, "L4 orchestrates
+L3" is a diagram rather than a fact — every other suite tests one
+function against its own contract and none of them can see this.
+
+**The catalogue is checked character for character.** Every `geo.*` row
+in `Contents.m` must equal that function's H1 line exactly. A summary
+that paraphrases is a second description of the same thing — F6 applied
+to prose — and it drifts invisibly, because both halves read plausibly.
+All 42 public functions are listed, grouped by layer, and the grouping
+is asserted to cover them.
+
+**The parallel scenario was proved, not merely filtered.** It carries an
+`assumeTrue` on a live pool, so it filters on CI and in a plain session —
+and a test never seen to pass is not evidence. A pool was started once
+by hand: **3 of 3 passed**, with the workers' images byte-identical to
+the serial path. Then the pool was closed so the confirming run matches
+CI.
+
+**Two things labelled rather than dressed up.**
+
+The GRACE-style export scenario is a **smoke test** and says so in its
+own comments: it proves the whole stack runs together and writes a real
+17 cm PDF over 10 kB with every expected element present. It does not
+prove the figure is right. There is no automated oracle for "the figure
+is right" and pretending otherwise would be worse than saying so.
+
+**O11 is carried, not faked.** Checking sign, magnitude and pattern over
+Greenland, West Antarctica and north India against a published GRACE
+mascon product needs a named release and its data file. The scenario uses
+a clearly synthetic anomaly field, labelled as synthetic in the code, and
+the debt stays open. A plausible-looking number invented here would be
+indistinguishable from a real one, which is exactly the failure the
+oracle register exists to prevent.
+
+---
+
+*Entries R-024 onward are written at each stage's green gate.*
