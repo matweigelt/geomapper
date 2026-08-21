@@ -1,8 +1,8 @@
-function [xy, clip] = clipToExtent(xy, crs, lonLim, latLim)
+function [xy, clip] = clipToExtent(xy, crs, lonLim, options)
 %GEO.INTERNAL.CLIPTOEXTENT  Cut geographic vertices at the frame.
 %
 %   SYNTAX
-%     [XY, CLIP] = GEO.INTERNAL.CLIPTOEXTENT(XY, CRS, LONLIM, LATLIM)
+%     [XY, CLIP] = GEO.INTERNAL.CLIPTOEXTENT(XY, CRS, LONLIM, LATLIM = ...)
 %
 %   DESCRIPTION
 %     Builds the boundary once and hands the vertices to
@@ -23,7 +23,12 @@ function [xy, clip] = clipToExtent(xy, crs, lonLim, latLim)
 %     xy      (:,2) double  Lon in column 1, lat in column 2, NaN-separated.
 %     crs     (1,1) struct  From GEO.CRS.
 %     lonLim  (1,2) double  Degrees East, from GEO.INTERNAL.ELEMENTEXTENT.
-%     latLim  (1,2) double  Degrees North.
+%
+%   OPTIONS
+%     LatLim  (1,2) double  Degrees North. A name-value rather than a
+%                           fourth positional: the arity limit is three,
+%                           and a limit pair reads better named than
+%                           counted anyway.
 %
 %   OUTPUTS
 %     xy      (:,2) double  Cut at the frame, with a crossing vertex
@@ -42,15 +47,23 @@ function [xy, clip] = clipToExtent(xy, crs, lonLim, latLim)
 %     None of its own.
 %
 %   EXAMPLE
-%     [xy, clip] = geo.internal.clipToExtent(xy, crs, lonLim, latLim);
+%     [xy, clip] = geo.internal.clipToExtent(xy, crs, lonLim, ...
+%             LatLim = latLim);
 %
 %   See also GEO.INTERNAL.CLIPTOBOUNDARY, GEO.INTERNAL.MAPBOUNDARY.
 %
 %   ---------------------------------------------------------------------
 %   geoMap v2.0 | 21-Aug-2026 | Claude Opus 5 (Anthropic)
 
+arguments
+    xy (:,2) double
+    crs (1,1) struct
+    lonLim (1,2) double
+    options.LatLim (1,2) double = [-90 90]
+end
+
 B = geo.internal.mapBoundary(crs, [lonLim(1) lonLim(2)], ...
-    [latLim(1) latLim(2)]);
+    [options.LatLim(1) options.LatLim(2)]);
 [lon, lat, info] = geo.internal.clipToBoundary(xy(:, 1).', xy(:, 2).', B);
 clip = struct('ClippedToExtent', info.Clipped, ...
     'ExtentCuts', info.NumCuts, 'ExtentKept', info.NumInside);

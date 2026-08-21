@@ -139,7 +139,7 @@ style = styleFor(options);
 % The clip is against the SAME ring the frame is drawn from
 % (GEO.INTERNAL.MAPBOUNDARY), not a second traversal to the same recipe:
 % two copies of the map's outline is defect F12, and it drifted.
-[xy, clip] = geo.internal.clipToExtent(xy, crs, lonLim, latLim);
+[xy, clip] = geo.internal.clipToExtent(xy, crs, lonLim, LatLim = latLim);
 
 prior = geo.internal.layout("data", axH, "coastline");
 if ~isempty(prior)

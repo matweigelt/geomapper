@@ -27,6 +27,14 @@ function tf = insideExtent(lon, lat, B)
 %                         extent and the projection's domain. NaN in
 %                         gives false, which is what a gap should be.
 %
+%   ACCURACY
+%     Exact, to a 1e-9-degree slack on each limit. The slack exists so a
+%     vertex written AT a rim - lat 90, or a longitude that is the
+%     extent's own boundary - is not excluded by the last bit of a
+%     decimal conversion. It is a hundred-thousandth of the narrowest
+%     step this toolbox draws, so nothing legitimately outside can reach
+%     it.
+%
 %   ERRORS
 %     None of its own; a malformed B fails in GEO.PROJECT.
 %
