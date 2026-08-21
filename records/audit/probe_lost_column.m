@@ -27,7 +27,7 @@ Z = [1 2 3; 4 5 6; 7 8 9];
 G = geo.grid(lon, lat, Z);
 f = figure('Visible', 'off');
 ax = axes(f); %#ok<LAXES>
-[~, ~, B] = geo.basemap(G, "equirectangular", Parent = ax, Colormap = "viridis");
+[~, ~, B] = geo.basemap(G, "equirectangular", Parent = ax);
 
 fprintf('nodes            : %d x %d\n', numel(lat), numel(lon));
 fprintf('size(Surface.CData): %s\n', mat2str(size(B.Surface.CData)));
