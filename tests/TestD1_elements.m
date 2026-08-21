@@ -120,6 +120,49 @@ classdef TestD1_elements < GeoMapTestCase
             tc.verifyEqual(unique(F.Patches(1).ZData), 6);
         end
 
+        function aPointPoleDoesNotCollapseTheFrameBand(tc)
+            % PV-135, reported from GettingStarted: "the fishnet frame
+            % collapsed to a triangle". mollweide, hammer and sinusoidal
+            % map the pole to a POINT, so every vertex of the boundary's
+            % top edge projects to the same place. OUTWARDNORMALS returned
+            % a zero mitre for a zero-length segment, the band offset by
+            % nothing, and the frame tapered away.
+            %
+            % The observable is the band's AREA, not its count: a patch
+            % drawn with zero width is still a patch, which is why every
+            % count-based check in this suite stayed green through it.
+            % The grid must REACH the pole - smallGrid stops at 80 and
+            % does not reproduce this.
+            for name = ["mollweide" "hammer" "sinusoidal"]
+                ax = tc.axesFor();
+                geo.basemap(poleToPoleGrid(), name, Parent = ax);
+                F = geo.frame(ax, StepLon = 60, StepLat = 30);
+                a = arrayfun(@(h) polygonArea(h.XData, h.YData), F.Patches);
+                tc.verifyGreaterThan(min(a), 0, ...
+                    sprintf('%s: a frame band has zero area.', name));
+                tc.verifyEqual(numel(F.Patches), 12, ...
+                    sprintf(['%s: 24 boundary vertices, twelve of them ' ...
+                             'the two pole runs, so twelve bands.'], name));
+            end
+        end
+
+        function aPoleLineProjectionIsUntouchedByTheCollapseRepair(tc)
+            % The control, and the reason the repair is a rule about
+            % coincident vertices rather than a list of projection names.
+            % robinson and winkeltripel map the pole to a LINE: no vertex
+            % coincides, so nothing may be dropped and all 24 bands stand.
+            for name = ["robinson" "winkeltripel"]
+                ax = tc.axesFor();
+                geo.basemap(poleToPoleGrid(), name, Parent = ax);
+                F = geo.frame(ax, StepLon = 60, StepLat = 30);
+                a = arrayfun(@(h) polygonArea(h.XData, h.YData), F.Patches);
+                tc.verifyGreaterThan(min(a), 0, name);
+                tc.verifyEqual(numel(F.Patches), 24, ...
+                    sprintf(['%s: a pole-line projection must keep every ' ...
+                             'boundary vertex.'], name));
+            end
+        end
+
         function noLightingCallsSurvivedTheRewrite(tc)
             % D-009 is enforced statically by the audit; this asserts the
             % OBSERVABLE consequence, which a static check cannot see: the
@@ -494,6 +537,31 @@ classdef TestD1_elements < GeoMapTestCase
     % ==================================================================
     methods (Test, TestTags = {'metamorphic'})
 
+        function theFrameBandSurvivesApproachingThePole(tc)
+            % PV-135, metamorphic. The defect showed exactly in the
+            % limit - a frame stopping at 85 was right and one reaching
+            % 90 was a triangle - so the invariant asserted is continuity
+            % of the banded area as the northern limit walks to the pole,
+            % not a value at either end.
+            lat85 = (-90:15:75)';
+            lat85 = [lat85; 85];
+            areas = zeros(1, 2);
+            lats = {lat85, (-90:15:90)'};
+            for i = 1:2
+                la = lats{i};
+                lo = -180:20:180;
+                ax = tc.axesFor();
+                G = geo.grid(lo, la, sind(3 * repmat(lo, numel(la), 1)) .* ...
+                    cosd(2 * repmat(la, 1, numel(lo))));
+                geo.basemap(G, "mollweide", Parent = ax);
+                F = geo.frame(ax, StepLon = 60, StepLat = 30);
+                areas(i) = sum(arrayfun(@(h) ...
+                    polygonArea(h.XData, h.YData), F.Patches));
+            end
+            tc.verifyAndRecord(abs(log(areas(2) / areas(1))), log(3), ...
+                "mollweide frame band area, pole over 85", "");
+        end
+
         function drawOrderDoesNotChangeTheResult(tc)
             % This is what "composable" MEANS, and without this test it is
             % only an intention. Two orders, same object set, same z
@@ -649,4 +717,31 @@ for k = 1:numel(axH.Children)
     keep(k) = isa(axH.Children(k), 'matlab.graphics.primitive.Light');
 end
 h = axH.Children(keep);
+end
+
+% ======================================================================
+function G = poleToPoleGrid()
+%POLETOPOLEGRID  A field whose latitude axis REACHES both poles.
+%   The shared fixtures stop short of the pole - smallGrid at 80,
+%   demoGrid at 87.5 - and PV-135 only exists where the boundary's top
+%   edge lands ON the pole. A fixture that cannot reach the defect is a
+%   test that cannot see it.
+lon = -180:20:180;
+lat = (-90:15:90)';
+G = geo.grid(lon, lat, sind(3 * repmat(lon, numel(lat), 1)) .* ...
+    cosd(2 * repmat(lat, 1, numel(lon))));
+end
+
+function a = polygonArea(x, y)
+%POLYGONAREA  Shoelace area of one patch, sign discarded.
+%   Local to this suite deliberately: it is an OBSERVABLE of a drawn
+%   object, not a toolbox capability, and promoting it would put a
+%   geometry routine in the package that nothing in the package needs.
+x = double(x(:));
+y = double(y(:));
+if numel(x) < 3
+    a = 0;
+    return
+end
+a = abs(sum(x .* circshift(y, -1) - circshift(x, -1) .* y)) / 2;
 end
