@@ -168,6 +168,87 @@ def check_forbidden(root: pathlib.Path):
     return problems
 
 
+RE_NVPAIR = re.compile(r"\b\w+\s*=\s*[^=,)]+,")
+
+
+def _args_of_calls(s: str):
+    """Yield each call's top-level argument list, brackets respected.
+
+    The first draft split on every comma inside the nearest parentheses,
+    which read `Dimensions = {'lon', nLon}` as two arguments and fired on
+    perfectly legal code. A check that cries on valid source teaches
+    people to ignore it, which is worse than not having it.
+    """
+    depth = {"(": 0, "[": 0, "{": 0}
+    opens = {")": "(", "]": "[", "}": "{"}
+    stack, arg, args, quoted = [], "", [], False
+    for ch in s:
+        if ch in "'\"":
+            quoted = not quoted
+            arg += ch
+            continue
+        if quoted:
+            arg += ch
+            continue
+        if ch in "([{":
+            if ch == "(" and not stack:
+                stack.append((ch, args, arg))
+                args, arg = [], ""
+                continue
+            stack.append((ch, None, None))
+            arg += ch
+        elif ch in ")]}":
+            if stack and stack[-1][0] == opens[ch]:
+                _, outerArgs, outerArg = stack.pop()
+                if outerArgs is not None:
+                    args.append(arg.strip())
+                    yield args
+                    args, arg = outerArgs, outerArg
+                    continue
+            arg += ch
+        elif ch == "," and stack and len(stack) == 1:
+            args.append(arg.strip())
+            arg = ""
+        else:
+            arg += ch
+
+
+def check_nv_last(path: pathlib.Path, text: str) -> list[str]:
+    """FVAPN: a name=value argument must be the LAST in its call.
+
+    Code Analyzer raises this and geoMapAudit fails the gate on it, but
+    only in CI - so the same slip cost two round trips in one session
+    (PV-140). It is cheap to see here. Continuations are joined first,
+    because the pair and the argument after it are usually on different
+    lines, which is exactly why it is easy to write and hard to see.
+    """
+    out, buf, start = [], "", 0
+    joined = []
+    for i, line in enumerate(text.splitlines(), 1):
+        s = line.split("%")[0].rstrip()
+        if not buf:
+            start = i
+        if s.endswith("..."):
+            buf += s[:-3]
+            continue
+        joined.append((start, buf + s))
+        buf = ""
+    for lineno, s in joined:
+        for parts in _args_of_calls(s):
+            seen_nv = False
+            for a in parts:
+                # (?!=) so a COMPARISON is not read as a pair: `dims ==
+                # lonName` is "dims " then "=" then "= lonName", which
+                # looks exactly like name = value without it.
+                is_nv = bool(re.fullmatch(r"\w+\s*=(?!=)\s*.+", a, re.S))
+                if seen_nv and not is_nv:
+                    out.append(f"{path.name}:{lineno}: name=value argument "
+                               f"is not last (Code Analyzer FVAPN)")
+                    break
+                seen_nv = seen_nv or is_nv
+    return out
+
+
 def selftest() -> bool:
     """Prove each check FIRES on a broken fixture and is SILENT on a good one."""
     import tempfile, os
@@ -218,6 +299,27 @@ def selftest() -> bool:
         (g / "bad.m").write_text("function f()\nx = max(a)-min(a);\nend\n")
         if check_forbidden(d):
             print("  SELFTEST FAIL: forbidden-function check false positive")
+        # FVAPN: cheap here, and it cost two CI round trips in one
+        # session before it was (PV-140).
+        if check_nv_last(pathlib.Path("x.m"),
+                         "f(a, b, 'msg', AbsTol = 1e-9);"):
+            print("  SELFTEST FAIL: FVAPN false positive on a legal call")
+            ok = False
+        if not check_nv_last(pathlib.Path("x.m"),
+                             "f(a, b, AbsTol = 1e-9, 'msg');"):
+            print("  SELFTEST FAIL: FVAPN check did not fire")
+            ok = False
+        if not check_nv_last(pathlib.Path("x.m"),
+                             "f(a, ...\n    AbsTol = 1e-9, ...\n    'msg');"):
+            print("  SELFTEST FAIL: FVAPN missed a continued call")
+            ok = False
+        if check_nv_last(pathlib.Path("x.m"), "i = find(KEYS == h, 1);"):
+            print("  SELFTEST FAIL: FVAPN read a comparison as a pair")
+            ok = False
+        if check_nv_last(pathlib.Path("x.m"),
+                         "nccreate(p, 'z', Dimensions = {'a', 2}, F = 'n4');"):
+            print("  SELFTEST FAIL: FVAPN split a braced value")
+            ok = False
             ok = False
     print(f"  self-test: {'PASS' if ok else 'FAIL'}")
     return ok
@@ -237,6 +339,7 @@ def main():
         _, p = check_balance(f)
         problems += p
         problems += check_help(f)
+        problems += check_nv_last(f, f.read_text())
     problems += check_forbidden(root)
 
     print(f"\n  files checked : {len(files)}")
