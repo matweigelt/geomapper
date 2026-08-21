@@ -122,44 +122,38 @@ classdef TestD1_elements < GeoMapTestCase
             tc.verifyEqual(unique(F.Patches(1).ZData), 6);
         end
 
-        function aGlobalGridClosesItsOwnSeam(tc)
+        function aGlobalGridReportsAFullTurn(tc)
             % PV-138. geo.wrapLongitude's window is half-open, so a grid
             % written -180:20:180 - the natural way to write a global
-            % field - had +180 land on -180 and arrive as a duplicate
-            % column, leaving the axis running -180..160: one cell short
-            % of the world, with a hole at the antimeridian. Nothing
-            % measured the drawn extent, so it stayed invisible until a
-            % coastline clipped to that extent cut 222 vertices out of
-            % the Pacific.
+            % field - arrives as -180..160, one cell short of the world.
+            % Read as a closed interval that cut 222 coastline vertices
+            % out of the Pacific. The extent is CYCLIC and says so.
             lon = -180:20:180;
             lat = (-90:15:90)';
             G = geo.grid(lon, lat, sind(3 * repmat(lon, numel(lat), 1)) .* ...
                 cosd(2 * repmat(lat, 1, numel(lon))));
             ax = tc.axesFor();
             [~, ~, B] = geo.basemap(G, "equirectangular", Parent = ax);
-            tc.verifyEqual(diff(B.LonLimit), 360, ...
-                'A grid holding both ends of the world spans a full turn.');
-            tc.verifyEqual(numel(unique(B.Surface.XData(1, :))), ...
-                numel(B.Surface.XData(1, :)), ...
-                'The seam wrap must not leave a duplicated column.');
+            tc.verifyTrue(B.LonClosesTurn, ...
+                'A grid holding both ends of the world closes the turn.');
+            tc.verifyLessThan(diff(B.LonLimit), 360, ...
+                ['and it does so while its ENDPOINTS span less, which ' ...
+                 'is exactly why a span test cannot answer this.']);
         end
 
-        function aRegionalGridDoesNotInventASeam(tc)
-            % The control. A grid that does not go round must be left
-            % exactly as it was: same column count, same limits. The
-            % seam test compares the gap against the largest INTERIOR
-            % step, so a regional grid's 320-degree gap cannot be
-            % mistaken for a 20-degree one.
+        function aRegionalGridReportsNoTurn(tc)
+            % The control. The seam gap is compared against the largest
+            % INTERIOR step, so a regional grid's 320-degree gap cannot
+            % be mistaken for a 20-degree one.
             lon = 0:2:40;
             lat = (10:2:50)';
             G = geo.grid(lon, lat, repmat(lat, 1, numel(lon)) + ...
                 repmat(lon, numel(lat), 1));
             ax = tc.axesFor();
             [~, ~, B] = geo.basemap(G, "equirectangular", Parent = ax);
-            tc.verifyEqual(B.LonLimit, [0 40], ...
-                'A regional grid must keep its own limits.');
-            tc.verifyEqual(size(B.Surface.CData, 2), numel(lon), ...
-                'No column may be added to a grid that does not wrap.');
+            tc.verifyFalse(B.LonClosesTurn, ...
+                'A regional grid does not go round.');
+            tc.verifyEqual(B.LonLimit, [0 40]);
         end
 
         function theCoastlineIsCutAtTheFrameNotAtTheWorld(tc)
@@ -533,21 +527,29 @@ classdef TestD1_elements < GeoMapTestCase
     end
 
     methods (Test, TestTags = {'robustness'})
-        function anIncompleteRingIsDeclinedRatherThanGuessed(tc)
-            % A boundary that leaves the projection's domain closes with a
-            % chord across a region the projection could not reach.
-            % Clipping against that chord would delete real shoreline on
-            % the evidence of an invented edge, so the clip declines and
-            % says so. A gap beats a wrong half.
+        function anIncompleteRingDoesNotStopTheClip(tc)
+            % RE-DERIVED, not deleted (PV-137). The premise was that a
+            % boundary leaving the projection's domain closes with an
+            % invented chord, so clipping against it would delete real
+            % shoreline - true of an INPOLYGON test against a ring, and
+            % the reason that test was declined.
+            %
+            % Membership is no longer a ring test. It is the extent in
+            % lon/lat AND the domain through geo.project's NaN, both of
+            % which are defined whether or not a ring can be drawn. So
+            % an incomplete ring no longer declines anything: what falls
+            % outside the domain is dropped because the projection says
+            % so, which is the same authority that declined before.
             crs = geo.crs("equirectangular");
             B = geo.internal.mapBoundary(crs, [-26 46], [9 54]);
             B.Complete = false;
             lon = [0 0 0];
             lat = [30 80 100];
-            [cl, ~, info] = geo.internal.clipToBoundary(lon, lat, B);
-            tc.verifyFalse(info.Clipped);
-            tc.verifyEqual(numel(cl), 3, ...
-                'A declined clip must return its input untouched.');
+            [~, la, info] = geo.internal.clipToBoundary(lon, lat, B);
+            tc.verifyTrue(info.Clipped, ...
+                'The extent still bounds the line without a ring.');
+            tc.verifyLessThanOrEqual(max(la), 54 + 1e-6, ...
+                'Nothing above the extent may survive the clip.');
         end
 
         function aSingleCellGridIsRefusedByTheGridContract(tc)

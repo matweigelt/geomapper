@@ -201,11 +201,11 @@ function tf = isInside(lon, lat, B)
 %   window, so a shifted or antimeridian-crossing extent is one interval
 %   rather than two.
 lon0 = mean(B.LonLim);
-if diff(B.LonLim) >= 360 - 1e-9
+if B.LonClosesTurn || diff(B.LonLim) >= 360 - 1e-9
     inLon = true(size(lon));            % a full turn excludes nothing
-    % This reads as a closed-interval test and is one, because
-    % GEO.BASEMAP now CLOSES the seam (PV-138). Before it did, a global
-    % grid reported [-180 160] and this guard never fired.
+    % The FLAG, not the span. A global grid's endpoints span 360 minus
+    % one step because the wrap window is half-open, so a span test
+    % alone never fires and the clip eats the last cell (PV-138).
 else
     lonW = geo.wrapLongitude(lon, lon0);
     inLon = lonW >= B.LonLim(1) - 1e-9 & lonW <= B.LonLim(2) + 1e-9;

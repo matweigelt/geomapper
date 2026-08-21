@@ -123,7 +123,7 @@ arguments
     options.Resolution (1,1) string = "c"
 end
 
-[crs, lonLim, latLim, ~, ~, ~, diag] = geo.internal.elementExtent(axH, ...
+[crs, lonLim, latLim, base, ~, ~, diag] = geo.internal.elementExtent(axH, ...
     crs, ErrorId = "geo:coastline:NoBasemap");
 
 style = styleFor(options);
@@ -139,7 +139,7 @@ style = styleFor(options);
 % The clip is against the SAME ring the frame is drawn from
 % (GEO.INTERNAL.MAPBOUNDARY), not a second traversal to the same recipe:
 % two copies of the map's outline is defect F12, and it drifted.
-[xy, clip] = clipToExtent(xy, crs, lonLim, latLim);
+[xy, clip] = clipToExtent(xy, crs, lonLim, latLim, base);
 
 prior = geo.internal.layout("data", axH, "coastline");
 if ~isempty(prior)
@@ -224,7 +224,7 @@ n = sum(diff([false, finite]) == 1);
 end
 
 % ======================================================================
-function [xy, clip] = clipToExtent(xy, crs, lonLim, latLim)
+function [xy, clip] = clipToExtent(xy, crs, lonLim, latLim, base)
 %CLIPTOEXTENT  Cut the shoreline at the frame, and say how it was cut.
 %   Reports EXTENTCUTS, not NumCuts. NumCuts already means "branch cuts
 %   broken" - antimeridian jumps found by GEO.INTERNAL.PROJECTPOLYLINE -
@@ -233,8 +233,12 @@ function [xy, clip] = clipToExtent(xy, crs, lonLim, latLim)
 %
 %   NumParts rises on a regional map, and that is the cut working: a
 %   coast that leaves the frame and returns is two parts afterwards.
+closes = true;                          % no basemap: the window is whole
+if ~isempty(base) && isfield(base, 'LonClosesTurn')
+    closes = base.LonClosesTurn;
+end
 B = geo.internal.mapBoundary(crs, [lonLim(1) lonLim(2)], ...
-    [latLim(1) latLim(2)]);
+    [latLim(1) latLim(2)], LonClosesTurn = closes);
 [lon, lat, info] = geo.internal.clipToBoundary(xy(:, 1).', xy(:, 2).', B);
 clip = struct('ClippedToExtent', info.Clipped, ...
     'ExtentCuts', info.NumCuts, 'ExtentKept', info.NumInside);
