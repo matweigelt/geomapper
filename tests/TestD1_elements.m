@@ -47,6 +47,8 @@ classdef TestD1_elements < GeoMapTestCase
     properties (Constant)
         CoveredFunctions = ["geo.basemap" "geo.graticule" "geo.frame" ...
                             "geo.internal.layout" ...
+                            "geo.internal.mapBoundary" ...
+                            "geo.internal.clipToBoundary" ...
                             "geo.internal.avoidRectCollisions"]
     end
 
@@ -119,6 +121,39 @@ classdef TestD1_elements < GeoMapTestCase
             tc.verifyEqual(unique(Gr.Meridians(1).ZData), 3);
             tc.verifyEqual(unique(F.Patches(1).ZData), 6);
         end
+
+        function theCoastlineIsCutAtTheFrameNotAtTheWorld(tc)
+            % PV-136, reported from GettingStarted: on the track map the
+            % coastline ran outside the frame. geo.coastline fetched the
+            % extent from elementExtent and discarded outputs two and
+            % three, so it drew the whole world and let the axes box hide
+            % what it could - and geo.frame widens that box past its own
+            % band, which is the margin the spill showed in.
+            %
+            % Measured on the shipped 110 m coastline over the
+            % GettingStarted extent: 486 029 of 529 498 km outside, 91.8%.
+            lo = -26:4:46;
+            la = (9:4:54)';
+            G = geo.grid(lo, la, sind(3 * repmat(lo, numel(la), 1)) .* ...
+                cosd(2 * repmat(la, 1, numel(lo))));
+            ax = tc.axesFor();
+            geo.basemap(G, "equirectangular", Parent = ax);
+            C = geo.coastline(ax);
+            tc.verifyTrue(C.ClippedToExtent, ...
+                'The extent was fetched and not used.');
+            tc.verifyGreaterThan(C.ExtentCuts, 0, ...
+                'A regional map must cut the shoreline somewhere.');
+
+            % The observable: nothing drawn outside the frame's own ring.
+            B = geo.internal.mapBoundary(geo.crs("equirectangular"), ...
+                [-26 46], [9 54]);
+            good = isfinite(C.Line.XData) & isfinite(C.Line.YData);
+            in = inpolygon(C.Line.XData(good), C.Line.YData(good), ...
+                B.RingX, B.RingY);
+            tc.verifyEqual(nnz(~in), 0, ...
+                'A drawn coastline vertex lies outside the map boundary.');
+        end
+
 
         function aPointPoleDoesNotCollapseTheFrameBand(tc)
             % PV-135, reported from GettingStarted: "the fishnet frame
@@ -434,7 +469,46 @@ classdef TestD1_elements < GeoMapTestCase
     end
 
     % ==================================================================
+    methods (Test, TestTags = {'precision'})
+        function theCutMeetsTheFrameRatherThanStoppingShortOfIt(tc)
+            % The failure mode of the one-line repair, asserted against.
+            % Dropping the outside vertex leaves the line short of the
+            % ring by up to one coastline segment - measured at 108 km,
+            % twelve screen pixels - which trades a spill outside the
+            % frame for a white margin inside it. Sixteen halvings take
+            % the residual to 1.6e-3 km.
+            crs = geo.crs("equirectangular");
+            B = geo.internal.mapBoundary(crs, [-26 46], [9 54]);
+            lon = [0 0];
+            lat = [30 80];              % leaves through the top edge
+            [cl, ca] = deal([], []);
+            [cl, ca] = geo.internal.clipToBoundary(lon, lat, B, crs);
+            tc.verifyEqual(numel(cl), 2);
+            [~, yc] = geo.project(cl(end), ca(end), crs);
+            [~, yTop] = geo.project(0, 54, crs);
+            tc.verifyAndRecord(abs(yc - yTop), 1e-2, ...
+                "coastline cut vs the frame it was cut at", "km");
+        end
+
+    end
+
     methods (Test, TestTags = {'robustness'})
+        function anIncompleteRingIsDeclinedRatherThanGuessed(tc)
+            % A boundary that leaves the projection's domain closes with a
+            % chord across a region the projection could not reach.
+            % Clipping against that chord would delete real shoreline on
+            % the evidence of an invented edge, so the clip declines and
+            % says so. A gap beats a wrong half.
+            crs = geo.crs("equirectangular");
+            B = geo.internal.mapBoundary(crs, [-26 46], [9 54]);
+            B.Complete = false;
+            lon = [0 0 0];
+            lat = [30 80 100];
+            [cl, ~, info] = geo.internal.clipToBoundary(lon, lat, B, crs);
+            tc.verifyFalse(info.Clipped);
+            tc.verifyEqual(numel(cl), 3, ...
+                'A declined clip must return its input untouched.');
+        end
 
         function aSingleCellGridIsRefusedByTheGridContract(tc)
             % Refused at construction, before drawing is reached: a

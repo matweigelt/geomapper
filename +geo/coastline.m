@@ -1,5 +1,5 @@
 function H = coastline(axH, crs, options)
-%GEO.COASTLINE  Shorelines, rivers or an outline, projected and clipped.
+%GEO.COASTLINE  Shorelines, rivers or an outline, cut at the frame.
 %
 %   SYNTAX
 %     H = GEO.COASTLINE(AX)
@@ -64,7 +64,18 @@ function H = coastline(axH, crs, options)
 %          Line        (1,1) Line    One object; parts are NaN-separated.
 %          Provenance  (1,1) string  From GEO.READCOASTLINE.
 %          NumParts    (1,1) double  Parts after clipping and cutting.
-%          NumCuts     (1,1) double  Branch cuts broken.
+%          NumCuts     (1,1) double  Branch cuts broken - antimeridian
+%                                    and projection jumps, NOT the
+%                                    extent. See ExtentCuts.
+%          ClippedToExtent (1,1) logical  False when the boundary ring
+%                                    could not be closed inside the
+%                                    projection's domain, in which case
+%                                    nothing was cut and the whole
+%                                    shoreline is drawn.
+%          ExtentCuts  (1,1) double  Segments cut AT the frame. Rises
+%                                    from zero the moment the extent is
+%                                    smaller than the world, and each
+%                                    cut adds a part.
 %          MaxSegment  (1,1) double  Longest drawn segment, projected.
 %          All         (1,:)         Everything, for deletion.
 %
@@ -110,11 +121,23 @@ arguments
     options.Resolution (1,1) string = "c"
 end
 
-[crs, ~, ~, ~, ~, ~, diag] = geo.internal.elementExtent(axH, crs, ...
-    ErrorId = "geo:coastline:NoBasemap");
+[crs, lonLim, latLim, ~, ~, ~, diag] = geo.internal.elementExtent(axH, ...
+    crs, ErrorId = "geo:coastline:NoBasemap");
 
 style = styleFor(options);
 [xy, meta] = readThrough(options, style);
+
+% PV-136. The extent was fetched and thrown away here - outputs two and
+% three were discarded - so every call drew the whole world and let the
+% axes box hide the rest. On the GettingStarted track map that is 486 029
+% of 529 498 km outside the frame, 91.8%, and GEO.FRAME widens the axes
+% past its own band, which is the margin the spill shows in. GEO.GRATICULE
+% five files away has kept its limits since Stage D.
+%
+% The clip is against the SAME ring the frame is drawn from
+% (GEO.INTERNAL.MAPBOUNDARY), not a second traversal to the same recipe:
+% two copies of the map's outline is defect F12, and it drifted.
+[xy, clip] = clipToExtent(xy, crs, lonLim, latLim);
 
 prior = geo.internal.layout("data", axH, "coastline");
 if ~isempty(prior)
@@ -132,7 +155,9 @@ h = line('Parent', axH, 'XData', x, 'YData', y, ...
 
 H = struct('Line', h, 'Provenance', meta.Provenance, ...
     'NumParts', countParts(x), 'NumCuts', info.NumCuts, ...
-    'MaxSegment', info.MaxSegment, 'All', h);
+    'MaxSegment', info.MaxSegment, ...
+    'ClippedToExtent', clip.ClippedToExtent, ...
+    'ExtentCuts', clip.ExtentCuts, 'All', h);
 
 geo.internal.layout("register", axH, "coastline", @(~) []);
 geo.internal.layout("setData", axH, "coastline", H);
@@ -193,4 +218,25 @@ if ~any(finite)
     return
 end
 n = sum(diff([false, finite]) == 1);
+end
+
+% ======================================================================
+function [xy, clip] = clipToExtent(xy, crs, lonLim, latLim)
+%CLIPTOEXTENT  Cut the shoreline at the frame, and say how it was cut.
+%   Reports EXTENTCUTS, not NumCuts. NumCuts already means "branch cuts
+%   broken" - antimeridian jumps found by GEO.INTERNAL.PROJECTPOLYLINE -
+%   and one name carrying two meanings across two files is the aliasing
+%   that one-name-per-thing forbids.
+%
+%   NumParts rises on a regional map, and that is the cut working: a
+%   coast that leaves the frame and returns is two parts afterwards.
+B = geo.internal.mapBoundary(crs, [lonLim(1) lonLim(2)], ...
+    [latLim(1) latLim(2)]);
+[lon, lat, info] = geo.internal.clipToBoundary(xy(:, 1).', xy(:, 2).', ...
+    B, crs);
+clip = struct('ClippedToExtent', info.Clipped, 'ExtentCuts', info.NumCuts);
+if ~info.Clipped
+    return
+end
+xy = [lon(:), lat(:)];
 end
