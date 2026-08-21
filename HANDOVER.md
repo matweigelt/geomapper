@@ -1,6 +1,8 @@
 # geoMap v2 — HANDOVER
 
-**Revision 3.0 · 16-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug).**
+**Revision 3.1 · 21-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug); revision 3.1 re-synchronises Parts 0 and 1 with the evidence in `RECORDS.md` (PV-130).**
+
+**What revision 3.1 changes, and why it had to.** Between 16-Aug and 20-Aug, Stages D, E and F.1–F.3 were built, executed and merged. Fourteen records entries (R-012 … R-025) and seventy change-log rows (C-100 … C-169) were written. **Part 1 — the one place a status is allowed to live — was not touched.** A session opening this file on the morning of 21-Aug read that Stage 0 was in progress and that Stages D, E and F had not started. Nothing was red: every gate looks at code, and no gate looked at the document set. This is BEST_PRACTICE §6.1 inverted — the evidence file grew a status and the status file kept none. The drift is now a check (`tools/ledger_sync.py`), so the next occurrence is a red static gate rather than a reader's surprise.
 
 **What this file is.** The single source of truth for the revision of `geoImagescToolbox` v1.1/1.2 → `geoMap` v2.0. It holds the rules, the design and the ledger. **It is the only place a status lives.** Per BEST_PRACTICE §6.1 it holds no round-by-round narrative evidence; that goes to `RECORDS.md`.
 
@@ -27,12 +29,12 @@
 | V1 | ~~Every number in this document is model-derived.~~ **PARTIALLY DISCHARGED 13-Aug-2026.** 37 values measured by the mirror; 4 handover claims refuted, 33 confirmed. Corrections applied to Part 7.4. **Remaining:** the speed ratios (see V5) and the tolerances for Stages C–F, which no mirror can reach. | Mirror run, `mirror/geomap_mirror/out/reference_values.json`. | V5 for speed; Stage C–F numbers measured at their own stages. **Standing rule survives: no stage asserts a number this document supplies until it has been measured.** | Medium |
 | V2 | ~~v1's 16 projections were never checked against an independent implementation.~~ **DISCHARGED for the mathematics 13-Aug-2026.** All 16 spherical kernels now agree with PROJ 9.5.1 to ≤ 6e-13 (Robinson ≤ 8.9e-4, see L5), and all 16 round-trip to ≤ 4.6e-9. ~~**Remaining:** the MATLAB implementations are still unwritten and unchecked; the oracle now exists to check them.~~ **FULLY DISCHARGED 15-Aug-2026.** All sixteen are written and checked. Published point values reproduce to **0** (LCC Snyder p.296, polar stereographic ρ(70), Robinson table nodes) and 1.1e-16 (Mercator y(35)); round trips measure ≤ 4.5e-12° for thirteen of sixteen, 1.63e-11° for orthographic and 2.07e-09° for Lambert azimuthal — the last inside its own 1e-8 exception and better than the mirror's 4.6e-9. The analytic invariants hold at 5.0e-9 … 3.9e-8 against 1e-6 tolerances. R-007. | Mirror vs oracle O4; MATLAB vs mirror. | — closed | — |
 | V3 | ~~The GSHHG reader has never seen a real GSHHG file.~~ **DISCHARGED 15-Aug-2026, and it was the oldest debt in the project.** Real GSHHG binaries and Natural Earth shapefiles arrived at `E:\DATAPOOL\Borders`. Measured: `gshhs_c.b` L1 gives 7 286 pts / 746 parts, `gshhs_i.b` L1 gives 340 364 pts / 32 835 parts, and the L5/6 Antarctic pole closure lands at **exactly −90** (defect F17). `ne_10m_coastline.shp` gives 410 957 pts / 4 133 parts with coordinates exact as IEEE doubles. **Oracles O5 and O6 both filled.** `Provenance` now reads `"verified"` per format. R-008. | Real files, checked. | — closed | — |
-| V4 | **The v1 defect list F1–F18 is a reading, not a measurement.** F1 (`range()` is a Statistics Toolbox function) and F2 (Robinson wrap) are near-certain; F4 (regrid seam), F9 (renderer dependence) and F12 (magic thresholds) were inferred from source without executing v1. | v1 was never run during the review. | Stage 0 delivers `records/v1_defect_probes.m`, one runnable probe per finding, run against the v1 tree. Findings that fail to reproduce are **removed from the design rationale**, not quietly kept. | **Medium** |
+| V4 | ~~The v1 defect list F1–F18 is a reading, not a measurement.~~ **DISCHARGED 15-Aug-2026.** `records/v1_defect_probes.m` was run against the installed v1: **17 of 18 reproduced, 0 refuted, 1 blocked.** F17 is blocked on oracle O6 and is reported as `blocked`, never as a pass. Two illustrations in Part 5 were corrected against their own measurement — F1 is **32** `range()` call sites, not the ~15 claimed; F16's worst case is **10** lines, not "3 or 11". | v1 was never run during the review; then it was. | Probes executed, R-005. | — closed |
 | V5 | ~~No baseline machine is recorded, and the entire MATLAB harness is unexecuted.~~ **DISCHARGED 15-Aug-2026.** Baseline machine: `win64 | R2026a | 16 threads`. The harness ran: 20 points, 18 pass, 2 filtered loudly, green gate on all five conditions. Every `PROVISIONAL` stamp in the eleven shipped files is now false and must be removed in the next commit. **Remaining:** the Stage A–F speed budgets in §2.4.3 are still predictions; only the three harness self-test ratios are measured. Every speed budget in Part 7 is a predicted ratio with no measurement behind it. | Nothing has run. | Stage 0's first green run records the machine and the baseline operation timings in `RECORDS.md`; Stage B onward asserts against them. Until then every speed budget is marked *predicted* in its own test. | **Medium** |
 | V6 | ~~Execution tier is undeclared.~~ **DISCHARGED 14-Aug-2026.** Tier A confirmed by use: live R2026a via MCP, filesystem access, working `git` with credential manager. `gh` absent, so PR creation stays manual. | Bridge exercised end to end. | — closed | — |
-| V7 | **The conservative-regrid mass-closure guarantee (≤1e-12 relative) is an assertion about an algorithm not yet written.** First-order area-weighted remap conserves exactly in exact arithmetic; the achievable floor in double precision over a 2161×4321 grid is a summation-order question and has not been measured. | No implementation. | Stage 0 mirror measures the achievable floor on the real grid size and **the tolerance is set from that measurement**, not from this document's guess. If it is worse than 1e-12, that is a finding (BEST_PRACTICE §4.6 — never loosen to pass; record and re-derive). | **Medium** |
+| V7 | ~~The conservative-regrid mass-closure guarantee (≤1e-12 relative) is an assertion about an algorithm not yet written.~~ **DISCHARGED 15-Aug-2026, and the measurement made the tolerance *tighter* than the guess.** Worst of three summation orders over 2161×4321 → 181×361 is **2.150e-14**; `TolMass` is set to **1e-13**, one decade above the measured floor. PV-057 records that the first bound-setting formula returned 1e-12 — the handover's guess — and was caught by reading the bound printed beside the measurement in a **green** run. | Measured, not assumed. | Mirror `regrid.py`; R-005, R-007. | — closed |
 | V8 | ~~`geo.scalebar`'s 5% scale-variation gate is an invented threshold.~~ **DISCHARGED 13-Aug-2026.** Measured across 14 projections × 4 extents. At a 1.05 threshold a *refusing* gate would refuse on 6 of 14 projections even for a 10°×10° regional map, and 12 of 14 at continental scale — confirming D-006's draw-and-report decision on evidence rather than judgement. Threshold retained as a **warning** trigger only. Two method corrections: the gate must read **linear** scale (h, k), not area scale (PV-009), and must sample strictly inside the extent (PV-008/L7). | Mirror `check_scale_variation`. | — closed | — |
-| V9 | **Whether the v1 option surface can be preserved 1:1 is untested.** Stage E promises v1 option names carry over "wherever the feature survived"; nobody has enumerated v1's options against v2's function set. | Not done. | Stage 0 delivers `records/v1_option_inventory.md`, a mechanical extraction of every `options.` field from v1's five fronts, mapped to its v2 destination or marked dropped with a reason. | **Low** |
+| V9 | ~~Whether the v1 option surface can be preserved 1:1 is untested.~~ **DISCHARGED 16-Aug-2026 at checkpoint E.1c.** **177 options: 159 carried, 15 renamed, 3 dropped, 0 unmapped**, each checked against the real `arguments` block rather than asserted. Of v1's 120 `geoImagesc` options, 92 translate and 28 raise with the replacement named. | Enumerated mechanically, then checked. | `records/v1_option_inventory.md`, `records/v1_option_resolution.m`; R-019. | — closed |
 
 **Standing rule.** A debt is discharged only when a number exists end to end (BEST_PRACTICE §F5). "The mirror now computes it" is not discharge; "the mirror computes it, MATLAB reproduces it, and both are in `RECORDS.md`" is.
 
@@ -46,13 +48,13 @@
 
 | Stage | Deliverable | Depends on | Tier | Status | Green gate date | Records entry |
 |---|---|---|---|---|---|---|
-| **0** | Harness, mirror, audit, runner, oracle register seeding, v1 probes | — | **A** (bridge) | **◐ in progress** — 0.1 (mirror) executed; **0.2 (MATLAB harness) EXECUTED AND GREEN on the target machine, pushed to `claude/v2000-stage0-harness`**; 0.3 (audit, v1 probes) open | 0.2 green 15-Aug-2026 | R-002, R-003, R-004 |
+| **0** | Harness, mirror, audit, runner, oracle register seeding, v1 probes | — | **A** (bridge) | **☑ done** — three checkpoints: 0.1 mirror, 0.2 harness (executed and green on the target machine), 0.3 audit + v1 probes. **36 points predicted, 36 run, 36 passed**, static audit 0 findings | **15-Aug-2026** | R-002, R-003, R-004, R-005 |
 | **A** | L0 data model + longitude topology (14 files) | 0 | **A** (bridge) | **☑ done** — three checkpoints, each with its own confirming run (63 → 88 → 113 points, every count predicted correctly before its run) | **15-Aug-2026** | R-006 |
 | **B** | L1 core math (12 files) | 0, A | **A** (bridge) | **☑ done** — three checkpoints, each with its own confirming run (138 → 164 → 182 points, every count predicted correctly before its run) | **15-Aug-2026** | R-007 |
 | **C** | L2 I/O and caching (4 files + edit) | 0, A, B | **A** (bridge) | **☑ done** — 205 points predicted, 205 run, 205 passed. **V3 discharged**, O5 and O6 filled against real data. GeoTIFF/worldfile deferred with its identifier and contract test in place | **15-Aug-2026** | R-008 |
-| **D** | L3 cartographic elements (14 files) | 0, A–C | B | ☐ not started | — | — |
-| **E** | L4 fronts (6 files) | 0, A–D | B | ☐ not started | — | — |
-| **F** | Docs, packaging, release, independent audit | 0, A–E | B | ☐ not started | — | — |
+| **D** | L3 cartographic elements (14 files) | 0, A–C | **A** (bridge) | **☑ done** — seven checkpoints. **347 points predicted, 347 run, 347 passed, 0 failed.** Fourteen L3 elements and five internals replace v1's 3413-line plotting function, its two near-clones and its five plumbing functions | **16-Aug-2026** | R-009 … R-015 |
+| **E** | L4 fronts (6 files) | 0, A–D | **A** (bridge) | **☑ done** — seven checkpoints. **468 points predicted, 468 run, 468 passed, 0 failed.** `geo.map` is 128 lines against `geoImagesc`'s 3413. V9 discharged at E.1c | **20-Aug-2026** | R-016 … R-022 |
+| **F** | Docs, packaging, release, independent audit | 0, A–E | **A** (bridge) + CI | **◐ in progress** — deliverables 1–9 delivered and executed (F.1 477 pts, F.2 487, F.3 489), then PV-127/128/129 at **491 predicted, 486 passed, 5 filtered, 0 failed, 0 audit findings**. **Open: 10 (release checklist), 11 (`RECORDS.md` final state), 12 (the independent audit, its own session)** | — | R-023, R-024, R-025, R-026 |
 
 Status values, and nothing else: `☐ not started` · `◐ in progress` · `◐ provisional (code shipped, not executed)` · `☑ done`.
 
@@ -64,12 +66,33 @@ Stages B and D are delivered in checkpoints — consecutive turns within one cha
 
 | Stage | Checkpoint | Contents | Status |
 |---|---|---|---|
+| 0 | 0.1 | mirror | ☑ R-002 |
+| 0 | 0.2 | MATLAB harness, executed | ☑ R-003, R-004 |
+| 0 | 0.3 | audit, v1 probes, option inventory | ☑ 36 points, R-005 |
 | B | B.1 | `project`, `unproject`, `scaleFactors` | ☑ 138 points |
 | B | B.2 | `quantile`, `symmetricLimits`, `niceTicks`, `regrid`, `hillshade` | ☑ 164 points |
 | B | B.3 | `colormaps` | ☑ 182 points |
-| D | D.1 | `internal.layout`, `basemap`, `graticule`, `frame` | ☐ |
-| D | D.2 | `coastline`, `scalebar`, `northarrow`, `colorbar`, `inset` | ☐ |
-| D | D.3 | overlays: `track`, `points`, `contours`, `polygons`, `stipple` | ☐ |
+| D | D.0 | `internal.layout` groundwork | ☑ R-009 |
+| D | D.1 | `basemap`, `graticule`, `frame` | ☑ R-010 |
+| D | D.1b | frame/graticule repairs | ☑ R-011 |
+| D | D.2a | `coastline`, `scalebar`, `northarrow` | ☑ R-012, 90 points |
+| D | D.2b | `colorbar`, `inset` | ☑ R-013 |
+| D | D.3a | `overlayContours`, `overlayPolygons`, `stipple` | ☑ R-014 |
+| D | D.3b | `overlayTrack`, `overlayPoints`, `internal.colourScale` | ☑ 347 points, R-015 |
+| E | E.0 | `geo.export` | ☑ R-016 |
+| E | E.1a | `geo.map` | ☑ R-017 |
+| E | E.1b | v1 option instrument | ☑ R-018 |
+| E | E.1c | v1 option resolution, **V9 discharged** | ☑ R-019 |
+| E | E.2 | `geo.pointmap`, `geo.trackmap` | ☑ R-020 |
+| E | E.3 | `geo.series`, `geo.timeseries` | ☑ 450 points, R-021 |
+| E | E.4 | `geo.panel` | ☑ 468 points, R-022 |
+| F | F.1 | integration scenarios, version chain | ☑ 477 points, R-023 |
+| F | F.2 | `docbuild/build_help.m`, the manual | ☑ 487 points, R-024 |
+| F | F.3 | sync gate, `GettingStarted`, README, `.prj`, changelog | ☑ 489 points, R-025 |
+| F | F.4 | package closure (PV-127/128/129); ledger re-sync (PV-130) | ◐ 491 points on the bridge; ledger gate green in the sandbox, MATLAB leg on CI |
+| F | — | **deliverable 12: the independent audit** | ☐ its own session, findings only |
+
+**The planned checkpoint names did not survive contact, and the delivered ones are what is recorded above.** Stage D was planned as three checkpoints and ran as seven; Stage E as one and ran as seven. That is not drift to be tidied away — a checkpoint was cut whenever a confirming run was owed, which is the rule working.
 
 ### 1.3 Obligations register
 
@@ -79,11 +102,12 @@ Stages B and D are delivered in checkpoints — consecutive turns within one cha
 |---|---|---|---|
 | OB-1 | Every stage declares its execution tier in its first line. | implementing chat | never — standing |
 | OB-2 | No number from this document is asserted in a test until the mirror has reproduced it. | implementing chat | never — standing |
-| OB-3 | The GSHHG reader carries `provenance = "unverified"` in its metadata and its help note. | Stage C | V3 discharged |
+| OB-3 | ~~The GSHHG reader carries `provenance = "unverified"`.~~ **CLOSED 15-Aug-2026** with V3. Real GSHHG binaries and Natural Earth shapefiles were read; `Provenance` now reads `"verified"` per format. | Stage C | — closed |
 | OB-4 | Every speed budget carries the tag *predicted* until measured on the recorded baseline machine. | all stages | V5 discharged |
 | OB-5 | Exemption register (Part 2.3.2) is re-read at each stage boundary; an exemption that has become false is a finding. | implementing chat | release |
 | OB-6 | Decision log re-read triggers (Part 4) checked at each stage boundary. | implementing chat | release |
 | OB-7 | v1 remains installed and runnable until Stage F, so defect probes stay reproducible. | Matthias | Stage F green |
+| **OB-7 is BROKEN** | The v1 tree is gone from the target machine (PV-129, 20-Aug). Oracle **O12 is unreachable**, and four tests filter loudly rather than pass — **five filtered is the current normal**. It is recorded rather than dropped: restoring v1 before the independent audit returns those four points, and leaving it broken is a decision for Matthias, not for an implementing session. | Matthias | v1 restored, **or** the four probes retired with a reason |
 
 ---
 
@@ -1217,6 +1241,10 @@ anything. R-011, PV-080.
 | C-167 | 20-Aug-2026 | **PV-127 fixed: `sha256OfText` moved from `tools/` into `+geo/+internal/`,** and the harness now calls the package's copy rather than the package borrowing the harness's. Reproduced, then verified by running `GettingStarted` with only the toolbox root on the path | PV-127 |
 | C-168 | 20-Aug-2026 | **Audit check 15, `packageClosure`:** +geo may not reference any `.m` the `.mltbx` does not ship. States the rule instead of enumerating names; `geoMapRoot` removed from `banned` so one defect has one authority. Fixture `escapes`; 17 fixtures | PV-128 |
 | C-169 | 20-Aug-2026 | **Two integration tests read the closure a second way,** via `matlab.codetools.requiredFilesAndProducts` — which sees a dependency outside the repository that the audit's text scan cannot — and assert the product list is MATLAB plus at most the optional, guarded PCT. 491 points, 486 passed, 5 filtered | PV-127, PV-129 |
+| C-170 | 21-Aug-2026 | **PV-130: `HANDOVER.md` Parts 0 and 1 re-synchronised with `RECORDS.md`.** Stage 0 read *in progress* and Stages D, E, F read *not started* while fourteen records entries and seventy change-log rows described them as finished. Debts V4, V7, V9 read open while the records declared all three discharged. **Seven disagreements, measured.** Revision 3.0 → 3.1 | R-026 |
+| C-171 | 21-Aug-2026 | **`tools/ledger_sync.py`: the drift is now a gate.** Five rules stating that a status and its evidence must agree, self-tested with one fault-injection fixture per rule. Static and runtime-free — it must fire in the sessions where MATLAB is *not* reachable, which is where documents drift hardest. Added to `tools/gates.sh` and the first CI job | PV-130 |
+| C-172 | 21-Aug-2026 | **Checkpoint ledger replaced by the checkpoints actually delivered.** D ran as seven where three were planned; E as seven where one was. A checkpoint was cut whenever a confirming run was owed | R-026 |
+| C-173 | 21-Aug-2026 | **Tier refinement: the MATLAB leg does not require the desktop bridge.** CI provisions R2026a on a hosted runner, so an authoring session with only network access can execute the suite by pushing a branch. The bridge stays the faster loop, not the only one | R-026 |
 
 ---
 
