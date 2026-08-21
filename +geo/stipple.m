@@ -107,7 +107,7 @@ arguments
 end
 
 G = geo.grid(G);
-[crs, ~, ~, ~, ~, ~, diag] = geo.internal.elementExtent(axH, crs, ...
+[crs, lonLim, latLim, ~, ~, ~, diag] = geo.internal.elementExtent(axH, crs, ...
     ErrorId = "geo:stipple:NoBasemap");
 
 mask = G.Z ~= 0 & ~isnan(G.Z);
@@ -119,15 +119,18 @@ if nMasked == 0
          'from a mask built the wrong way round.']);
 end
 
+B = geo.internal.mapBoundary(crs, [lonLim(1) lonLim(2)], ...
+    [latLim(1) latLim(2)]);
+
 prior = geo.internal.layout("data", axH, "stipple");
 if ~isempty(prior)
     delete(prior.All(isgraphics(prior.All)));
 end
 
 if options.Style == "dots"
-    [marks, stride, nMarks] = drawDots(axH, G, mask, crs, nMasked, options);
+    [marks, stride, nMarks] = drawDots(axH, G, mask, crs, nMasked, B, options);
 else
-    [marks, stride, nMarks] = drawHatch(axH, G, mask, crs, diag, options);
+    [marks, stride, nMarks] = drawHatch(axH, G, mask, crs, diag, B, options);
 end
 
 H = struct('Marks', marks, 'Style', options.Style, ...
@@ -138,7 +141,7 @@ geo.internal.layout("setData", axH, "stipple", H);
 end
 
 % ======================================================================
-function [h, stride, n] = drawDots(axH, G, mask, crs, nMasked, options)
+function [h, stride, n] = drawDots(axH, G, mask, crs, nMasked, B, options)
 %DRAWDOTS  Every STRIDE-th significant cell, in the mask's own order.
 %   The stride is ceil(nMasked / Density), so the count lands at or just
 %   under the target and the same mask always gives the same dots. A
@@ -150,14 +153,19 @@ idx = idx(1:stride:end);
 lon = G.Lon(col);
 lat = G.Lat(row);
 [x, y] = geo.project(lon(:).', lat(:).', crs);
-ok = isfinite(x) & isfinite(y);
+% A MARK CANNOT BE CUT: it is inside the frame or it is not. The extent
+% is applied as a mask, the same rule the coastline is cut by asked as a
+% yes or no (PV-142). A significance stipple standing outside the frame
+% is worse than most stray ink, because it reads as a claim about a
+% place the map is not showing.
+ok = geo.internal.insideExtent(lon(:).', lat(:).', B);
 n = nnz(ok);
 h = line('Parent', axH, 'XData', x(ok), 'YData', y(ok), ...
     'ZData', 2 * ones(1, n), 'LineStyle', 'none', 'Marker', '.', ...
     'MarkerSize', options.MarkerSize * 3, 'Color', options.Color);
 end
 
-function [h, stride, n] = drawHatch(axH, G, mask, crs, diag, options)
+function [h, stride, n] = drawHatch(axH, G, mask, crs, diag, B, options)
 %DRAWHATCH  Diagonal strokes, one object, clipped to whole cells.
 %   Drawn in PROJECTED space, because a hatch that followed the graticule
 %   would rotate with the projection and stop reading as texture. Each
@@ -168,7 +176,7 @@ stride = 1;
 lon = G.Lon(col);
 lat = G.Lat(row);
 [cx, cy] = geo.project(lon(:).', lat(:).', crs);
-ok = isfinite(cx) & isfinite(cy);
+ok = geo.internal.insideExtent(lon(:).', lat(:).', B);
 cx = cx(ok);
 cy = cy(ok);
 if isempty(cx)

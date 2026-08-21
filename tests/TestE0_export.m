@@ -498,18 +498,45 @@ classdef TestE0_export < GeoMapTestCase
 
 
         function theOrderOfABatchDoesNotChangeItsFiles(tc)
+            % PV-143. This asserted BIT-IDENTICAL pixels either side of a
+            % reordered batch - which is the exact claim PV-114 withdrew
+            % next door, and it survived the withdrawal because only the
+            % test PV-114 was looking at got repaired. It failed on CI at
+            % 25 253 of 302 743 pixels, 8.34%, on a commit that had
+            % passed minutes earlier with byte-identical content: the
+            % same run on the other trigger was green, and the merge base
+            % is main, so nothing about the tree differed. Software
+            % OpenGL does not promise a repeatable raster and geo.export
+            % cannot make it one.
+            %
+            % The claim is therefore made about what geo.export DOES
+            % control, exactly as PV-114's repair made it: order does not
+            % change the page, the route, the resolution or the
+            % dimensions. The pixel comparison stays in the message as a
+            % DIAGNOSTIC, so a real ordering defect would still be
+            % visible in the log to anyone reading it - it is simply no
+            % longer asserted, because it was never a property of this
+            % function.
             d = tc.scratch();
             f = tc.exportFigure([1 1 1]);
             g = tc.exportFigure([0.5 0.5 0.5]);
             tc.realise(f, d);
             tc.realise(g, d);
             p = fullfile(d, ["f1" "g1" "g2" "f2"] + ".png");
-            geo.export([f g], p(1:2), Width = 6);
-            geo.export([g f], p([3 4]), Width = 6);
-            tc.verifyEqual(imread(p(4)), imread(p(1)), ...
-                "first figure: " + tc.imageDiff(p(1), p(4)));
-            tc.verifyEqual(imread(p(3)), imread(p(2)), ...
-                "second figure: " + tc.imageDiff(p(2), p(3)));
+            A = geo.export([f g], p(1:2), Width = 6);
+            B = geo.export([g f], p([3 4]), Width = 6);
+            fprintf('  [PV-143 diagnostic] first  %s\n', ...
+                tc.imageDiff(p(1), p(4)));
+            fprintf('  [PV-143 diagnostic] second %s\n', ...
+                tc.imageDiff(p(2), p(3)));
+            i1 = imfinfo(p(1));  i4 = imfinfo(p(4));
+            i2 = imfinfo(p(2));  i3 = imfinfo(p(3));
+            tc.verifyEqual([i4.Width i4.Height], [i1.Width i1.Height], ...
+                'first figure: order must not change the page size');
+            tc.verifyEqual([i3.Width i3.Height], [i2.Width i2.Height], ...
+                'second figure: order must not change the page size');
+            tc.verifyEqual(rmfield(B, 'Files'), rmfield(A, 'Files'), ...
+                'and the batch reports the same page, route and resolution');
         end
 
         function theFirstExportIsTheSamePageIfNotTheSamePixels(tc)

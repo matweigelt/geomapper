@@ -108,7 +108,7 @@ arguments
     options.NaNColor double = []
 end
 
-[crs, ~, ~, base] = geo.internal.elementExtent(axH, crs, ...
+[crs, lonLim, latLim, base] = geo.internal.elementExtent(axH, crs, ...
     ErrorId = "geo:overlayPolygons:NoBasemap");
 rings = ringsOf(P);
 values = options.Values;
@@ -141,13 +141,18 @@ for k = 1:numel(rings)
     nParts = nParts + numel(allParts{k});
 end
 
+% One boundary for every ring, built once.
+B = geo.internal.mapBoundary(crs, [lonLim(1) lonLim(2)], ...
+    [latLim(1) latLim(2)]);
+
+
 patches = gobjects(1, nParts);
 polygonOf = zeros(1, nParts);
 m = 0;
 for k = 1:numel(rings)
     colour = colourOf(values, k, cLim, cmap, options);
     for j = 1:numel(allParts{k})
-        h = onePatch(axH, allParts{k}{j}, crs, colour, options);
+        h = onePatch(axH, allParts{k}{j}, crs, colour, B, options);
         if isempty(h)
             continue
         end
@@ -312,8 +317,26 @@ rgb = geo.colormaps("truecolor", v, cmap, CLim = cLim);
 colour = reshape(rgb, 1, 3);
 end
 
-function h = onePatch(axH, ring, crs, colour, options)
-%ONEPATCH  Project one closed part and draw it.
+function h = onePatch(axH, ring, crs, colour, B, options)
+%ONEPATCH  Project one closed part and draw it, if it is on the map.
+%
+%   WHOLLY OUTSIDE IS DROPPED; STRADDLING IS NOT CUT, and the difference
+%   is deliberate (PV-142). A filled ring cut at the frame stops being
+%   closed, and closing it again means walking the boundary between the
+%   exit and the re-entry - which needs the projected ring that PV-137
+%   showed does not always exist. Dropping what is entirely off the map
+%   is the part that can be done correctly today, and it is the part
+%   that matters for a mascon set: the ones outside the region outnumber
+%   the ones that straddle it by a wide margin.
+%
+%   The straddling case is carried openly in tests/EXEMPTIONS.md rather
+%   than half-solved, because a ring cut without being closed renders as
+%   a wrong shape, and a wrong shape is worse than an honest overhang.
+if ~isempty(B) && ~any(geo.internal.insideExtent(ring(:, 1).', ...
+        ring(:, 2).', B))
+    h = gobjects(1, 0);                 % no vertex of it is on the map
+    return
+end
 [x, y] = geo.project(ring(:, 1).', ring(:, 2).', crs);
 ok = isfinite(x) & isfinite(y);
 if nnz(ok) < 3

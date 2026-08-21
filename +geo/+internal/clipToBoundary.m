@@ -42,6 +42,12 @@ function [lon, lat, info] = clipToBoundary(lon, lat, B, options)
 %     coastline on the evidence of an invented edge, so the input is
 %     returned untouched and info.Clipped is false.
 %
+%     info.SourceIndex says where each output vertex came from: an
+%     INTEGER for one that was kept, a FRACTION for a crossing this
+%     function invented - 3.42 meaning 42 per cent of the way from input
+%     3 to input 4 - and NaN at a part separator. A caller carrying a
+%     value per vertex interpolates on it (PV-144).
+%
 %   INPUTS
 %     lon  (1,:) double  Degrees East. NaN separates parts.
 %     lat  (1,:) double  Degrees North, same size.
@@ -91,12 +97,13 @@ arguments
     options.Bisect (1,1) double {mustBePositive} = 16
 end
 
-info = struct('Clipped', false, 'NumCuts', 0, 'NumInside', numel(lon));
+info = struct('Clipped', false, 'NumCuts', 0, 'NumInside', numel(lon), ...
+    'SourceIndex', 1:numel(lon));
 if isempty(lon)
     return
 end
 
-inside = isInside(lon, lat, B);
+inside = geo.internal.insideExtent(lon, lat, B);
 info.NumInside = nnz(inside);
 % NaN vertices are the data's own part separators and are never
 % "inside", so ALL(INSIDE) is false for any real coastline even when
@@ -115,6 +122,7 @@ stops = find(inside & [~inside(2:end), true]);
 
 outLon = NaN(1, 2 * n + 2 * numel(starts));
 outLat = outLon;
+outSrc = outLon;
 m = 0;
 nCut = 0;
 for r = 1:numel(starts)
@@ -126,11 +134,14 @@ for r = 1:numel(starts)
         m = m + 1;
         outLon(m) = cl;
         outLat(m) = ca;
+        outSrc(m) = s - fractionAlong(lon(s), lat(s), ...
+            lon(s - 1), lat(s - 1), cl, ca);
         nCut = nCut + 1;
     end
     k = e - s + 1;
     outLon(m + (1:k)) = lon(s:e);
     outLat(m + (1:k)) = lat(s:e);
+    outSrc(m + (1:k)) = s:e;
     m = m + k;
     if e < n && isfinite(lon(e + 1)) && isfinite(lat(e + 1))
         [cl, ca] = crossing(lon(e), lat(e), lon(e + 1), lat(e + 1), ...
@@ -138,6 +149,8 @@ for r = 1:numel(starts)
         m = m + 1;
         outLon(m) = cl;
         outLat(m) = ca;
+        outSrc(m) = e + fractionAlong(lon(e), lat(e), ...
+            lon(e + 1), lat(e + 1), cl, ca);
         nCut = nCut + 1;
     end
     m = m + 1;                          % NaN between parts
@@ -149,6 +162,28 @@ lon = outLon(1:m);
 lat = outLat(1:m);
 info.Clipped = true;
 info.NumCuts = nCut;
+info.SourceIndex = outSrc(1:m);
+end
+
+% ======================================================================
+function f = fractionAlong(lonA, latA, lonB, latB, lonC, latC)
+%FRACTIONALONG  Where the cut landed between two input vertices, in 0..1.
+%   The SOURCE INDEX of an inserted crossing is FRACTIONAL, which is the
+%   whole reason a track can now be clipped. GEO.INTERNAL.PROJECTPOLYLINE
+%   reports an integer index or NaN, because it only ever keeps or breaks
+%   vertices; a clip INVENTS one, and a caller carrying a value per
+%   vertex needs to know where between two of them it was invented so it
+%   can interpolate the value there rather than guess it or drop it
+%   (PV-144).
+%
+%   Measured in lon/lat rather than in projected units, because that is
+%   where the bisection ran and where the segment is a straight line.
+d = hypot(lonB - lonA, latB - latA);
+if ~isfinite(d) || d <= 0
+    f = 0;
+    return
+end
+f = min(max(hypot(lonC - lonA, latC - latA) / d, 0), 1);
 end
 
 % ======================================================================
@@ -167,7 +202,7 @@ function [lonC, latC] = crossing(lonIn, latIn, lonOut, latOut, B, n)
 for i = 1:n %#ok<NASGU>
     lonM = 0.5 * (lonIn + lonOut);
     latM = 0.5 * (latIn + latOut);
-    if isInside(lonM, latM, B)
+    if geo.internal.insideExtent(lonM, latM, B)
         lonIn = lonM;
         latIn = latM;
     else
@@ -180,43 +215,3 @@ latC = latIn;
 end
 
 % ======================================================================
-function tf = isInside(lon, lat, B)
-%ISINSIDE  Inside the drawn map: inside the extent AND inside the domain.
-%
-%   ONE RULE, NOT TWO. The first version of this clip tested membership
-%   with INPOLYGON against the projected boundary ring. That ring does
-%   not always exist - an orthographic hemisphere shows a global extent,
-%   and most of that extent's ring is on the far side of the sphere - and
-%   where it does not exist there is no membership answer at all, only an
-%   error (PV-137).
-%
-%   The extent test belongs in LON/LAT, where it is always defined:
-%
-%     * GEO.FRAME draws the image of the extent rectangle, so a point
-%       inside that rectangle is inside the drawn frame wherever the
-%       projection is continuous and injective - which is everywhere on
-%       its own domain. The two tests agree; only one of them can fail
-%       to exist.
-%     * The DOMAIN half is already free. GEO.PROJECT returns NaN outside
-%       it, which is the toolbox's clip, gap and part-separator
-%       convention all at once.
-%     * Bisecting in lon/lat lands the cut on the extent's edge exactly,
-%       so it meets the frame rather than near it.
-%
-%   Longitude is compared after GEO.WRAPLONGITUDE into the extent's own
-%   window, so a shifted or antimeridian-crossing extent is one interval
-%   rather than two.
-lon0 = mean(B.LonLim);
-if diff(B.LonLim) >= 360 - 1e-9
-    inLon = true(size(lon));            % a full turn excludes nothing
-    % The FLAG, not the span. A global grid's endpoints span 360 minus
-    % one step because the wrap window is half-open, so a span test
-    % alone never fires and the clip eats the last cell (PV-138).
-else
-    lonW = geo.wrapLongitude(lon, lon0);
-    inLon = lonW >= B.LonLim(1) - 1e-9 & lonW <= B.LonLim(2) + 1e-9;
-end
-inLat = lat >= B.LatLim(1) - 1e-9 & lat <= B.LatLim(2) + 1e-9;
-[x, y] = geo.project(lon, lat, B.Crs);
-tf = inLon & inLat & isfinite(x) & isfinite(y);
-end

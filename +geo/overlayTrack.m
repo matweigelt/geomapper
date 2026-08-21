@@ -71,6 +71,14 @@ function H = overlayTrack(axH, T, crs, options)
 %                                    track, whatever it was broken into.
 %          NumRuns     (1,1) double
 %          NumCuts     (1,1) double  Branch cuts broken.
+%          ExtentCuts  (1,1) double  Cuts made where the track LEAVES
+%                                    the frame. Distinct from NumCuts,
+%                                    which counts antimeridian jumps: one
+%                                    name carrying two meanings is the
+%                                    aliasing one-name-per-thing forbids.
+%                                    A track that leaves the frame and
+%                                    returns is two runs afterwards, and
+%                                    that is the cut working.
 %          CLim        (1,2) double
 %          All         (1,:)
 %
@@ -120,8 +128,19 @@ arguments
 end
 
 T = geo.track(T);
-[crs, ~, ~, base, ~, ~, diag] = geo.internal.elementExtent(axH, crs, ...
-    ErrorId = "geo:overlayTrack:NoBasemap");
+[crs, lonLim, latLim, base, ~, ~, diag] = geo.internal.elementExtent(axH, ...
+    crs, ErrorId = "geo:overlayTrack:NoBasemap");
+
+% CUT AT THE FRAME, like every other overlay since PV-142 - which left
+% this one out because a track carries a value PER VERTEX and the clip
+% could not say where it had invented a point. It can now: the clip's
+% SourceIndex is fractional at a crossing, so the observation there is
+% INTERPOLATED along the segment rather than guessed or dropped
+% (PV-144). geo.trackmap derives the extent from the track, so on the
+% common path this finds nothing to cut; it is the track drawn over
+% somebody else's map that was wrong.
+B = geo.internal.mapBoundary(crs, [lonLim(1) lonLim(2)], ...
+    [latLim(1) latLim(2)]);
 
 needsObs = any(options.Style == ["gradient" "bicolor"]);
 obs = T.Obs;
@@ -151,12 +170,24 @@ target = diag / 200;
 groups = cell(1, 0);
 nCuts = 0;
 nRuns = 0;
+nExtentCuts = 0;
 for k = 1:numel(runs)
     idx = runs{k};
-    [x, y, info] = geo.internal.projectPolyline(T.Lon(idx).', T.Lat(idx).', ...
+    lonK = T.Lon(idx).';
+    latK = T.Lat(idx).';
+    obsK = obs(idx).';
+    [lonK, latK, cinfo] = geo.internal.clipToBoundary(lonK, latK, B);
+    if cinfo.Clipped
+        obsK = interpObs(obsK, cinfo.SourceIndex);
+        nExtentCuts = nExtentCuts + cinfo.NumCuts;
+    end
+    if numel(lonK) < 1
+        continue
+    end
+    [x, y, info] = geo.internal.projectPolyline(lonK, latK, ...
         crs, Target = target, Densify = false);
     nCuts = nCuts + info.NumCuts;
-    o = alignObs(obs(idx).', info.SourceIndex);
+    o = alignObs(obsK, info.SourceIndex);
     for sub = subRuns(x, y)
         s = sub{1};
         if numel(s) < 2 && options.Style ~= "markers"
@@ -170,7 +201,9 @@ end
 objects = [groups{:}];
 
 H = struct('Objects', objects, 'Style', options.Style, 'Scale', scale, ...
-    'NumRuns', nRuns, 'NumCuts', nCuts, 'CLim', cLim, 'All', objects);
+    'NumRuns', nRuns, 'NumCuts', nCuts, 'ExtentCuts', nExtentCuts, ...
+    'CLim', cLim, 'All', objects);
+H.All = objects;
 geo.internal.layout("register", axH, "track", @(~) []);
 geo.internal.layout("setData", axH, "track", H);
 end
@@ -209,6 +242,22 @@ stops = find(diff([good, false]) == -1);
 runs = cell(1, numel(starts));
 for k = 1:numel(starts)
     runs{k} = starts(k):stops(k);
+end
+end
+
+function o = interpObs(obs, sourceIndex)
+%INTERPOBS  One observation per clipped vertex, invented ones included.
+%   SourceIndex is INTEGER where a vertex was kept and FRACTIONAL where
+%   the clip invented one at the frame, so a linear interpolation on it
+%   gives the observation at the crossing. Dropping the value instead
+%   would put a NaN in the middle of a gradient; carrying the neighbour's
+%   would place a measurement where none was taken (PV-144).
+o = NaN(1, numel(sourceIndex));
+ok = isfinite(sourceIndex);
+if any(ok) && numel(obs) > 1
+    o(ok) = interp1(1:numel(obs), obs, sourceIndex(ok));
+elseif any(ok)
+    o(ok) = obs(1);
 end
 end
 

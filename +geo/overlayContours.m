@@ -99,7 +99,7 @@ arguments
 end
 
 G = geo.grid(G);
-[crs, ~, ~, ~, ~, ~, diag] = geo.internal.elementExtent(axH, crs, ...
+[crs, lonLim, latLim, ~, ~, ~, diag] = geo.internal.elementExtent(axH, crs, ...
     ErrorId = "geo:overlayContours:NoBasemap");
 
 levels = options.Levels;
@@ -125,12 +125,17 @@ C = contourc(G.Lon(:).', G.Lat(:).', G.Z, sort(levels(:)).');
 [byLevel, drawn] = groupByLevel(C);
 
 target = diag / 200;
+% One boundary for every level, built once. A contour is computed from
+% the caller's field and a field wider than the map would otherwise
+% draw outside the frame (PV-142).
+B = geo.internal.mapBoundary(crs, [lonLim(1) lonLim(2)], ...
+    [latLim(1) latLim(2)]);
 lines = gobjects(1, numel(drawn));
 labels = gobjects(1, 0);
 perLevel = cell(1, numel(drawn));
 nCuts = 0;
 for k = 1:numel(drawn)
-    [x, y, cuts] = projectRuns(byLevel{k}, crs, target);
+    [x, y, cuts] = projectRuns(byLevel{k}, crs, target, B);
     nCuts = nCuts + cuts;
     lines(k) = line('Parent', axH, 'XData', x, 'YData', y, ...
         'ZData', ones(size(x)), 'Color', options.Color, ...
@@ -184,15 +189,27 @@ for k = 1:numel(drawn)
 end
 end
 
-function [x, y, nCuts] = projectRuns(runs, crs, target)
-%PROJECTRUNS  Every run of one level, NaN-joined into one polyline.
-% Collected into cells and concatenated once, rather than grown per run.
+function [x, y, nCuts] = projectRuns(runs, crs, target, B)
+%PROJECTRUNS  Every run of one level, cut at the frame and NaN-joined.
+%   Collected into cells and concatenated once, rather than grown per run.
+%
+%   CUT BEFORE PROJECTING, for the same reason the coastline is: a
+%   contour is computed from the caller's field, and a field wider than
+%   the map draws its contours outside the frame (PV-142). The cut lands
+%   on the extent's own edge, which is the curve GEO.FRAME draws.
 xs = cell(1, 2 * numel(runs));
 ys = xs;
 nCuts = 0;
 for k = 1:numel(runs)
-    [xk, yk, info] = geo.internal.projectPolyline(runs{k}(1, :), ...
-        runs{k}(2, :), crs, Target = target, Densify = false);
+    [lonK, latK] = deal(runs{k}(1, :), runs{k}(2, :));
+    if ~isempty(B)
+        [lonK, latK] = geo.internal.clipToBoundary(lonK, latK, B);
+    end
+    if numel(lonK) < 2
+        continue
+    end
+    [xk, yk, info] = geo.internal.projectPolyline(lonK, latK, ...
+        crs, Target = target, Densify = false);
     nCuts = nCuts + info.NumCuts;
     if k > 1
         xs{2 * k - 1} = NaN;

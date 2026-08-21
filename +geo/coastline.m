@@ -139,7 +139,7 @@ style = styleFor(options);
 % The clip is against the SAME ring the frame is drawn from
 % (GEO.INTERNAL.MAPBOUNDARY), not a second traversal to the same recipe:
 % two copies of the map's outline is defect F12, and it drifted.
-[xy, clip] = clipToExtent(xy, crs, lonLim, latLim, base);
+[xy, clip] = geo.internal.clipToExtent(xy, crs, lonLim, LatLim = latLim);
 
 prior = geo.internal.layout("data", axH, "coastline");
 if ~isempty(prior)
@@ -224,25 +224,3 @@ n = sum(diff([false, finite]) == 1);
 end
 
 % ======================================================================
-function [xy, clip] = clipToExtent(xy, crs, lonLim, latLim, base)
-%CLIPTOEXTENT  Cut the shoreline at the frame, and say how it was cut.
-%   Reports EXTENTCUTS, not NumCuts. NumCuts already means "branch cuts
-%   broken" - antimeridian jumps found by GEO.INTERNAL.PROJECTPOLYLINE -
-%   and one name carrying two meanings across two files is the aliasing
-%   that one-name-per-thing forbids.
-%
-%   NumParts rises on a regional map, and that is the cut working: a
-%   coast that leaves the frame and returns is two parts afterwards.
-closes = true;                          % no basemap: the window is whole
-if false
-end
-B = geo.internal.mapBoundary(crs, [lonLim(1) lonLim(2)], ...
-    [latLim(1) latLim(2)]);
-[lon, lat, info] = geo.internal.clipToBoundary(xy(:, 1).', xy(:, 2).', B);
-clip = struct('ClippedToExtent', info.Clipped, ...
-    'ExtentCuts', info.NumCuts, 'ExtentKept', info.NumInside);
-if ~info.Clipped
-    return
-end
-xy = [lon(:), lat(:)];
-end
