@@ -91,23 +91,12 @@ arguments
     options.Bisect (1,1) double {mustBePositive} = 16
 end
 
-crs = B.Crs;
 info = struct('Clipped', false, 'NumCuts', 0, 'NumInside', numel(lon));
-if ~B.Complete || isempty(lon)
+if isempty(lon)
     return
 end
 
-[x, y] = geo.project(lon, lat, crs);
-inside = false(1, numel(lon));
-% A bounding box first: INPOLYGON costs the ring's vertex count per
-% point, and on a regional map almost every point of a global coastline
-% fails the box in one comparison.
-cand = isfinite(x) & isfinite(y) & ...
-    x >= min(B.RingX) & x <= max(B.RingX) & ...
-    y >= min(B.RingY) & y <= max(B.RingY);
-if any(cand)
-    inside(cand) = inpolygon(x(cand), y(cand), B.RingX, B.RingY);
-end
+inside = isInside(lon, lat, B);
 info.NumInside = nnz(inside);
 if all(inside)
     info.Clipped = true;
@@ -127,7 +116,7 @@ for r = 1:numel(starts)
     e = stops(r);
     if s > 1 && isfinite(lon(s - 1)) && isfinite(lat(s - 1))
         [cl, ca] = crossing(lon(s), lat(s), lon(s - 1), lat(s - 1), ...
-            B, crs, options.Bisect);
+            B, options.Bisect);
         m = m + 1;
         outLon(m) = cl;
         outLat(m) = ca;
@@ -139,7 +128,7 @@ for r = 1:numel(starts)
     m = m + k;
     if e < n && isfinite(lon(e + 1)) && isfinite(lat(e + 1))
         [cl, ca] = crossing(lon(e), lat(e), lon(e + 1), lat(e + 1), ...
-            B, crs, options.Bisect);
+            B, options.Bisect);
         m = m + 1;
         outLon(m) = cl;
         outLat(m) = ca;
@@ -157,21 +146,22 @@ info.NumCuts = nCut;
 end
 
 % ======================================================================
-function [lonC, latC] = crossing(lonIn, latIn, lonOut, latOut, B, crs, n)
-%CROSSING  Halve the segment until the inside end sits on the boundary.
-%   The interval always brackets the crossing: the first end is inside
-%   and the second is not, and each halving keeps that true. Returning
-%   the INSIDE end means a cut never lands outside the map, which a
-%   midpoint or the outside end could.
-if abs(lonIn - lonOut) > 180
-    lonOut = lonOut - 360 * sign(lonOut - lonIn);
-end
-for i = 1:n
+function [lonC, latC] = crossing(lonIn, latIn, lonOut, latOut, B, n)
+%CROSSING  Bisect one segment until the cut lands on the boundary.
+%   LONIN/LATIN is inside, LONOUT/LATOUT is outside. Bisection is in
+%   LON/LAT, so the point returned lies on the extent's own edge - which
+%   is the curve GEO.FRAME draws. The cut therefore meets the frame by
+%   construction, on every projection, with no ring to intersect.
+%
+%   N = 16 was measured, not chosen. On the GettingStarted track map the
+%   worst residual gap runs 108.4 km at n = 0, 0.256 km at n = 8 and
+%   0.0016 km at n = 16 - 0.0002 of a screen pixel at 900 pt axes width.
+%   Eight would be enough for a screen; sixteen still costs nothing and
+%   survives an export ten times wider (PV-136).
+for i = 1:n %#ok<NASGU>
     lonM = 0.5 * (lonIn + lonOut);
     latM = 0.5 * (latIn + latOut);
-    [xm, ym] = geo.project(lonM, latM, crs);
-    if isfinite(xm) && isfinite(ym) && ...
-            inpolygon(xm, ym, B.RingX, B.RingY)
+    if isInside(lonM, latM, B)
         lonIn = lonM;
         latIn = latM;
     else
@@ -181,4 +171,43 @@ for i = 1:n
 end
 lonC = lonIn;
 latC = latIn;
+end
+
+% ======================================================================
+function tf = isInside(lon, lat, B)
+%ISINSIDE  Inside the drawn map: inside the extent AND inside the domain.
+%
+%   ONE RULE, NOT TWO. The first version of this clip tested membership
+%   with INPOLYGON against the projected boundary ring. That ring does
+%   not always exist - an orthographic hemisphere shows a global extent,
+%   and most of that extent's ring is on the far side of the sphere - and
+%   where it does not exist there is no membership answer at all, only an
+%   error (PV-137).
+%
+%   The extent test belongs in LON/LAT, where it is always defined:
+%
+%     * GEO.FRAME draws the image of the extent rectangle, so a point
+%       inside that rectangle is inside the drawn frame wherever the
+%       projection is continuous and injective - which is everywhere on
+%       its own domain. The two tests agree; only one of them can fail
+%       to exist.
+%     * The DOMAIN half is already free. GEO.PROJECT returns NaN outside
+%       it, which is the toolbox's clip, gap and part-separator
+%       convention all at once.
+%     * Bisecting in lon/lat lands the cut on the extent's edge exactly,
+%       so it meets the frame rather than near it.
+%
+%   Longitude is compared after GEO.WRAPLONGITUDE into the extent's own
+%   window, so a shifted or antimeridian-crossing extent is one interval
+%   rather than two.
+lon0 = mean(B.LonLim);
+if diff(B.LonLim) >= 360 - 1e-9
+    inLon = true(size(lon));            % a full turn excludes nothing
+else
+    lonW = geo.wrapLongitude(lon, lon0);
+    inLon = lonW >= B.LonLim(1) - 1e-9 & lonW <= B.LonLim(2) + 1e-9;
+end
+inLat = lat >= B.LatLim(1) - 1e-9 & lat <= B.LatLim(2) + 1e-9;
+[x, y] = geo.project(lon, lat, B.Crs);
+tf = inLon & inLat & isfinite(x) & isfinite(y);
 end

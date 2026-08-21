@@ -113,9 +113,16 @@ end
 [xv, yv] = geo.project(V(:, 1).', V(:, 2).', crs);
 ok = isfinite(xv) & isfinite(yv);
 if nnz(ok) < 3
-    error('geo:mapBoundary:Degenerate', ...
-        ['Fewer than three boundary vertices of this extent project ' ...
-         'inside %s''s domain, so it has no interior to bound.'], crs.Name);
+    % REPORTED, NOT THROWN. An extent whose ring does not project is
+    % ordinary rather than exceptional: an orthographic hemisphere shows
+    % a global extent every time, and most of that extent's ring is on
+    % the far side of the sphere. GEO.FRAME's predecessor returned no
+    % patches here and drew nothing, so raising instead turned a
+    % drawable map into a hard failure and took fourteen GEO.MAP tests
+    % with it (PV-137). The limits are still returned, because they are
+    % what a clip needs and they are always well defined.
+    B = emptyBoundary(V, xv, yv, colourIdx, lonBreaks, latBreaks, crs);
+    return
 end
 
 tol = coincidenceTolerance(xv(ok), yv(ok));
@@ -125,16 +132,30 @@ colourIdx = colourIdx(keepIdx);
 xv = xv(keepIdx);
 yv = yv(keepIdx);
 if numel(xv) < 3
-    error('geo:mapBoundary:Degenerate', ...
-        ['This extent collapses to fewer than three distinct points on ' ...
-         '%s.'], crs.Name);
+    B = emptyBoundary(V, xv, yv, colourIdx, lonBreaks, latBreaks, crs);
+    return
 end
 
 [ringX, ringY, complete] = densifiedRing(V, crs, options.Densify);
 
 B = struct('Lon', V(:, 1), 'Lat', V(:, 2), 'X', xv, 'Y', yv, ...
     'ColourIdx', colourIdx, 'RingX', ringX, 'RingY', ringY, ...
-    'Complete', complete, 'Tolerance', tol, 'Crs', crs);
+    'Complete', complete, 'Tolerance', tol, 'Crs', crs, ...
+    'LonLim', [min(lonBreaks) max(lonBreaks)], ...
+    'LatLim', [min(latBreaks) max(latBreaks)]);
+end
+
+% ======================================================================
+function B = emptyBoundary(V, xv, yv, colourIdx, lonBreaks, latBreaks, crs)
+%EMPTYBOUNDARY  A boundary with no drawable ring, but with its limits.
+%   Complete is false, so GEO.FRAME draws nothing - which is what it did
+%   before this function existed. The limits are present regardless: an
+%   extent always has them, and the clip is defined in lon/lat.
+B = struct('Lon', V(:, 1), 'Lat', V(:, 2), 'X', xv, 'Y', yv, ...
+    'ColourIdx', colourIdx, 'RingX', [], 'RingY', [], ...
+    'Complete', false, 'Tolerance', 0, 'Crs', crs, ...
+    'LonLim', [min(lonBreaks) max(lonBreaks)], ...
+    'LatLim', [min(latBreaks) max(latBreaks)]);
 end
 
 % ======================================================================

@@ -58,7 +58,7 @@
 %     geo.basemap          - Draw a projected raster: one surface, no lights.
 %     geo.graticule        - Meridians, parallels and their labels.
 %     geo.frame            - The segmented neatline, at constant on-screen thickness.
-%     geo.coastline        - Shorelines, rivers or an outline, projected and clipped.
+%     geo.coastline        - Shorelines, rivers or an outline, cut at the frame.
 %     geo.scalebar         - A bar whose length is the distance it claims.
 %     geo.northarrow       - A north arrow pointing where north actually is.
 %     geo.colorbar         - One colour scale, in four styles.

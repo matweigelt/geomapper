@@ -67,6 +67,8 @@ function H = coastline(axH, crs, options)
 %          NumCuts     (1,1) double  Branch cuts broken - antimeridian
 %                                    and projection jumps, NOT the
 %                                    extent. See ExtentCuts.
+%          ExtentKept  (1,1) double  Vertices inside the extent and the
+%                                    domain, before cuts were inserted.
 %          ClippedToExtent (1,1) logical  False when the boundary ring
 %                                    could not be closed inside the
 %                                    projection's domain, in which case
@@ -157,6 +159,7 @@ H = struct('Line', h, 'Provenance', meta.Provenance, ...
     'NumParts', countParts(x), 'NumCuts', info.NumCuts, ...
     'MaxSegment', info.MaxSegment, ...
     'ClippedToExtent', clip.ClippedToExtent, ...
+    'ExtentKept', clip.ExtentKept, ...
     'ExtentCuts', clip.ExtentCuts, 'All', h);
 
 geo.internal.layout("register", axH, "coastline", @(~) []);
@@ -233,7 +236,8 @@ function [xy, clip] = clipToExtent(xy, crs, lonLim, latLim)
 B = geo.internal.mapBoundary(crs, [lonLim(1) lonLim(2)], ...
     [latLim(1) latLim(2)]);
 [lon, lat, info] = geo.internal.clipToBoundary(xy(:, 1).', xy(:, 2).', B);
-clip = struct('ClippedToExtent', info.Clipped, 'ExtentCuts', info.NumCuts);
+clip = struct('ClippedToExtent', info.Clipped, ...
+    'ExtentCuts', info.NumCuts, 'ExtentKept', info.NumInside);
 if ~info.Clipped
     return
 end

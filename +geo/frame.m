@@ -326,6 +326,13 @@ function patches = ribbonFrame(axH, crs, lonBreaks, latBreaks, t, options)
 %RIBBONFRAME  A mitred band around a boundary that is not a rectangle.
 B = geo.internal.mapBoundary(crs, lonBreaks, latBreaks, ...
     Densify = 12);
+if ~B.Complete
+    % No drawable ring: the extent's boundary does not project inside
+    % this projection's domain. Draw nothing, as this function did
+    % before the boundary was promoted out of it (PV-137).
+    patches = gobjects(1, 0);
+    return
+end
 V = [B.Lon, B.Lat];
 colourIdx = B.ColourIdx;
 xv = B.X;
