@@ -61,7 +61,13 @@ classdef TestD3a_fieldOverlays < GeoMapTestCase
             tc.verifyLessThanOrEqual(max(x(~isnan(x))), max(xl) + 1e-9, ...
                 'A contour must not run past the frame.');
 
-            S = geo.stipple(ax, G, Mask = abs(G.Z) > 0.5);
+            % GEO.STIPPLE takes the mask AS THE GRID - G.Z is the
+            % significance itself, not a field with a Mask option beside
+            % it. Written the other way it raised TooManyInputs, which
+            % is the arguments block doing its job on a caller that had
+            % assumed an interface instead of reading one.
+            sig = geo.grid(G.Lon, G.Lat, abs(G.Z) > 0.5);
+            S = geo.stipple(ax, sig);
             sx = S.Marks.XData;
             tc.verifyLessThanOrEqual(max(sx), max(xl) + 1e-9, ...
                 'A significance mark outside the map is a claim about a place the map is not showing.');
