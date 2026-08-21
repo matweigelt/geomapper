@@ -53,10 +53,16 @@ classdef TestA2_structs < GeoMapTestCase
             % error, which is barely an improvement.
             lon = -3e6:1e6:3e6;
             lat = (-2e6:1e6:2e6)';
-            err = tc.verifyError(@() geo.grid(lon, lat, ...
-                zeros(numel(lat), numel(lon))), 'geo:grid:AxisNotAngular');
-            tc.verifySubstring(err.message, 'DEGREES');
-            tc.verifySubstring(err.message, 'PROJECTED');
+            msg = "";
+            try
+                geo.grid(lon, lat, zeros(numel(lat), numel(lon)));
+                tc.verifyFail('A projected grid must not be accepted.');
+            catch ME
+                tc.verifyEqual(ME.identifier, 'geo:grid:AxisNotAngular');
+                msg = string(ME.message);
+            end
+            tc.verifySubstring(msg, "DEGREES");
+            tc.verifySubstring(msg, "PROJECTED");
         end
 
         function aShiftedLongitudeWindowIsNotRefused(tc)
@@ -88,10 +94,16 @@ classdef TestA2_structs < GeoMapTestCase
             % one degree: a cell-registered global axis spans 360 exactly
             % and a posting one 360 minus a step (PV-140), so the
             % allowance has to scale with the axis.
-            G = geo.grid(-180:20:180, (-80:20:80)', zeros(9, 19));
+            % lon -180:20:180 is POSTING (span 360); it must be paired
+            % with a latitude that agrees, or geo.grid raises
+            % RegistrationAmbiguous - which it did, and correctly. Second
+            % time this fixture slip has been made; the error message
+            % says how to settle it and the answer is to pair the axes,
+            % not to silence the check.
+            G = geo.grid(-180:20:180, (-90:20:90)', zeros(10, 19));
             tc.verifyEqual(diff([min(G.Lon) max(G.Lon)]), 360);
-            tc.verifyError(@() geo.grid(-400:20:400, (-80:20:80)', ...
-                zeros(9, 41)), 'geo:grid:AxisNotAngular');
+            tc.verifyError(@() geo.grid(-400:20:400, (-90:20:90)', ...
+                zeros(10, 41)), 'geo:grid:AxisNotAngular');
         end
 
         function registrationIsInferredFromTheAxisItself(tc)
@@ -459,10 +471,16 @@ classdef TestA2_structs < GeoMapTestCase
             % single timing sample means anything: left to itself the
             % instrument chose a batch of 3 and returned a band of
             % 1.19 .. 5.33, noise wide enough to contain any answer.
-            lat4 = (1:2161).';
+            % The axes were 1:2161 and 1:4321 - INDICES standing in for
+            % coordinates, which A-3 now refuses because a latitude
+            % cannot be 2161. They are the real 2161x4321 global grid
+            % they were always meant to represent; the shape, and
+            % therefore the measurement, is unchanged.
+            lat4 = linspace(-90, 90, 2161).';
+            lon4 = linspace(-180, 180, 4321);
             Z4 = zeros(2161, 4321);     % 74.7 MB
             tc.assertRatioBudget( ...
-                @() geo.grid(1:4321, lat4, Z4), ...
+                @() geo.grid(lon4, lat4, Z4), ...
                 @() sum(Z4(:)), ...
                 0.1, 0.006, ...
                 "geo.grid / one pass over Z, 2161x4321 [PREDICTED]", ...
