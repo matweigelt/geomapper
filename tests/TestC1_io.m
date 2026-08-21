@@ -608,7 +608,16 @@ classdef TestC1_io < GeoMapTestCase
             % a SPEEDUP, so it is ">=". Defect F14 is that v1 re-read and
             % re-projected on every call; a cache that is not at least an
             % order of magnitude faster than the parse has not fixed it.
-            f = tc.dataFile("gshhs_i.b");
+            % PV-134. This budget is a RATIO OF TWO OPERATIONS ON ONE
+            % FILE, and the numerator scales with the file while the
+            % denominator - a hash lookup - does not. Against the 5.5 MB
+            % published gshhs_i.b it measures >= 10 (R-023). Against the
+            % 535 kB shipped prefix it measured 2.483 and the gate went
+            % red, correctly. The budget is therefore not loosened: it is
+            % pinned to the file it was measured against. A ratio that
+            % moves with the input is a budget with a hidden argument,
+            % and the honest repair is to name the argument.
+            f = tc.poolFile("gshhs_i.b");
             k = struct('p', f, 'levels', 1);
             geo.cache("clear");
             xy = geo.readCoastline(f, Levels = 1);
@@ -713,18 +722,62 @@ classdef TestC1_io < GeoMapTestCase
             tc.assertTrue(isfile(p));
         end
 
-        function f = dataFile(tc, name)
-            %DATAFILE  A real third-party file, or a LOUD filter.
-            %   O5 and O6 are not redistributable and are not in this
-            %   repository. Absent, these tests filter and say why; they
-            %   are never reported as passing.
+        function f = poolFile(tc, name)
+            %POOLFILE  The FULL published product, or a LOUD filter.
+            %   DATAFILE will hand back the shipped subset when the pool
+            %   is absent. This one will not, and the difference is not
+            %   fastidiousness: a test whose asserted number is a
+            %   property of the product - a whole-product count, or a
+            %   speed ratio measured against a 5.5 MB parse - measures
+            %   the fixture instead of the code when it is pointed at a
+            %   535 kB prefix. PV-134 is what that looks like when it
+            %   goes unnoticed for one CI run.
             f = fullfile(tc.DataRoot, name);
             tc.assumeTrue(isfile(f), sprintf( ...
-                ['Oracle data not present at %s. The reference tests ' ...
-                 'for the GSHHG and shapefile readers need real ' ...
-                 'third-party files, which are not redistributable and ' ...
-                 'are therefore not in this repository. Filtered, not ' ...
-                 'passed.'], f));
+                ['The FULL product is not present at %s. The shipped ' ...
+                 'subset is deliberately not accepted here: this ' ...
+                 'assertion is against a number that belongs to the ' ...
+                 'whole file. Filtered, not passed.'], f));
+        end
+
+        function f = dataFile(tc, name)
+            %DATAFILE  A real third-party file, or a LOUD filter.
+            %   Resolution order, and the order is not a convenience:
+            %     1. DATAROOT, the full published products on the bridge
+            %        machine. ALWAYS preferred.
+            %     2. tests/data/oracle, the shipped subset.
+            %     3. neither: the point FILTERS, and says why. It is
+            %        never reported as passing.
+            %
+            %   Why the pool wins. Two of the three shipped GSHHG files
+            %   are byte-exact PREFIXES of the published ones, so a
+            %   whole-product count asserted against them would be
+            %   measuring the fixture. Preferring the pool keeps the
+            %   bridge measuring the real thing while CI measures the
+            %   reader. See tests/data/oracle/PROVENANCE.md.
+            %
+            %   The claim this replaced said these data were "not
+            %   redistributable". That was READ, not checked. GSHHG is
+            %   LGPL from version 2.2.2 and Natural Earth is public
+            %   domain; the licences are quoted in PROVENANCE.md, and
+            %   eighteen points had been filtering on CI on the strength
+            %   of an unchecked sentence (audit finding A-6).
+            pool = fullfile(tc.DataRoot, name);
+            ship = fullfile(geoMapRoot(), 'tests', 'data', 'oracle', name);
+            if isfile(pool)
+                f = pool;
+                return
+            end
+            if isfile(ship)
+                f = ship;
+                return
+            end
+            f = "";
+            tc.assumeTrue(false, sprintf( ...
+                ['Oracle data not present. Looked in the data pool ' ...
+                 '(%s) and in the shipped subset (%s). This reader ' ...
+                 'test needs a real third-party file. Filtered, not ' ...
+                 'passed.'], pool, ship));
         end
     end
 end
