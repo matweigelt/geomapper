@@ -26,8 +26,14 @@ import matlab.unittest.TestSuite
 import matlab.unittest.TestRunner
 import matlab.unittest.plugins.DiagnosticsRecordingPlugin
 
-addpath(fullfile(pwd, 'records', 'audit'));
-suite = TestSuite.fromFolder(fullfile(pwd, 'tests'));
+% RUN() relocates the current folder to the script's own folder, so pwd
+% is records/audit by the time this line executes. The first attempt used
+% pwd and could not find tests/. GEOMAPROOT is the one path authority
+% (PV-126) and is used here for the same reason it exists.
+root = geoMapRoot();
+fprintf('root: %s\n', root);
+addpath(fullfile(root, 'records', 'audit'));
+suite = TestSuite.fromFolder(fullfile(root, 'tests'));
 fprintf('suite size: %d\n', numel(suite));
 
 runner = TestRunner.withNoPlugins();
