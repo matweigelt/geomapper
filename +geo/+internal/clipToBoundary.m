@@ -98,7 +98,13 @@ end
 
 inside = isInside(lon, lat, B);
 info.NumInside = nnz(inside);
-if all(inside)
+% NaN vertices are the data's own part separators and are never
+% "inside", so ALL(INSIDE) is false for any real coastline even when
+% nothing was excluded. Short-circuiting on the FINITE vertices instead
+% leaves an untouched line untouched: rebuilding it re-derives the
+% separators and lands one point out (PV-137).
+real = isfinite(lon) & isfinite(lat);
+if all(inside(real))
     info.Clipped = true;
     return
 end

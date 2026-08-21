@@ -272,7 +272,16 @@ classdef TestD2_annotations < GeoMapTestCase
             % DOES cut. Every drawn vertex is either one that was read
             % and kept, or one crossing point placed on the extent's own
             % edge. Anything else is invention (PV-136).
-            ax = tc.mapAxes();                 % demoGrid stops at 87.5
+            % The limit has to be one the DATA actually crosses: the
+            % builtin coastline reaches 83.6 N and -85.6 S, so demoGrid's
+            % 87.5 excludes nothing and the first version of this test
+            % asserted a crossing that could not happen.
+            lon = -180:20:180;
+            lat = (-60:15:60)';
+            G = geo.grid(lon, lat, sind(3 * repmat(lon, numel(lat), 1)) .* ...
+                cosd(2 * repmat(lat, 1, numel(lon))));
+            ax = tc.axesFor();
+            geo.basemap(G, "equirectangular", Parent = ax);
             H = geo.coastline(ax);
             drawn = nnz(~isnan(H.Line.XData));
             tc.verifyTrue(H.ClippedToExtent, ...
@@ -280,7 +289,7 @@ classdef TestD2_annotations < GeoMapTestCase
             tc.verifyEqual(drawn, H.ExtentKept + H.ExtentCuts, ...
                 'Drawn = kept + one point per crossing, exactly.');
             tc.verifyGreaterThan(H.ExtentCuts, 0, ...
-                'A global coastline crosses an 87.5-degree limit.');
+                'A global coastline crosses a 60-degree limit.');
         end
 
         function anArrayCoastlineIsDrawnAsGiven(tc)
