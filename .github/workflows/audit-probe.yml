@@ -22,29 +22,9 @@ jobs:
         with:
           release: R2026a
           cache: true
-      - name: Probe A-1b (does a warning survive assumeFail)
+      - name: Probe the wedge
         uses: matlab-actions/run-command@v3
         with:
           command: |
             addpath(pwd); geoMapSetup;
-            run('records/audit/probe_A1b_warning_survives.m');
-
-      - name: Probe A-3 (fast, no suite)
-        uses: matlab-actions/run-command@v3
-        with:
-          command: |
-            addpath(pwd); geoMapSetup;
-            run('records/audit/probe_A3_axis_units.m');
-      - name: Probe A-1b (filter inventory and reason routes)
-        uses: matlab-actions/run-command@v3
-        with:
-          command: |
-            addpath(pwd); geoMapSetup;
-            run('records/audit/probe_A1b_filter_reasons.m');
-
-      - name: Probe A-1 (full suite with the speed tier filtered)
-        uses: matlab-actions/run-command@v3
-        with:
-          command: |
-            addpath(pwd); geoMapSetup; makeManifest;
-            run('records/audit/probe_A1_speed_gate.m');
+            run(fullfile(pwd,'records','audit','probe_wedge.m'));
