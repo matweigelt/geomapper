@@ -1,0 +1,43 @@
+# AUDIT PROBES - evidence only, this branch is not for merge.
+#
+# Deliverable 12 requires every claim to be backed by an executed command.
+# The authoring session had no MATLAB interpreter, so the probes run here.
+#
+# geoMap v2.0 | 21-Aug-2026 | Claude Opus 5 (Anthropic)
+name: audit-probes
+on:
+  push:
+    branches: ['claude/audit-probes-*']
+  workflow_dispatch:
+jobs:
+  probes:
+    name: audit probes
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v3
+        timeout-minutes: 8
+        with:
+          release: R2026a
+          cache: true
+      - name: Probe A-1b (does a warning survive assumeFail)
+        uses: matlab-actions/run-command@v3
+        with:
+          command: |
+            addpath(pwd); geoMapSetup;
+            run('records/audit/probe_A1b_warning_survives.m');
+
+      - name: Probe A-3 (fast, no suite)
+        uses: matlab-actions/run-command@v3
+        with:
+          command: |
+            addpath(pwd); geoMapSetup;
+            run('records/audit/probe_A3_axis_units.m');
+      - name: Probe A-1 (full suite with the speed tier filtered)
+        uses: matlab-actions/run-command@v3
+        with:
+          command: |
+            addpath(pwd); geoMapSetup; makeManifest;
+            run('records/audit/probe_A1_speed_gate.m');
