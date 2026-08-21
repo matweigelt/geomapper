@@ -61,7 +61,7 @@ classdef TestD3a_fieldOverlays < GeoMapTestCase
             tc.verifyLessThanOrEqual(max(x(~isnan(x))), max(xl) + 1e-9, ...
                 'A contour must not run past the frame.');
 
-            S = geo.stipple(ax, G, Mask = abs(Z) > 0.5);
+            S = geo.stipple(ax, G, Mask = abs(G.Z) > 0.5);
             sx = S.Marks.XData;
             tc.verifyLessThanOrEqual(max(sx), max(xl) + 1e-9, ...
                 'A significance mark outside the map is a claim about a place the map is not showing.');
