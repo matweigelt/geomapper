@@ -200,8 +200,20 @@ crs = resolveCrs(crs);
 % painted and every cell sits half a step from where its value belongs.
 % On a global grid the missing column is the seam, which is the
 % antimeridian wedge (PV-140).
-lonE = edgesOf(lon, G.Registration);
+[lonE, colIdx] = lonEdges(lon, G.Registration, G.IsGlobalLon, ...
+    crs.CenterLongitude);
 latE = edgesOf(lat(:).', G.Registration);
+
+% Clamp the RIM vertices to what the projection can show. A cell grid at
+% -87.5:5:87.5 covers the poles, and its edges therefore land on them -
+% where Mercator's y is infinite. Unclamped, that made the axes limits
+% non-finite, the map diagonal meaningless, and the graticule's
+% densification criterion read 0.708 against a bound of 0.005 on a run
+% that had nothing to do with graticules (PV-140). The REGION is what
+% the grid covers; the vertices are that region clipped to what can be
+% drawn, which is the same rule GEO.INTERNAL.ELEMENTEXTENT already
+% applies to every element's extent.
+latE = min(max(latE, crs.Domain.LatLimit(1)), crs.Domain.LatLimit(2));
 [LONE, LATE] = meshgrid(lonE, latE);
 
 % Window = "closed" for the VERTICES only. A global grid's eastern rim is
@@ -237,8 +249,11 @@ end
 % One row and column larger than the data, because flat shading reads
 % CData(i,j) for the face and never reads the last of either. The pad is
 % never painted; it exists so the arrays agree in size.
-CData = padLast(CData);
-drawable = padLast(~isnan(Z)) & isfinite(X) & isfinite(Y);
+% COLIDX carries the wrap column when the seam cell had to be split, so
+% the rim cell is painted from the node it belongs to rather than left
+% blank. This is cartopy's add_cyclic, arrived at from the other side.
+CData = padLast(CData(:, colIdx, :));
+drawable = padLast(~isnan(Z(:, colIdx))) & isfinite(X) & isfinite(Y);
 
 s = surface('Parent', axH, 'XData', X, 'YData', Y, ...
     'ZData', zeros(size(X)), 'CData', CData, ...
@@ -275,6 +290,55 @@ if isstruct(c)
 else
     crs = geo.crs(c);
 end
+end
+
+function [e, colIdx] = lonEdges(v, reg, isGlobal, lon0)
+%LONEDGES  Cell edges around a longitude axis, which is CYCLIC.
+%   Returns the edges and, with them, the column each face is painted
+%   from. For a bounded axis that is simply 1:n. For a GLOBAL axis the
+%   cell that straddles the window edge has to be split in two, and both
+%   halves belong to the same node - so the first column is repeated at
+%   the end and there are n+1 faces for n nodes.
+%
+%   That repeat is cartopy's ADD_CYCLIC, arrived at from the other side.
+%   GMT reaches the same place through registration: a gridline grid
+%   holds both rims and needs no repeat, a pixel grid implies them.
+%   Whether a repeat is needed is therefore not a convention question
+%   but an arithmetic one - does the seam midpoint fall on the window
+%   edge - and it is answered here rather than assumed.
+v = double(v(:)).';
+if numel(v) < 2
+    e = v;
+    colIdx = 1:numel(v);
+    return
+end
+v = uniqueSorted(v);
+n = numel(v);
+if ~isGlobal
+    e = edgesOf(v, reg);
+    colIdx = 1:n;
+    return
+end
+lo = lon0 - 180;
+hi = lon0 + 180;
+mid = v(1:end-1) + diff(v) / 2;
+seam = (v(end) + v(1) + 360) / 2;
+if abs(seam - hi) <= 1e-9 || seam >= hi
+    e = [lo, mid, hi];
+    colIdx = 1:n;
+else
+    e = [lo, mid, seam, hi];
+    colIdx = [1:n, 1];
+end
+end
+
+function v = uniqueSorted(v)
+%UNIQUESORTED  Drop the duplicate the half-open wrap makes at the rim.
+%   A grid written -180:20:180 holds both rims; wrapped, they land on
+%   each other. One copy is enough - LONEDGES puts the other back where
+%   it belongs, at the far side of the map.
+v = sort(v);
+v(diff([-Inf, v]) == 0) = [];
 end
 
 function e = edgesOf(v, reg)
@@ -321,6 +385,22 @@ Z = G.Z(:, ord);
 topo = G.Topo;
 if ~isempty(topo)
     topo = topo(:, ord);
+end
+
+% THE RIM DUPLICATE. A grid written -180:20:180 holds both rims of the
+% world, and the half-open wrap lands them on each other - so the rolled
+% axis carries the same longitude twice, with two columns of data behind
+% it. One copy is dropped here rather than in the drawing, because a
+% duplicated node also breaks the step, the midpoints and the mask.
+% LONEDGES puts the rim back where it belongs, at the far side of the
+% map, by repeating the column rather than the node (PV-140).
+dup = [false, diff(lon) == 0];
+if any(dup)
+    lon(dup) = [];
+    Z(:, dup) = [];
+    if ~isempty(topo)
+        topo(:, dup) = [];
+    end
 end
 end
 

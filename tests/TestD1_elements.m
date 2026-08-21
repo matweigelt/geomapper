@@ -85,8 +85,18 @@ classdef TestD1_elements < GeoMapTestCase
                 Parent = tc.axesFor(), Hillshade = "off");
             ref = geo.colormaps("truecolor", G.Z, H.Colormap, ...
                 CLim = H.CLim, NaNColor = [1 1 1]);
-            tc.verifyTrue(isequal(ref, H.Surface.CData), ...
+            % RE-DERIVED at PV-140, not loosened. The surface is drawn
+            % on cell EDGES now, so CData carries one padding row and
+            % column that flat shading never reads. The claim is still
+            % bit-for-bit and still about the whole colour path; it is
+            % simply made against the part that holds values.
+            drawn = H.Surface.CData(1:end-1, 1:end-1, :);
+            tc.verifyTrue(isequal(ref, drawn), ...
                 'Hillshade "off" must not touch the colour path.');
+            tc.verifyEqual(size(H.Surface.CData, 1), size(ref, 1) + 1, ...
+                'and the pad is exactly one row');
+            tc.verifyEqual(size(H.Surface.CData, 2), size(ref, 2) + 1, ...
+                'and exactly one column.');
             tc.verifyEmpty(H.Shade);
         end
 
