@@ -41,6 +41,55 @@ classdef TestD3a_fieldOverlays < GeoMapTestCase
     % ==================================================================
     methods (Test, TestTags = {'contract'})
 
+        function anOverlayIsCutOrMaskedAtTheFrameNotAtTheWorld(tc)
+            % PV-142. geo.coastline was cut at the frame at PV-136; the
+            % four other elements that take the same path were not, and
+            % each drew the whole world into the margin geo.frame opens
+            % for its band. A contour is CUT, because a polyline can be;
+            % a stipple mark is MASKED, because a marker cannot be.
+            % The extent comes from the BASEMAP's grid; the overlay's
+            % data is global. That is the real case - a regional map of
+            % a global field - and it is how the defect reaches a user.
+            world = globalField();
+            ax = tc.axesFor();
+            geo.basemap(regionalField(), "equirectangular", Parent = ax);
+            [xl, yl] = deal(xlim(ax), ylim(ax));
+            G = world;
+
+            H = geo.overlayContours(ax, G, Levels = [-0.5 0 0.5]);
+            x = H.Lines(1).XData;
+            tc.verifyLessThanOrEqual(max(x(~isnan(x))), max(xl) + 1e-9, ...
+                'A contour must not run past the frame.');
+
+            S = geo.stipple(ax, G, Mask = abs(Z) > 0.5);
+            sx = S.Marks.XData;
+            tc.verifyLessThanOrEqual(max(sx), max(xl) + 1e-9, ...
+                'A significance mark outside the map is a claim about a place the map is not showing.');
+            tc.verifyGreaterThanOrEqual(min(S.Marks.YData), min(yl) - 1e-9);
+        end
+
+        function aPointOutsideTheMapIsDroppedNotDrawn(tc)
+            % A marker is inside or it is not; there is nothing to cut.
+            ax = tc.axesFor();
+            geo.basemap(regionalField(), "equirectangular", Parent = ax);
+            P = geo.points([0 30 150], [30 40 -60]);
+            H = geo.overlayPoints(ax, P);
+            tc.verifyEqual(numel(H.Markers.XData), 2, ...
+                'The third point is on the other side of the world.');
+        end
+
+        function everyPointOutsideTheMapIsAnErrorNotAnEmptyDraw(tc)
+            % Silence would look exactly like a successful overlay of
+            % nothing, which is the failure mode this project keeps
+            % finding. The message names the extent, because "outside
+            % the domain" was never the reason on a regional map.
+            ax = tc.axesFor();
+            geo.basemap(regionalField(), "equirectangular", Parent = ax);
+            P = geo.points([150 160], [-60 -70]);
+            tc.verifyError(@() geo.overlayPoints(ax, P), ...
+                'geo:overlayPoints:NothingToDraw');
+        end
+
         function eachNeedsAProjectionFromSomewhere(tc)
             ax = axes('Parent', tc.figureFor());
             G = tc.demoGrid();
@@ -349,4 +398,23 @@ classdef TestD3a_fieldOverlays < GeoMapTestCase
     % ==================================================================
     methods (Access = private)
     end
+end
+
+% ======================================================================
+function G = regionalField()
+%REGIONALFIELD  A map of one corner of the world, so an extent exists.
+%   The shared fixtures are global, and a clip to a global extent has
+%   nothing to do - which is precisely why PV-142 went unnoticed.
+lon = -20:2:40;
+lat = (10:2:50)';
+G = geo.grid(lon, lat, sind(3 * repmat(lon, numel(lat), 1)) .* ...
+    cosd(2 * repmat(lat, 1, numel(lon))));
+end
+
+function G = globalField()
+%GLOBALFIELD  Overlay data that reaches well past any regional map.
+lon = -180:5:180;
+lat = (-90:5:90)';
+G = geo.grid(lon, lat, sind(3 * repmat(lon, numel(lat), 1)) .* ...
+    cosd(2 * repmat(lat, 1, numel(lon))));
 end

@@ -126,16 +126,25 @@ arguments
 end
 
 P = geo.points(P);
-[crs, ~, ~, base] = geo.internal.elementExtent(axH, crs, ...
+[crs, lonLim, latLim, base] = geo.internal.elementExtent(axH, crs, ...
     ErrorId = "geo:overlayPoints:NoBasemap");
 
 [x, y] = geo.project(P.Lon(:).', P.Lat(:).', crs);
-keep = isfinite(x) & isfinite(y);
+
+% A MARKER CANNOT BE CUT. It is inside the frame or it is not, so the
+% extent is applied as a mask rather than as a clip - the same rule the
+% coastline is cut by, asked as a yes or no (PV-142). Before this, points
+% outside the map were drawn beyond the frame, in the margin GEO.FRAME
+% opens for its band.
+B = geo.internal.mapBoundary(crs, [lonLim(1) lonLim(2)], ...
+    [latLim(1) latLim(2)]);
+keep = geo.internal.insideExtent(P.Lon(:).', P.Lat(:).', B);
 if ~any(keep)
     error('geo:overlayPoints:NothingToDraw', ...
-        ['None of the %d points projects inside %s''s domain. The map ' ...
-         'and the points may be of different places.'], ...
-        P.NumPoints, crs.Name);
+        ['None of the %d points falls inside the map. The extent is ' ...
+         'longitude %g to %g, latitude %g to %g on %s; the map and the ' ...
+         'points may be of different places.'], ...
+        P.NumPoints, lonLim(1), lonLim(2), latLim(1), latLim(2), crs.Name);
 end
 
 obs = valueOrZero(P.Obs, P.NumPoints);

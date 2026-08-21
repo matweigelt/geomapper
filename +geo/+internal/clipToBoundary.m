@@ -96,7 +96,7 @@ if isempty(lon)
     return
 end
 
-inside = isInside(lon, lat, B);
+inside = geo.internal.insideExtent(lon, lat, B);
 info.NumInside = nnz(inside);
 % NaN vertices are the data's own part separators and are never
 % "inside", so ALL(INSIDE) is false for any real coastline even when
@@ -167,7 +167,7 @@ function [lonC, latC] = crossing(lonIn, latIn, lonOut, latOut, B, n)
 for i = 1:n %#ok<NASGU>
     lonM = 0.5 * (lonIn + lonOut);
     latM = 0.5 * (latIn + latOut);
-    if isInside(lonM, latM, B)
+    if geo.internal.insideExtent(lonM, latM, B)
         lonIn = lonM;
         latIn = latM;
     else
@@ -180,43 +180,3 @@ latC = latIn;
 end
 
 % ======================================================================
-function tf = isInside(lon, lat, B)
-%ISINSIDE  Inside the drawn map: inside the extent AND inside the domain.
-%
-%   ONE RULE, NOT TWO. The first version of this clip tested membership
-%   with INPOLYGON against the projected boundary ring. That ring does
-%   not always exist - an orthographic hemisphere shows a global extent,
-%   and most of that extent's ring is on the far side of the sphere - and
-%   where it does not exist there is no membership answer at all, only an
-%   error (PV-137).
-%
-%   The extent test belongs in LON/LAT, where it is always defined:
-%
-%     * GEO.FRAME draws the image of the extent rectangle, so a point
-%       inside that rectangle is inside the drawn frame wherever the
-%       projection is continuous and injective - which is everywhere on
-%       its own domain. The two tests agree; only one of them can fail
-%       to exist.
-%     * The DOMAIN half is already free. GEO.PROJECT returns NaN outside
-%       it, which is the toolbox's clip, gap and part-separator
-%       convention all at once.
-%     * Bisecting in lon/lat lands the cut on the extent's edge exactly,
-%       so it meets the frame rather than near it.
-%
-%   Longitude is compared after GEO.WRAPLONGITUDE into the extent's own
-%   window, so a shifted or antimeridian-crossing extent is one interval
-%   rather than two.
-lon0 = mean(B.LonLim);
-if diff(B.LonLim) >= 360 - 1e-9
-    inLon = true(size(lon));            % a full turn excludes nothing
-    % The FLAG, not the span. A global grid's endpoints span 360 minus
-    % one step because the wrap window is half-open, so a span test
-    % alone never fires and the clip eats the last cell (PV-138).
-else
-    lonW = geo.wrapLongitude(lon, lon0);
-    inLon = lonW >= B.LonLim(1) - 1e-9 & lonW <= B.LonLim(2) + 1e-9;
-end
-inLat = lat >= B.LatLim(1) - 1e-9 & lat <= B.LatLim(2) + 1e-9;
-[x, y] = geo.project(lon, lat, B.Crs);
-tf = inLon & inLat & isfinite(x) & isfinite(y);
-end
