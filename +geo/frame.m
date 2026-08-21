@@ -331,9 +331,33 @@ if nnz(ok) < 3
     patches = gobjects(1, 0);
     return
 end
+
+% A pole is a POINT in mollweide, hammer and sinusoidal, and so is a
+% conic's apex: every vertex of that edge projects to the same place.
+% Left in, the run hands OUTWARDNORMALS zero-length segments, it returns
+% a zero mitre, the band offsets by nothing, and the frame tapers to a
+% point - which reads as a triangle (PV-135). Collapse each run to ONE
+% vertex first.
+%
+% The survivor is the LAST of the run, because its outgoing edge is the
+% real one. Keeping the first instead would leave an edge running from
+% the pole across every longitude; edges are densified in lon/lat, so
+% that edge would draw a sweep which is not part of the boundary.
+tol = coincidenceTolerance(xv(ok), yv(ok));
+keepIdx = keepLastOfEachRun(xv, yv, tol);
+V = V(keepIdx, :);
+colourIdx = colourIdx(keepIdx);
+xv = xv(keepIdx);
+yv = yv(keepIdx);
+if numel(xv) < 3
+    patches = gobjects(1, 0);
+    return
+end
+ok = isfinite(xv) & isfinite(yv);
+
 cx = mean(xv(ok));
 cy = mean(yv(ok));
-[nx, ny] = outwardNormals(xv, yv, cx, cy);
+[nx, ny] = outwardNormals(xv, yv, cx, cy, tol);
 
 nV = size(V, 1);
 patches = gobjects(1, nV);
@@ -396,7 +420,7 @@ for k = 1:size(V, 1)
 end
 end
 
-function [nx, ny] = outwardNormals(xv, yv, cx, cy)
+function [nx, ny] = outwardNormals(xv, yv, cx, cy, tol)
 %OUTWARDNORMALS  Mitred bisector at each vertex, pointing away from centre.
 nV = numel(xv);
 nx = zeros(1, nV);
@@ -407,7 +431,7 @@ for k = 1:nV
     kNext = mod(k, nV) + 1;
     dIn = [xv(k) - xv(kPrev), yv(k) - yv(kPrev)];
     dOut = [xv(kNext) - xv(k), yv(kNext) - yv(k)];
-    if ~all(isfinite([dIn dOut])) || norm(dIn) < 1e-12 || norm(dOut) < 1e-12
+    if ~all(isfinite([dIn dOut])) || norm(dIn) < tol || norm(dOut) < tol
         continue                        % coincident vertices: zero offset
     end
     dIn = dIn / norm(dIn);
@@ -429,6 +453,49 @@ for k = 1:nV
     nx(k) = nv(1) * miterScale;
     ny(k) = nv(2) * miterScale;
 end
+end
+
+function tol = coincidenceTolerance(x, y)
+%COINCIDENCETOLERANCE  "The same point", relative to the map's own size.
+%   The guard replaced here was an absolute 1e-12 on a projected
+%   coordinate, and a projected coordinate carries the sphere's radius -
+%   so that threshold was a statement about units rather than about
+%   geometry. At a pole cos(pi/2) evaluates to 6.1e-17 rather than 0, so
+%   the images of the pole edge are very close rather than identical, and
+%   how close scales with the map.
+%
+%   Measured across mollweide, hammer, sinusoidal and a conic apex, the
+%   degenerate separations sit at 5e-18 of the map diagonal and the
+%   smallest LEGITIMATE edge at 2.8e-2 - sixteen orders apart. 1e-9 sits
+%   in the middle with seven orders of headroom on each side. On a
+%   36 000 km map that is 3.6 cm, far under one screen pixel (PV-135).
+d = hypot(max(x) - min(x), max(y) - min(y));
+if ~isfinite(d) || d <= 0
+    d = 1;
+end
+tol = 1e-9 * d;
+end
+
+function keepIdx = keepLastOfEachRun(x, y, tol)
+%KEEPLASTOFEACHRUN  Drop a vertex whose successor lands on the same point.
+%   Walks the ring once. A vertex goes only when it and its successor are
+%   both finite and closer than TOL, so a run of coincident vertices is
+%   reduced to its last member and the ring stays closed.
+%
+%   A NON-FINITE vertex is always kept. GEO.PROJECT returns NaN outside
+%   the domain and the caller skips those edges deliberately - "a gap
+%   beats a wrong half" - and merging across one would join two edges
+%   that the projection had separated on purpose.
+n = numel(x);
+keep = true(1, n);
+for k = 1:n
+    kNext = mod(k, n) + 1;
+    if all(isfinite([x(k) y(k) x(kNext) y(kNext)])) && ...
+            hypot(x(kNext) - x(k), y(kNext) - y(k)) < tol
+        keep(k) = false;
+    end
+end
+keepIdx = find(keep);
 end
 
 function patches = fixedFrame(axH, crs, lonLim, latLim, t, options)
