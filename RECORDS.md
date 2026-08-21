@@ -1955,4 +1955,155 @@ belongs to Matthias, not to this session.
 
 ---
 
-*Entries R-027 onward are written at each stage's green gate.*
+## R-027 — Stage F, checkpoint F.5, 21-Aug-2026, tier B (sandbox) + CI
+
+**Scope.** Two defects reported from `GettingStarted.m` — a frame that
+collapsed to a triangle, and a coastline outside the frame — and the
+three findings that came out from under them.
+
+**Execution tier.** Tier B in the authoring session; every MATLAB claim
+below was executed on CI. Confirming run **32524023441**: predicted 504,
+suite size 504, per-class sum 504, **480 passed, 0 failed, 24 filtered**,
+green gate on all six, audit 0 findings. The 24 are A-6 and unrelated.
+
+**PV-135 — the frame band had no width at a point pole.** mollweide,
+hammer and sinusoidal map the pole to a POINT, so all thirteen vertices
+of the boundary's top edge project to one place, `outwardNormals` hit
+its coincident-vertex guard, and the ribbon offset by zero.
+
+| projection | distinct images of the +90 edge | zero mitres |
+|---|---|---|
+| mollweide | **1** | 26 |
+| hammer | **1** | 26 |
+| sinusoidal | **1** | 26 |
+| robinson | 13 | 0 |
+| winkeltripel | 13 | 0 |
+
+Coincident runs are collapsed to their LAST member before the normals
+are taken — the survivor's outgoing edge is the real one. Visible band
+count identical in every case, zero skipped edges, colour phase kept.
+The old coincidence guard was an absolute `1e-12` on a projected
+coordinate, which is a claim about units; measured, degenerate
+separations sit at **5e-18** of the map diagonal and the smallest
+legitimate edge at **2.8e-2**, sixteen orders apart, so the tolerance is
+now `1e-9 x diagonal`.
+
+**PV-136 — the coastline was clipped to the domain, never to the
+extent.** `geo.coastline` discarded `elementExtent`'s second and third
+outputs while `geo.graticule`, four lines away, kept them. On the
+`GettingStarted` track map, **486 029 km of 529 498 — 91.8% — of the
+drawn coastline lay outside the frame**. Ten crossing segments in the
+whole figure; a naive vertex mask UNDERSHOOTS, leaving a 108 km ≈ 12 px
+gap, so each crossing is bisected in lon/lat: 0.256 km at n=8,
+**0.0016 km — 0.0002 px — at n=16**.
+
+**PV-137 — membership belongs in lon/lat, not in a projected ring.**
+`inpolygon` against the boundary ring has no answer where the ring does
+not exist, and an orthographic hemisphere shows a global extent every
+time. It threw, and took fourteen `TestE1_map` tests with it. The extent
+test moved to lon/lat plus domain-finiteness: the two agree wherever the
+projection is continuous and injective, and only one of them can fail to
+exist. `mapBoundary` reports `Complete = false` rather than raising.
+
+**PV-140 — registration, and it is not this project's invention.** GMT
+calls it gridline versus pixel and defaults to gridline; MATLAB's
+Mapping Toolbox calls it postings versus cells; GDAL carries it in the
+geotransform. **GMT's own maintainers considered and rejected the repair
+this project was heading for** — adding a repeating column per module —
+as messy and not a good solution (GMT issue 4440). The concept was
+missing here and its absence was the antimeridian wedge.
+
+Measured before anything was written:
+
+| | |
+|---|---|
+| flat shading, one face, four candidate colours | `CData(1,1)` **100%**, the other three **0** |
+| edge-drawn, 2×2 cells on 3×3 vertices | four quarters, 24.7 / 24.7 / 25.8 / 24.7% |
+
+So the last row and column were never painted and every cell sat half a
+step from where its value belonged.
+
+| axis | nodes | inferred | region span |
+|---|---|---|---|
+| `-180:20:180` | 19 | posting | 360.0000 |
+| `-170:20:170` | 18 | cell | 360.0000 |
+| `0:20:340` | 18 | cell | 360.0000 |
+| `-179.5:1:179.5` | 360 | cell | 360.0000 |
+| `0:2:40` | 21 | posting | 40.0000 |
+
+**A wrong claim, withdrawn and then re-established, and the middle step
+is the one worth keeping.** The lost column was first asserted from
+memory. A differential probe then appeared to REFUTE it — 57 600 pixels
+changed when the last element moved — and it was withdrawn to Matthias
+as refuted. Both steps were wrong: those pixels were the HILLSHADE of
+the neighbouring cells, not the cell. **A green measurement gave a false
+clear**, and it was reported as fact before a probe isolated the face
+from its shading.
+
+**PV-141 — defined is not drawable.** Lambert azimuthal equal-area's
+forward projection is defined at the antipode; the antipode maps to the
+whole BOUNDARY CIRCLE, so a line crossing it lands a full diameter
+apart and densification converges on a diameter rather than on zero.
+Named by probe rather than left as a max over sixteen:
+
+| projection | worst graticule segment |
+|---|---|
+| equirectangular | 0.003494 |
+| thirteen others | ≤ 0.005 |
+| **lambert** | **0.707959** |
+
+Clipped at 179.5°, the azimuthal branch cut — the exact analogue of the
+antimeridian on a cylinder, and the reason azimuthal equidistant already
+stops at 178. **Not a regression from PV-140**: the toolbox has never
+been able to draw that meridian, and no graticule tick had landed on it
+because the extent stopped one cell short of the world.
+
+**Findings the CHECKS caught, not a human.**
+
+| check | what it caught |
+|---|---|
+| `identifierAgreement` | `geo:mapBoundary:Degenerate` still documented after its throw became a report; `geo:grid:RegistrationAmbiguous` raised and documented nowhere |
+| `codeAnalyzer` FVSOR | `options.Window` declared without `options` on the function line, twice |
+| `codeAnalyzer` FVAPN | name=value before a positional argument, twice, in two files |
+| `packageClosure`, `ledger_sync` | clean throughout |
+
+**FVAPN cost two round trips, so it became a check.** `mcheck` now
+carries it. Written three times: 11 false positives (a comparison read
+as a pair), then 3 (a braced value split on its own comma), then none —
+and each failure mode is a self-test fixture, because a check that cries
+on valid source teaches people to ignore it.
+
+**Tests re-derived, never loosened.** Six: the densification invariant
+(a clip both drops and inserts points, so the old identity became false
+for an honest reason, and is now asserted where it still holds
+unchanged); the hillshade bit-identity (made against the part of `CData`
+that holds values, with the pad's size asserted separately); the tick
+count (`worldGrid`'s region always ran −180…180; now the extent says
+so); the two `LonClosesTurn` assertions; and the domain probe point,
+which chose `clip + 1` and so assumed the clip was a degree short of the
+antipode.
+
+**Two fixtures were wrong, not the code.** `registrationIsInferredFrom
+TheAxisItself` paired four longitude axes with one latitude axis, so
+three legitimately raised `RegistrationAmbiguous` — the check working.
+`smallGrid` stops at 80° and `demoGrid` at 87.5°, so neither could reach
+PV-135 at all; `poleToPoleGrid` was added because a fixture that cannot
+reach a defect is a test that cannot see it.
+
+**Binding items a later stage could be wrong for not reading.**
+
+- **`geo.overlayContours`, `overlayTrack`, `overlayPoints` and `stipple`
+  all discard the extent exactly as `geo.coastline` did.** They are not
+  fixed here. The coastline is simply the element that always covers the
+  whole world, which is why it is where the defect surfaced.
+- **`overlayPolygons` needs more than a cut**: a filled polygon clipped
+  without closing along the boundary renders wrongly, and closing it
+  needs the ring PV-137 showed does not always exist.
+- The worst graticule segment reads **0.00499838 against 0.005**. That
+  margin is the densifier stopping exactly at target, by design, not a
+  budget nearly missed.
+- `NumParts` rises on a regional map. Approved 21-Aug-2026.
+
+---
+
+*Entries R-028 onward are written at each stage's green gate.*
