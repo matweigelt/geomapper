@@ -42,6 +42,12 @@ function [lon, lat, info] = clipToBoundary(lon, lat, B, options)
 %     coastline on the evidence of an invented edge, so the input is
 %     returned untouched and info.Clipped is false.
 %
+%     info.SourceIndex says where each output vertex came from: an
+%     INTEGER for one that was kept, a FRACTION for a crossing this
+%     function invented - 3.42 meaning 42 per cent of the way from input
+%     3 to input 4 - and NaN at a part separator. A caller carrying a
+%     value per vertex interpolates on it (PV-144).
+%
 %   INPUTS
 %     lon  (1,:) double  Degrees East. NaN separates parts.
 %     lat  (1,:) double  Degrees North, same size.
@@ -91,7 +97,8 @@ arguments
     options.Bisect (1,1) double {mustBePositive} = 16
 end
 
-info = struct('Clipped', false, 'NumCuts', 0, 'NumInside', numel(lon));
+info = struct('Clipped', false, 'NumCuts', 0, 'NumInside', numel(lon), ...
+    'SourceIndex', 1:numel(lon));
 if isempty(lon)
     return
 end
@@ -115,6 +122,7 @@ stops = find(inside & [~inside(2:end), true]);
 
 outLon = NaN(1, 2 * n + 2 * numel(starts));
 outLat = outLon;
+outSrc = outLon;
 m = 0;
 nCut = 0;
 for r = 1:numel(starts)
@@ -126,11 +134,14 @@ for r = 1:numel(starts)
         m = m + 1;
         outLon(m) = cl;
         outLat(m) = ca;
+        outSrc(m) = s - fractionAlong(lon(s), lat(s), ...
+            lon(s - 1), lat(s - 1), cl, ca);
         nCut = nCut + 1;
     end
     k = e - s + 1;
     outLon(m + (1:k)) = lon(s:e);
     outLat(m + (1:k)) = lat(s:e);
+    outSrc(m + (1:k)) = s:e;
     m = m + k;
     if e < n && isfinite(lon(e + 1)) && isfinite(lat(e + 1))
         [cl, ca] = crossing(lon(e), lat(e), lon(e + 1), lat(e + 1), ...
@@ -138,6 +149,8 @@ for r = 1:numel(starts)
         m = m + 1;
         outLon(m) = cl;
         outLat(m) = ca;
+        outSrc(m) = e + fractionAlong(lon(e), lat(e), ...
+            lon(e + 1), lat(e + 1), cl, ca);
         nCut = nCut + 1;
     end
     m = m + 1;                          % NaN between parts
@@ -149,6 +162,28 @@ lon = outLon(1:m);
 lat = outLat(1:m);
 info.Clipped = true;
 info.NumCuts = nCut;
+info.SourceIndex = outSrc(1:m);
+end
+
+% ======================================================================
+function f = fractionAlong(lonA, latA, lonB, latB, lonC, latC)
+%FRACTIONALONG  Where the cut landed between two input vertices, in 0..1.
+%   The SOURCE INDEX of an inserted crossing is FRACTIONAL, which is the
+%   whole reason a track can now be clipped. GEO.INTERNAL.PROJECTPOLYLINE
+%   reports an integer index or NaN, because it only ever keeps or breaks
+%   vertices; a clip INVENTS one, and a caller carrying a value per
+%   vertex needs to know where between two of them it was invented so it
+%   can interpolate the value there rather than guess it or drop it
+%   (PV-144).
+%
+%   Measured in lon/lat rather than in projected units, because that is
+%   where the bisection ran and where the segment is a straight line.
+d = hypot(lonB - lonA, latB - latA);
+if ~isfinite(d) || d <= 0
+    f = 0;
+    return
+end
+f = min(max(hypot(lonC - lonA, latC - latA) / d, 0), 1);
 end
 
 % ======================================================================

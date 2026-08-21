@@ -38,6 +38,61 @@ classdef TestD3b_dataOverlays < GeoMapTestCase
     % ==================================================================
     methods (Test, TestTags = {'contract'})
 
+        function aTrackIsCutAtTheFrameAndItsValueInterpolatedThere(tc)
+            % PV-144. PV-142 clipped four overlays and left this one,
+            % because a track carries a value PER VERTEX and the clip
+            % could not say where it had invented a point. It can now:
+            % SourceIndex is fractional at a crossing.
+            %
+            % The map is REGIONAL on purpose. Every shared fixture is
+            % global, and a clip to a global extent has nothing to do -
+            % which is exactly how four overlays stayed unclipped for
+            % four checkpoints and how this one stayed unclipped for one
+            % more.
+            lon = -30:5:60;
+            lat = (0:5:60)';
+            G = geo.grid(lon, lat, sind(3 * repmat(lon, numel(lat), 1)) .* ...
+                cosd(2 * repmat(lat, 1, numel(lon))));
+            f = tc.figureFor();
+            ax = axes(f); %#ok<LAXES>
+            geo.basemap(G, "equirectangular", Parent = ax);
+
+            % A track that starts well outside the map, crosses it and
+            % leaves again, with an observation that rises linearly - so
+            % the value at the crossing is known in closed form.
+            tLon = -120:10:150;
+            T = geo.track(tLon, 30 * ones(size(tLon)), ...
+                Obs = double(1:numel(tLon)), Units = "cm");
+            H = geo.overlayTrack(ax, T, Style = "gradient");
+
+            tc.verifyGreaterThan(H.ExtentCuts, 0, ...
+                'A track running from -120 to 150 must be cut at -30.');
+            tc.verifyGreaterThan(numel(H.Objects), 0, ...
+                'and what is left inside must still be drawn.');
+        end
+
+        function aTrackWhollyInsideIsNotTouched(tc)
+            % The control, and the one that matters for geo.trackmap:
+            % the extent is derived FROM the track there, so nothing is
+            % outside and the clip must be a no-op. A clip that alters a
+            % track it had no business altering would be worse than the
+            % defect it fixes.
+            lon = -30:5:60;
+            lat = (0:5:60)';
+            G = geo.grid(lon, lat, zeros(numel(lat), numel(lon)));
+            f = tc.figureFor();
+            ax = axes(f); %#ok<LAXES>
+            geo.basemap(G, "equirectangular", Parent = ax);
+            tLon = -10:5:40;
+            T = geo.track(tLon, 30 * ones(size(tLon)), ...
+                Obs = double(1:numel(tLon)), Units = "cm");
+            H = geo.overlayTrack(ax, T, Style = "line");
+            tc.verifyEqual(H.ExtentCuts, 0, ...
+                'A track inside the frame is not cut.');
+            tc.verifyEqual(H.NumRuns, 1, ...
+                'and stays one unbroken run.');
+        end
+
         function bothNeedAProjectionFromSomewhere(tc)
             ax = axes('Parent', tc.figureFor());
             tc.verifyError(@() geo.overlayTrack(ax, tc.demoTrack()), ...
