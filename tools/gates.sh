@@ -21,7 +21,7 @@ run "2/5 provenance audit"        python3 tools/provenance_audit.py .
 # that has stopped matching its evidence is invisible to every other
 # gate here, because every other gate looks at code (PV-130).
 run "3/5 ledger sync"             python3 tools/ledger_sync.py .
-run "4/5 mirror"                  bash -c "cd mirror && python3 -m geomap_mirror.gdal_oracle && python3 -m geomap_mirror.references && python3 check_acceptance.py"
+run "4/5 mirror"                  bash -c "cd mirror && python3 -m geomap_mirror.gdal_oracle && python3 -m geomap_mirror.references && python3 check_reference_sync.py && python3 check_acceptance.py"
 
 echo; echo "=== 5/5 MATLAB suite ==="
 if command -v matlab >/dev/null 2>&1; then
