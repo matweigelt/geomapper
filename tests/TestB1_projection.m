@@ -66,7 +66,20 @@ classdef TestB1_projection < GeoMapTestCase
                 if ~isnan(D.MaxAngularDistanceDeg) && ...
                         D.MaxAngularDistanceFrom == "centre"
                     % A point just beyond the clip, along the meridian.
-                    far = c.CenterLatitude + D.MaxAngularDistanceDeg + 1;
+                    %
+                    % NOT clip + 1. Angular distance saturates at 180,
+                    % so "one degree beyond" is only reachable while the
+                    % clip is at least a degree short of the antipode.
+                    % Lambert's is half a degree short (PV-141), and
+                    % clip + 1 came back round the far side to 179.5 -
+                    % exactly AT the clip, which is not beyond it, so
+                    % the projection rightly returned a number and the
+                    % test rightly failed. Halfway to the antipode is
+                    % beyond the clip for every value it can take, and
+                    % leaves the other fifteen probes unchanged.
+                    beyond = min(D.MaxAngularDistanceDeg + 1, ...
+                        (D.MaxAngularDistanceDeg + 180) / 2);
+                    far = c.CenterLatitude + beyond;
                     if far <= 90
                         [x, ~] = geo.project(c.CenterLongitude, far, c);
                     else

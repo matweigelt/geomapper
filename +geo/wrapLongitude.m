@@ -1,4 +1,4 @@
-function lonOut = wrapLongitude(lon, lon0)
+function lonOut = wrapLongitude(lon, lon0, options)
 %GEO.WRAPLONGITUDE  Wrap longitudes into a half-open window, exactly.
 %
 %   SYNTAX
@@ -91,9 +91,28 @@ arguments
     % Orientation preservation is a contract test, not a comment.
     lon double {mustBeReal}
     lon0 (1,1) double {mustBeReal, mustBeFinite} = 0
+    options.Window (1,1) string ...
+        {mustBeMember(options.Window, ["halfopen" "closed"])} = "halfopen"
 end
 
 % Formulation A. See ACCURACY: this is not interchangeable with the form
 % that folds lon0 into a single offset.
 lonOut = mod(lon - lon0 + 180, 360) - 180 + lon0;
+
+if options.Window == "closed"
+    % A CLOSED window leaves anything already inside [lon0-180, lon0+180]
+    % exactly as it was, so BOTH antimeridians survive. The half-open
+    % default cannot: it folds +180 onto -180, which is right for a
+    % branch cut and wrong for a map EDGE. A global grid's eastern rim
+    % is at +180 and its western rim at -180, and they are different
+    % places on the page even though they are the same meridian on the
+    % sphere (PV-140).
+    %
+    % The default is untouched, deliberately. acceptance.json freezes
+    % wrap(180, 0) == -180 bitwise - "the antimeridian must be exactly
+    % -180" - and that is F2's fix, not an accident.
+    d = lon - lon0;
+    inside = abs(d) <= 180;
+    lonOut(inside) = lon(inside);
+end
 end

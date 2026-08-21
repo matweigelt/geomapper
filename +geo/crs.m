@@ -320,7 +320,28 @@ switch name
         % Lambert azimuthal equal-area is defined everywhere including
         % the antipode; only the INVERSE is ill-conditioned there, which
         % is why its round-trip tolerance is 1e-8 and not 1e-9 (PV-010).
-        maxDist = NaN;      distFrom = "none";      singular = NaN;
+        %
+        % DEFINED IS NOT DRAWABLE, and the difference cost a graticule
+        % (PV-141). The antipode maps to the whole BOUNDARY CIRCLE, so a
+        % line crossing it leaves one rim and arrives at the opposite
+        % one: two samples either side land a full diameter apart, and
+        % refining never closes that gap because it converges on a
+        % diameter rather than on zero. Measured through a graticule at
+        % the antipodal meridian: worst segment 0.7080 of the map
+        % diagonal against a criterion of 0.005, while all fifteen other
+        % projections sat at or under it.
+        %
+        % This is the azimuthal branch cut, the exact analogue of the
+        % antimeridian on a cylinder. Every azimuthal projection has
+        % one; the others simply clip far short of theirs and never
+        % reach it - azimuthal equidistant stops at 178 for this reason
+        % and no other. Lambert now stops at 179.5, half a degree short,
+        % on the same cosmetic grounds Mercator and the conics use.
+        %
+        % It was invisible until PV-140: the extent used to stop one
+        % cell short of the world, so no graticule tick ever landed on
+        % the antipodal meridian.
+        maxDist = 179.5;    distFrom = "centre";    singular = 180;
     case "transversemercator"
         % Distance from the central meridian's great circle, not from a
         % point: the singularity is a line, 90 degrees away, where the

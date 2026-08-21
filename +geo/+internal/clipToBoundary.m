@@ -207,7 +207,7 @@ function tf = isInside(lon, lat, B)
 %   window, so a shifted or antimeridian-crossing extent is one interval
 %   rather than two.
 lon0 = mean(B.LonLim);
-if B.LonClosesTurn || diff(B.LonLim) >= 360 - 1e-9
+if diff(B.LonLim) >= 360 - 1e-9
     inLon = true(size(lon));            % a full turn excludes nothing
     % The FLAG, not the span. A global grid's endpoints span 360 minus
     % one step because the wrap window is half-open, so a span test

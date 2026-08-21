@@ -85,8 +85,18 @@ classdef TestD1_elements < GeoMapTestCase
                 Parent = tc.axesFor(), Hillshade = "off");
             ref = geo.colormaps("truecolor", G.Z, H.Colormap, ...
                 CLim = H.CLim, NaNColor = [1 1 1]);
-            tc.verifyTrue(isequal(ref, H.Surface.CData), ...
+            % RE-DERIVED at PV-140, not loosened. The surface is drawn
+            % on cell EDGES now, so CData carries one padding row and
+            % column that flat shading never reads. The claim is still
+            % bit-for-bit and still about the whole colour path; it is
+            % simply made against the part that holds values.
+            drawn = H.Surface.CData(1:end-1, 1:end-1, :);
+            tc.verifyTrue(isequal(ref, drawn), ...
                 'Hillshade "off" must not touch the colour path.');
+            tc.verifyEqual(size(H.Surface.CData, 1), size(ref, 1) + 1, ...
+                'and the pad is exactly one row');
+            tc.verifyEqual(size(H.Surface.CData, 2), size(ref, 2) + 1, ...
+                'and exactly one column.');
             tc.verifyEmpty(H.Shade);
         end
 
@@ -123,7 +133,8 @@ classdef TestD1_elements < GeoMapTestCase
         end
 
         function aGlobalGridReportsAFullTurn(tc)
-            % PV-138. geo.wrapLongitude's window is half-open, so a grid
+            % PV-138, re-derived at PV-140. geo.wrapLongitude's window
+            % is half-open, so a grid
             % written -180:20:180 - the natural way to write a global
             % field - arrives as -180..160, one cell short of the world.
             % Read as a closed interval that cut 222 coastline vertices
@@ -134,11 +145,18 @@ classdef TestD1_elements < GeoMapTestCase
                 cosd(2 * repmat(lat, 1, numel(lon))));
             ax = tc.axesFor();
             [~, ~, B] = geo.basemap(G, "equirectangular", Parent = ax);
-            tc.verifyTrue(B.LonClosesTurn, ...
-                'A grid holding both ends of the world closes the turn.');
-            tc.verifyLessThan(diff(B.LonLimit), 360, ...
-                ['and it does so while its ENDPOINTS span less, which ' ...
-                 'is exactly why a span test cannot answer this.']);
+            % RE-DERIVED at PV-140, not deleted. LonClosesTurn was a
+            % flag saying "believe the endpoints less than they say".
+            % Registration removes the need for it: this grid holds both
+            % rims, so it is POSTING-registered and its region IS 360,
+            % and a plain span test now answers what the flag existed to
+            % answer.
+            tc.verifyEqual(B.Registration, "posting");
+            tc.verifyEqual(diff(B.LonLimit), 360, ...
+                'A grid holding both ends of the world covers a turn.', ...
+                AbsTol = 1e-9);
+            tc.verifyEqual(diff(B.LatLimit), 180, ...
+                'and both poles.', AbsTol = 1e-9);
         end
 
         function aRegionalGridReportsNoTurn(tc)
@@ -151,9 +169,12 @@ classdef TestD1_elements < GeoMapTestCase
                 repmat(lon, numel(lat), 1));
             ax = tc.axesFor();
             [~, ~, B] = geo.basemap(G, "equirectangular", Parent = ax);
-            tc.verifyFalse(B.LonClosesTurn, ...
-                'A regional grid does not go round.');
+            % The control, unchanged in substance: a regional grid
+            % carries no evidence of registration, so it stays posting
+            % and its region stays its node range.
+            tc.verifyEqual(B.Registration, "posting");
             tc.verifyEqual(B.LonLimit, [0 40]);
+            tc.verifyEqual(B.LatLimit, [10 50]);
         end
 
         function theCoastlineIsCutAtTheFrameNotAtTheWorld(tc)

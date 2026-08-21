@@ -82,6 +82,11 @@ function G = grid(lon, lat, Z, options)
 %       geo:grid:NonMonotonic     - a coordinate vector is not strictly
 %                                   monotone
 %       geo:grid:NaNCoordinate    - NaN or Inf in a coordinate vector.
+%     Registration:
+%       geo:grid:RegistrationAmbiguous - longitude and latitude infer
+%                                   different registrations. One grid
+%                                   cannot be both; pass Registration
+%                                   explicitly to say which is meant.
 %                                   NaN is the gap convention for DATA;
 %                                   a gap in an axis is not a gap, it is
 %                                   an unanswerable question about where
@@ -110,6 +115,9 @@ arguments
     options.Topo double = []
     options.Source (1,1) string = ""
     options.Units (1,1) string = ""
+    options.Registration (1,1) string ...
+        {mustBeMember(options.Registration, ...
+                      ["auto" "posting" "cell"])} = "auto"
 end
 
 % Idempotent form. Checked before anything else so a grid never pays for
@@ -143,6 +151,8 @@ lonRow = double(lon(:)).';
 latCol = double(lat(:));
 lonStep = median(diff(lonRow));
 latStep = median(diff(latCol));
+reg = resolveRegistration(options.Registration, lonRow, lonStep, ...
+    latCol(:).', latStep);
 
 G = struct( ...
     'Identity', "geo.grid", ...
@@ -153,8 +163,92 @@ G = struct( ...
     'LonStep', lonStep, ...
     'LatStep', latStep, ...
     'IsGlobalLon', measureGlobalLon(lonRow, lonStep), ...
+    'Registration', reg, ...
+    'LonRegion', regionOf(lonRow, lonStep, reg), ...
+    'LatRegion', regionOf(latCol(:).', latStep, reg), ...
     'Source', options.Source, ...
     'Units', options.Units);
+end
+
+% ======================================================================
+function reg = resolveRegistration(asked, lon, lonStep, lat, latStep)
+%RESOLVEREGISTRATION  Posting or cell, inferred from the axes themselves.
+%
+%   The distinction is not this toolbox's invention. GMT calls it
+%   gridline versus pixel registration and defaults to gridline; MATLAB's
+%   Mapping Toolbox calls it 'postings' versus 'cells'; GDAL carries it
+%   in the geotransform. A POSTING is a value AT a point; a CELL is a
+%   value OVER an area, and its region runs half a step beyond the
+%   outermost node on each side.
+%
+%   Getting this wrong is what produced the antimeridian wedge: a grid
+%   written -179.5:1:179.5 covers the world exactly, and reading its NODE
+%   limits as its region loses a cell (PV-140).
+%
+%   INFERENCE, and only from evidence:
+%     span == 360 (or 180 in latitude)          -> posting, both rims held
+%     span == 360 - step (or 180 - step)        -> cell, rims implied
+%     anything else                             -> no evidence
+%
+%   With no evidence the answer is POSTING, which is what every consumer
+%   assumed before this field existed, so a regional grid is unchanged.
+%   Longitude and latitude are read separately and must AGREE; a grid
+%   that looks cell-registered one way and posting the other is a finding
+%   and is raised, not silently resolved in favour of one axis.
+if asked ~= "auto"
+    reg = asked;
+    return
+end
+byLon = inferAxis(lon, lonStep, 360);
+byLat = inferAxis(lat, latStep, 180);
+if byLon ~= "unknown" && byLat ~= "unknown" && byLon ~= byLat
+    error('geo:grid:RegistrationAmbiguous', ...
+        ['Longitude looks %s-registered and latitude looks %s. One ' ...
+         'grid cannot be both. Pass Registration explicitly to say ' ...
+         'which is meant.'], byLon, byLat);
+end
+if byLon ~= "unknown"
+    reg = byLon;
+elseif byLat ~= "unknown"
+    reg = byLat;
+else
+    reg = "posting";
+end
+end
+
+function r = inferAxis(v, step, full)
+%INFERAXIS  What the span of one axis says about registration.
+%   The tolerance is a hundredth of a step, not an absolute: a 0.25-degree
+%   axis and a 5-arcminute one carry different rounding.
+if numel(v) < 2 || ~isfinite(step) || step <= 0
+    r = "unknown";
+    return
+end
+span = abs(v(end) - v(1));
+tol = 0.01 * step;
+if abs(span - full) <= tol
+    r = "posting";
+elseif abs(span - (full - step)) <= tol
+    r = "cell";
+else
+    r = "unknown";
+end
+end
+
+function lim = regionOf(v, step, reg)
+%REGIONOF  The area a grid COVERS, as against the points it holds.
+%   A cell grid's region runs half a step beyond its outermost nodes; a
+%   posting grid's region ends on them. Both give exactly 360 for a
+%   global longitude axis, from opposite conventions.
+if isempty(v)
+    lim = [NaN NaN];
+    return
+end
+if reg == "cell" && isfinite(step)
+    lim = [min(v) - abs(step) / 2, max(v) + abs(step) / 2];
+else
+    lim = [min(v), max(v)];
+end
 end
 
 % ======================================================================

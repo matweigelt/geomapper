@@ -1,4 +1,4 @@
-function [x, y] = project(lon, lat, crs)
+function [x, y] = project(lon, lat, crs, options)
 %GEO.PROJECT  Forward projection, sixteen ways, NaN outside the domain.
 %
 %   SYNTAX
@@ -91,12 +91,19 @@ arguments
     lon double {mustBeReal}
     lat double {mustBeReal}
     crs (1,1) struct {geo.internal.mustBeCrs}
+    options.Window (1,1) string ...
+        {mustBeMember(options.Window, ["halfopen" "closed"])} = "halfopen"
 end
 
 [lon, lat] = geo.internal.pairCoordinates(lon, lat, 'geo:project:SizeMismatch');
 
 % F2: wrap FIRST, always, for every projection including Robinson.
-lam = geo.wrapLongitude(lon - crs.CenterLongitude, 0) * pi / 180;
+% Window = "closed" is for MAP EDGES, not for data: it keeps +180 at
+% +180 so a global grid's eastern rim lands on the right of the page
+% rather than folding onto the left. Data keeps the half-open default,
+% which is F2's fix (PV-140).
+lam = geo.wrapLongitude(lon - crs.CenterLongitude, 0, ...
+    Window = options.Window) * pi / 180;
 phi = lat * pi / 180;
 phi0 = crs.CenterLatitude * pi / 180;
 D = crs.Domain;
