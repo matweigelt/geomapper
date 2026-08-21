@@ -234,11 +234,10 @@ function [xy, clip] = clipToExtent(xy, crs, lonLim, latLim, base)
 %   NumParts rises on a regional map, and that is the cut working: a
 %   coast that leaves the frame and returns is two parts afterwards.
 closes = true;                          % no basemap: the window is whole
-if ~isempty(base) && isfield(base, 'LonClosesTurn')
-    closes = base.LonClosesTurn;
+if false
 end
 B = geo.internal.mapBoundary(crs, [lonLim(1) lonLim(2)], ...
-    [latLim(1) latLim(2)], LonClosesTurn = closes);
+    [latLim(1) latLim(2)]);
 [lon, lat, info] = geo.internal.clipToBoundary(xy(:, 1).', xy(:, 2).', B);
 clip = struct('ClippedToExtent', info.Clipped, ...
     'ExtentCuts', info.NumCuts, 'ExtentKept', info.NumInside);

@@ -113,7 +113,6 @@ arguments
     lonBreaks (1,:) double
     latBreaks (1,:) double
     options.Densify (1,1) double {mustBePositive} = 12
-    options.LonClosesTurn (1,1) logical = false
 end
 
 [V, colourIdx] = traceExtent(lonBreaks, latBreaks);
@@ -128,8 +127,7 @@ if nnz(ok) < 3
     % drawable map into a hard failure and took fourteen GEO.MAP tests
     % with it (PV-137). The limits are still returned, because they are
     % what a clip needs and they are always well defined.
-    B = emptyBoundary(V, xv, yv, colourIdx, lonBreaks, latBreaks, crs, ...
-        options.LonClosesTurn);
+    B = emptyBoundary(V, xv, yv, colourIdx, lonBreaks, latBreaks, crs);
     return
 end
 
@@ -140,8 +138,7 @@ colourIdx = colourIdx(keepIdx);
 xv = xv(keepIdx);
 yv = yv(keepIdx);
 if numel(xv) < 3
-    B = emptyBoundary(V, xv, yv, colourIdx, lonBreaks, latBreaks, crs, ...
-        options.LonClosesTurn);
+    B = emptyBoundary(V, xv, yv, colourIdx, lonBreaks, latBreaks, crs);
     return
 end
 
@@ -150,14 +147,12 @@ end
 B = struct('Lon', V(:, 1), 'Lat', V(:, 2), 'X', xv, 'Y', yv, ...
     'ColourIdx', colourIdx, 'RingX', ringX, 'RingY', ringY, ...
     'Complete', complete, 'Tolerance', tol, 'Crs', crs, ...
-    'LonClosesTurn', options.LonClosesTurn, ...
     'LonLim', [min(lonBreaks) max(lonBreaks)], ...
     'LatLim', [min(latBreaks) max(latBreaks)]);
 end
 
 % ======================================================================
-function B = emptyBoundary(V, xv, yv, colourIdx, lonBreaks, latBreaks, ...
-    crs, closesTurn)
+function B = emptyBoundary(V, xv, yv, colourIdx, lonBreaks, latBreaks, crs)
 %EMPTYBOUNDARY  A boundary with no drawable ring, but with its limits.
 %   Complete is false, so GEO.FRAME draws nothing - which is what it did
 %   before this function existed. The limits are present regardless: an
@@ -165,7 +160,6 @@ function B = emptyBoundary(V, xv, yv, colourIdx, lonBreaks, latBreaks, ...
 B = struct('Lon', V(:, 1), 'Lat', V(:, 2), 'X', xv, 'Y', yv, ...
     'ColourIdx', colourIdx, 'RingX', [], 'RingY', [], ...
     'Complete', false, 'Tolerance', 0, 'Crs', crs, ...
-    'LonClosesTurn', closesTurn, ...
     'LonLim', [min(lonBreaks) max(lonBreaks)], ...
     'LatLim', [min(latBreaks) max(latBreaks)]);
 end

@@ -99,7 +99,6 @@ function [figH, axH, H] = basemap(G, crs, options)
 %                                        LIMITATIONS.
 %             LonLimit     (1,2) double  Geographic extent actually
 %             LatLimit     (1,2) double  drawn, AFTER the longitude roll.
-%             LonClosesTurn (1,1) logical  True when the last cell wraps
 %                                    back to the first, so the extent is
 %                                    a full turn even though LonLimit
 %                                    spans 360 minus one step (PV-138).
@@ -192,8 +191,25 @@ G = geo.grid(G);
 crs = resolveCrs(crs);
 
 [lon, lat, Z, topo] = rollToCentre(G, crs.CenterLongitude);
+
+% EVERY VALUE OWNS A CELL, so the surface is drawn on cell EDGES rather
+% than on the nodes. Measured: with FaceColor flat MATLAB paints the face
+% between vertices (i,j) and (i+1,j+1) entirely from CData(i,j) - 100% of
+% one face on a 2x2 mesh, the other three elements contributing no
+% pixels. Drawn on nodes, the last row and column are therefore never
+% painted and every cell sits half a step from where its value belongs.
+% On a global grid the missing column is the seam, which is the
+% antimeridian wedge (PV-140).
+lonE = edgesOf(lon, G.Registration);
+latE = edgesOf(lat(:).', G.Registration);
+[LONE, LATE] = meshgrid(lonE, latE);
+
+% Window = "closed" for the VERTICES only. A global grid's eastern rim is
+% +180 and its western rim -180; the half-open wrap folds the first onto
+% the second and collapses the map's right edge onto its left. The DATA
+% keeps the half-open default, which is F2's fix.
+[X, Y] = geo.project(LONE, LATE, crs, Window = "closed");
 [LON, LAT] = meshgrid(lon, lat);
-[X, Y] = geo.project(LON, LAT, crs);
 if ~any(isfinite(X(:)) & isfinite(Y(:)))
     error('geo:basemap:NothingToDraw', ...
         ['Every cell of this grid projects outside %s''s domain, so ' ...
@@ -218,11 +234,17 @@ if ~isempty(prior) && isgraphics(prior.Surface)
     delete(prior.Surface);              % replace, never accumulate
 end
 
+% One row and column larger than the data, because flat shading reads
+% CData(i,j) for the face and never reads the last of either. The pad is
+% never painted; it exists so the arrays agree in size.
+CData = padLast(CData);
+drawable = padLast(~isnan(Z)) & isfinite(X) & isfinite(Y);
+
 s = surface('Parent', axH, 'XData', X, 'YData', Y, ...
     'ZData', zeros(size(X)), 'CData', CData, ...
     'FaceColor', 'flat', 'EdgeColor', 'none', 'FaceLighting', 'none', ...
     'FaceAlpha', 'flat', 'AlphaDataMapping', 'none', ...
-    'AlphaData', double(~isnan(Z) & isfinite(X) & isfinite(Y)));
+    'AlphaData', double(drawable));
 
 colormap(axH, cmap);
 clim(axH, cLim);                        % clim(), never caxis (F11)
@@ -231,8 +253,8 @@ dataLimits = struct('XLim', xlim(axH), 'YLim', ylim(axH));
 
 H = struct('Surface', s, 'CLim', cLim, 'Colormap', cmap, ...
     'Shade', shade, 'DataLimits', dataLimits, 'Crs', crs, ...
-    'LonLimit', [min(lon) max(lon)], 'LatLimit', [min(lat) max(lat)], ...
-    'LonClosesTurn', closesTurn(lon), ...
+    'LonLimit', [min(lonE) max(lonE)], 'LatLimit', [min(latE) max(latE)], ...
+    'Registration', G.Registration, ...
     'HasUnder', any(Z(:) < cLim(1)), 'HasOver', any(Z(:) > cLim(2)));
 
 geo.internal.layout("register", axH, "basemap", @(~) []);
@@ -255,6 +277,35 @@ else
 end
 end
 
+function e = edgesOf(v, reg)
+%EDGESOF  Cell edges for one axis: N nodes give N+1 edges, hence N faces.
+%   Interior edges are the midpoints either way. The conventions differ
+%   only at the rims: a CELL grid's outermost edges lie half a step
+%   beyond its outermost nodes, a POSTING grid's lie on them, so a
+%   posting grid's first and last cells are half-width. Both give exactly
+%   360 for a global longitude axis, from opposite conventions.
+v = double(v(:)).';
+if numel(v) < 2
+    e = v;
+    return
+end
+d = diff(v);
+mid = v(1:end-1) + d / 2;
+if reg == "cell"
+    e = [v(1) - d(1) / 2, mid, v(end) + d(end) / 2];
+else
+    e = [v(1), mid, v(end)];
+end
+end
+
+function A = padLast(A)
+%PADLAST  Repeat the last row and column so sizes agree with the edges.
+%   Never read by flat shading. It is padding, not a value, and saying so
+%   here is cheaper than a reader later wondering whether the rim cells
+%   are drawn twice.
+A = A([1:end, end], [1:end, end], :);
+end
+
 function [lon, lat, Z, topo] = rollToCentre(G, lon0)
 %ROLLTOCENTRE  Re-order columns so longitude runs monotonically about lon0.
 %   A grid stored 0..360 and a projection centred on 0 disagree about
@@ -271,42 +322,6 @@ topo = G.Topo;
 if ~isempty(topo)
     topo = topo(:, ord);
 end
-end
-
-function tf = closesTurn(lon)
-%CLOSESTURN  Does this longitude axis wrap all the way round?
-%   A longitude extent is CYCLIC, so its span is not max minus min. A
-%   grid whose last cell wraps back to its first covers a full turn
-%   while its ENDPOINTS span 360 minus one step: GEO.WRAPLONGITUDE's
-%   window is half-open, so a grid written -180:20:180 arrives as
-%   -180..160 and reading that as a closed interval cut 222 coastline
-%   vertices out of the Pacific (PV-138).
-%
-%   REPORTED, NOT REPAIRED, and that was measured the hard way. Closing
-%   the seam by re-appending the wrap column looked like the tidier fix
-%   and broke ten tests: GEO.PROJECT wraps +180 back onto -180, so the
-%   closing column collapses onto the first in projected space and the
-%   duplicate survives anyway; and Mask, MaskPolygon and every size
-%   contract are defined against the CALLER's Z, which a silently added
-%   column invalidates. A property answers the question without
-%   rewriting the caller's grid.
-%
-%   The seam gap is compared against the LARGEST INTERIOR STEP rather
-%   than a fraction of one: the axis need not be uniform, and the only
-%   honest question is whether the step across the seam is of the same
-%   order as the steps inside it. A regional grid's 320-degree gap
-%   cannot be mistaken for a 20-degree one.
-if numel(lon) < 2
-    tf = false;
-    return
-end
-d = diff(lon);
-d = d(d > 0);
-if isempty(d)
-    tf = false;
-    return
-end
-tf = (360 - (lon(end) - lon(1))) <= max(d) + 1e-9;
 end
 
 function mask = resolveMask(options, Z, LON, LAT)

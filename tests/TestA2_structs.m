@@ -39,6 +39,60 @@ classdef TestA2_structs < GeoMapTestCase
     % ==================================================================
     methods (Test, TestTags = {'contract'})
 
+        function registrationIsInferredFromTheAxisItself(tc)
+            % PV-140. GMT calls this gridline vs pixel registration,
+            % MATLAB's Mapping Toolbox postings vs cells, GDAL carries it
+            % in the geotransform. A POSTING is a value AT a point; a
+            % CELL is a value OVER an area, and its region runs half a
+            % step past the outermost node. Reading node limits as the
+            % region is what lost a cell at the antimeridian.
+            cases = { ...
+                -180:20:180,   "posting", 360; ...
+                -170:20:170,   "cell",    360; ...
+                0:20:340,      "cell",    360; ...
+                -179.5:1:179.5, "cell",   360};
+            for k = 1:size(cases, 1)
+                lon = cases{k, 1};
+                G = geo.grid(lon, (-80:20:80)', ...
+                    zeros(9, numel(lon)), Registration = "auto");
+                tc.verifyEqual(G.Registration, cases{k, 2}, ...
+                    sprintf('axis %g..%g step %g', lon(1), lon(end), ...
+                            median(diff(lon))));
+                tc.verifyEqual(diff(G.LonRegion), cases{k, 3}, ...
+                    AbsTol = 1e-9, ...
+                    'Every global convention covers exactly one turn.');
+            end
+        end
+
+        function aRegionalGridKeepsTodaysAnswer(tc)
+            % The control. A regional axis carries no evidence either
+            % way, and with no evidence the answer is POSTING - what
+            % every consumer assumed before this field existed - so a
+            % regional grid's region is still its node range.
+            G = geo.grid(0:2:40, (10:2:50)', zeros(21, 21));
+            tc.verifyEqual(G.Registration, "posting");
+            tc.verifyEqual(G.LonRegion, [0 40]);
+            tc.verifyEqual(G.LatRegion, [10 50]);
+        end
+
+        function aGridCannotBeBothAtOnce(tc)
+            % Longitude and latitude are read separately and must agree.
+            % A grid that looks cell one way and posting the other is a
+            % finding, not something to resolve silently in favour of
+            % whichever axis was checked first.
+            tc.verifyError(@() geo.grid(-170:20:170, (-90:20:90)', ...
+                zeros(10, 18)), 'geo:grid:RegistrationAmbiguous');
+        end
+
+        function anExplicitRegistrationBeatsTheInference(tc)
+            % The inference reads a span. A caller who knows better -
+            % and a regional grid's owner always does - overrides it.
+            G = geo.grid(0:2:40, (10:2:50)', zeros(21, 21), ...
+                Registration = "cell");
+            tc.verifyEqual(G.Registration, "cell");
+            tc.verifyEqual(G.LonRegion, [-1 41]);
+        end
+
         function aGridRecordsWhatItWasGiven(tc)
             lon = -179.5:179.5;
             lat = (-89.5:89.5).';
