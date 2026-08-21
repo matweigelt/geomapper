@@ -1258,6 +1258,7 @@ anything. R-011, PV-080.
 | C-183 | 21-Aug-2026 | **The "not redistributable" claim was read, not checked, and is false.** GSHHG is LGPL from v2.2.2; Natural Earth is public domain (*“No permission is needed”*). Eighteen CI points had filtered for four rounds on the strength of one unchecked sentence in a help block | A-6 |
 | C-184 | 21-Aug-2026 | **`tools/makeOracleFixtures.py`** rebuilds the subset from the published archive and refuses to write a prefix that does not consume to its own last byte. A fixture nobody can rebuild is a magic file | C-174 |
 | C-185 | 21-Aug-2026 | **`serialEqualsParallel` filters only when the Parallel Computing Toolbox is absent.** It asked `hasParallelPool(true)` — a pool *already open* — so it filtered on every fresh session including the bridge, where R-023 had proved the path with 16 workers. A pool is now started and torn down; a pool that will not start is a **distinct** reason, never collapsed into “no toolbox” | PV-133 |
+| C-186 | 21-Aug-2026 | **PV-134: a speed budget with a hidden argument.** `theCacheIsWorthHaving` asserts cold-parse / warm-cache ≥ 10. The numerator scales with the file and the denominator does not, so against the 535 kB shipped prefix it measured **2.483** and the gate went red — correctly. **The budget is not loosened**; the test is pinned to the full product via a new `poolFile` resolver that refuses the subset. The budget was PREDICTED (V5) and had never been challenged with a second input | PV-134 |
 
 ---
 
