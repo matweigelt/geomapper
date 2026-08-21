@@ -245,13 +245,51 @@ classdef TestD2_annotations < GeoMapTestCase
 
         function nothingIsDensifiedIntoTheCoastline(tc)
             % Adding vertices between two survey points invents
-            % shoreline. The drawn point count may only exceed the read
-            % one by the cuts inserted.
-            ax = tc.mapAxes();
+            % shoreline. RE-DERIVED, not loosened, when the cut arrived
+            % (PV-136): a clip both DROPS vertices that fall outside the
+            % extent and INSERTS one at each crossing, so the old
+            % identity - drawn == read + branch cuts - became false for
+            % an honest reason. It is asserted here in the only place it
+            % still holds unchanged, a pole-to-pole global extent where
+            % nothing is outside, so that a regression in the no-clip
+            % path cannot hide behind the new arithmetic.
+            lon = -180:20:180;
+            lat = (-90:15:90)';
+            G = geo.grid(lon, lat, sind(3 * repmat(lon, numel(lat), 1)) .* ...
+                cosd(2 * repmat(lat, 1, numel(lon))));
+            ax = tc.axesFor();
+            geo.basemap(G, "equirectangular", Parent = ax);
             xy = geo.readCoastline("builtin");
             H = geo.coastline(ax);
+            tc.verifyEqual(H.ExtentKept, size(xy, 1) - sum(isnan(xy(:, 1))), ...
+                'A global extent excludes nothing.');
             tc.verifyEqual(numel(H.Line.XData), size(xy, 1) + H.NumCuts, ...
                 'Points may be broken apart but never invented.');
+        end
+
+        function aClipInventsOnePointPerCrossingAndNoMore(tc)
+            % The other half of the same contract, on an extent that
+            % DOES cut. Every drawn vertex is either one that was read
+            % and kept, or one crossing point placed on the extent's own
+            % edge. Anything else is invention (PV-136).
+            % The limit has to be one the DATA actually crosses: the
+            % builtin coastline reaches 83.6 N and -85.6 S, so demoGrid's
+            % 87.5 excludes nothing and the first version of this test
+            % asserted a crossing that could not happen.
+            lon = -180:20:180;
+            lat = (-60:15:60)';
+            G = geo.grid(lon, lat, sind(3 * repmat(lon, numel(lat), 1)) .* ...
+                cosd(2 * repmat(lat, 1, numel(lon))));
+            ax = tc.axesFor();
+            geo.basemap(G, "equirectangular", Parent = ax);
+            H = geo.coastline(ax);
+            drawn = nnz(~isnan(H.Line.XData));
+            tc.verifyTrue(H.ClippedToExtent, ...
+                'An extent short of the pole must cut a global coastline.');
+            tc.verifyEqual(drawn, H.ExtentKept + H.ExtentCuts, ...
+                'Drawn = kept + one point per crossing, exactly.');
+            tc.verifyGreaterThan(H.ExtentCuts, 0, ...
+                'A global coastline crosses a 60-degree limit.');
         end
 
         function anArrayCoastlineIsDrawnAsGiven(tc)

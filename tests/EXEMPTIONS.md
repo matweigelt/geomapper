@@ -170,3 +170,7 @@ pre-approved before the function exists and the claim can be checked.
 | L3/L4 graphics | precision | The claim is geometric, asserted under contract with TolGeom. | **filled 16-Aug-2026** for D.1; D.2/D.3 rows follow at their checkpoints |
 | geo.cache | metamorphic | Its observable is a hit or a miss, which has no invariance to state. | **withdrawn 15-Aug-2026**: a metamorphic test DID exist - the cache is transparent, so a cached read equals an uncached one. The exemption was false. |
 | geo.export | reference | No external authority certifies a PDF's byte content. | **withdrawn 16-Aug-2026**: the exemption was false. Nothing certifies the *content*, but the file's own MediaBox certifies its *size*, and the size is the claim. `geo.export` has four reference tests. |
+| geo.internal.mapBoundary | vectorisation | One extent has one boundary. There is no batched form of "where this map is". |
+| geo.internal.mapBoundary | precision | It introduces no arithmetic of its own: the coordinates are GEO.PROJECT's, certified against PROJ as oracle O4. The one number it does introduce is the coincidence tolerance, and that is a threshold separating two measured populations sixteen orders apart - asserted under `contract` as a decision, not under `precision` as an accuracy. |
+| geo.internal.clipToBoundary | vectorisation | One polyline, one boundary. Clipping several against the same ring is the caller's loop, and a batched form would only move it. |
+

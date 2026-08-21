@@ -47,6 +47,8 @@ classdef TestD1_elements < GeoMapTestCase
     properties (Constant)
         CoveredFunctions = ["geo.basemap" "geo.graticule" "geo.frame" ...
                             "geo.internal.layout" ...
+                            "geo.internal.mapBoundary" ...
+                            "geo.internal.clipToBoundary" ...
                             "geo.internal.avoidRectCollisions"]
     end
 
@@ -119,6 +121,73 @@ classdef TestD1_elements < GeoMapTestCase
             tc.verifyEqual(unique(Gr.Meridians(1).ZData), 3);
             tc.verifyEqual(unique(F.Patches(1).ZData), 6);
         end
+
+        function aGlobalGridReportsAFullTurn(tc)
+            % PV-138. geo.wrapLongitude's window is half-open, so a grid
+            % written -180:20:180 - the natural way to write a global
+            % field - arrives as -180..160, one cell short of the world.
+            % Read as a closed interval that cut 222 coastline vertices
+            % out of the Pacific. The extent is CYCLIC and says so.
+            lon = -180:20:180;
+            lat = (-90:15:90)';
+            G = geo.grid(lon, lat, sind(3 * repmat(lon, numel(lat), 1)) .* ...
+                cosd(2 * repmat(lat, 1, numel(lon))));
+            ax = tc.axesFor();
+            [~, ~, B] = geo.basemap(G, "equirectangular", Parent = ax);
+            tc.verifyTrue(B.LonClosesTurn, ...
+                'A grid holding both ends of the world closes the turn.');
+            tc.verifyLessThan(diff(B.LonLimit), 360, ...
+                ['and it does so while its ENDPOINTS span less, which ' ...
+                 'is exactly why a span test cannot answer this.']);
+        end
+
+        function aRegionalGridReportsNoTurn(tc)
+            % The control. The seam gap is compared against the largest
+            % INTERIOR step, so a regional grid's 320-degree gap cannot
+            % be mistaken for a 20-degree one.
+            lon = 0:2:40;
+            lat = (10:2:50)';
+            G = geo.grid(lon, lat, repmat(lat, 1, numel(lon)) + ...
+                repmat(lon, numel(lat), 1));
+            ax = tc.axesFor();
+            [~, ~, B] = geo.basemap(G, "equirectangular", Parent = ax);
+            tc.verifyFalse(B.LonClosesTurn, ...
+                'A regional grid does not go round.');
+            tc.verifyEqual(B.LonLimit, [0 40]);
+        end
+
+        function theCoastlineIsCutAtTheFrameNotAtTheWorld(tc)
+            % PV-136, reported from GettingStarted: on the track map the
+            % coastline ran outside the frame. geo.coastline fetched the
+            % extent from elementExtent and discarded outputs two and
+            % three, so it drew the whole world and let the axes box hide
+            % what it could - and geo.frame widens that box past its own
+            % band, which is the margin the spill showed in.
+            %
+            % Measured on the shipped 110 m coastline over the
+            % GettingStarted extent: 486 029 of 529 498 km outside, 91.8%.
+            lo = -26:4:46;
+            la = (9:4:54)';
+            G = geo.grid(lo, la, sind(3 * repmat(lo, numel(la), 1)) .* ...
+                cosd(2 * repmat(la, 1, numel(lo))));
+            ax = tc.axesFor();
+            geo.basemap(G, "equirectangular", Parent = ax);
+            C = geo.coastline(ax);
+            tc.verifyTrue(C.ClippedToExtent, ...
+                'The extent was fetched and not used.');
+            tc.verifyGreaterThan(C.ExtentCuts, 0, ...
+                'A regional map must cut the shoreline somewhere.');
+
+            % The observable: nothing drawn outside the frame's own ring.
+            B = geo.internal.mapBoundary(geo.crs("equirectangular"), ...
+                [-26 46], [9 54]);
+            good = isfinite(C.Line.XData) & isfinite(C.Line.YData);
+            in = inpolygon(C.Line.XData(good), C.Line.YData(good), ...
+                B.RingX, B.RingY);
+            tc.verifyEqual(nnz(~in), 0, ...
+                'A drawn coastline vertex lies outside the map boundary.');
+        end
+
 
         function aPointPoleDoesNotCollapseTheFrameBand(tc)
             % PV-135, reported from GettingStarted: "the fishnet frame
@@ -434,7 +503,54 @@ classdef TestD1_elements < GeoMapTestCase
     end
 
     % ==================================================================
+    methods (Test, TestTags = {'precision'})
+        function theCutMeetsTheFrameRatherThanStoppingShortOfIt(tc)
+            % The failure mode of the one-line repair, asserted against.
+            % Dropping the outside vertex leaves the line short of the
+            % ring by up to one coastline segment - measured at 108 km,
+            % twelve screen pixels - which trades a spill outside the
+            % frame for a white margin inside it. Sixteen halvings take
+            % the residual to 1.6e-3 km.
+            crs = geo.crs("equirectangular");
+            B = geo.internal.mapBoundary(crs, [-26 46], [9 54]);
+            lon = [0 0];
+            lat = [30 80];              % leaves through the top edge
+            [cl, ca] = deal([], []);
+            [cl, ca] = geo.internal.clipToBoundary(lon, lat, B);
+            tc.verifyEqual(numel(cl), 2);
+            [~, yc] = geo.project(cl(end), ca(end), crs);
+            [~, yTop] = geo.project(0, 54, crs);
+            tc.verifyAndRecord(abs(yc - yTop), 1e-2, ...
+                "coastline cut vs the frame it was cut at", "km");
+        end
+
+    end
+
     methods (Test, TestTags = {'robustness'})
+        function anIncompleteRingDoesNotStopTheClip(tc)
+            % RE-DERIVED, not deleted (PV-137). The premise was that a
+            % boundary leaving the projection's domain closes with an
+            % invented chord, so clipping against it would delete real
+            % shoreline - true of an INPOLYGON test against a ring, and
+            % the reason that test was declined.
+            %
+            % Membership is no longer a ring test. It is the extent in
+            % lon/lat AND the domain through geo.project's NaN, both of
+            % which are defined whether or not a ring can be drawn. So
+            % an incomplete ring no longer declines anything: what falls
+            % outside the domain is dropped because the projection says
+            % so, which is the same authority that declined before.
+            crs = geo.crs("equirectangular");
+            B = geo.internal.mapBoundary(crs, [-26 46], [9 54]);
+            B.Complete = false;
+            lon = [0 0 0];
+            lat = [30 80 100];
+            [~, la, info] = geo.internal.clipToBoundary(lon, lat, B);
+            tc.verifyTrue(info.Clipped, ...
+                'The extent still bounds the line without a ring.');
+            tc.verifyLessThanOrEqual(max(la), 54 + 1e-6, ...
+                'Nothing above the extent may survive the clip.');
+        end
 
         function aSingleCellGridIsRefusedByTheGridContract(tc)
             % Refused at construction, before drawing is reached: a

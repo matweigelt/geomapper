@@ -324,40 +324,23 @@ end
 
 function patches = ribbonFrame(axH, crs, lonBreaks, latBreaks, t, options)
 %RIBBONFRAME  A mitred band around a boundary that is not a rectangle.
-[V, colourIdx] = boundaryVertices(lonBreaks, latBreaks);
-[xv, yv] = geo.project(V(:, 1).', V(:, 2).', crs);
-ok = isfinite(xv) & isfinite(yv);
-if nnz(ok) < 3
+B = geo.internal.mapBoundary(crs, lonBreaks, latBreaks, ...
+    Densify = 12);
+if ~B.Complete
+    % No drawable ring: the extent's boundary does not project inside
+    % this projection's domain. Draw nothing, as this function did
+    % before the boundary was promoted out of it (PV-137).
     patches = gobjects(1, 0);
     return
 end
-
-% A pole is a POINT in mollweide, hammer and sinusoidal, and so is a
-% conic's apex: every vertex of that edge projects to the same place.
-% Left in, the run hands OUTWARDNORMALS zero-length segments, it returns
-% a zero mitre, the band offsets by nothing, and the frame tapers to a
-% point - which reads as a triangle (PV-135). Collapse each run to ONE
-% vertex first.
-%
-% The survivor is the LAST of the run, because its outgoing edge is the
-% real one. Keeping the first instead would leave an edge running from
-% the pole across every longitude; edges are densified in lon/lat, so
-% that edge would draw a sweep which is not part of the boundary.
-tol = coincidenceTolerance(xv(ok), yv(ok));
-keepIdx = keepLastOfEachRun(xv, yv, tol);
-V = V(keepIdx, :);
-colourIdx = colourIdx(keepIdx);
-xv = xv(keepIdx);
-yv = yv(keepIdx);
-if numel(xv) < 3
-    patches = gobjects(1, 0);
-    return
-end
+V = [B.Lon, B.Lat];
+colourIdx = B.ColourIdx;
+xv = B.X;
+yv = B.Y;
 ok = isfinite(xv) & isfinite(yv);
-
 cx = mean(xv(ok));
 cy = mean(yv(ok));
-[nx, ny] = outwardNormals(xv, yv, cx, cy, tol);
+[nx, ny] = outwardNormals(xv, yv, cx, cy, B.Tolerance);
 
 nV = size(V, 1);
 patches = gobjects(1, nV);
@@ -387,37 +370,6 @@ for k = 1:nV
         bandColour(colourIdx(k), options.Colors));
 end
 patches = patches(1:m);
-end
-
-function [V, colourIdx] = boundaryVertices(lonBreaks, latBreaks)
-%BOUNDARYVERTICES  Trace the extent rectangle in lon/lat, once round.
-%   The colour index is the BREAK INTERVAL each edge spans, not the
-%   traversal position - see DESCRIPTION for why opposite sides would
-%   otherwise fall out of phase.
-nLon = numel(lonBreaks);
-nLat = numel(latBreaks);
-bottom = [lonBreaks(:), repmat(latBreaks(1), nLon, 1)];
-right = [repmat(lonBreaks(end), nLat - 1, 1), latBreaks(2:end).'];
-topLon = fliplr(lonBreaks);
-top = [topLon(2:end).', repmat(latBreaks(end), nLon - 1, 1)];
-leftLat = fliplr(latBreaks);
-left = [repmat(lonBreaks(1), max(nLat - 2, 0), 1), ...
-        leftLat(2:max(end - 1, 1)).'];
-V = [bottom; right; top; left];
-
-colourIdx = zeros(size(V, 1), 1);
-for k = 1:size(V, 1)
-    kNext = mod(k, size(V, 1)) + 1;
-    if abs(V(k, 2) - V(kNext, 2)) > 1e-9
-        j = find(abs(latBreaks - min(V(k, 2), V(kNext, 2))) < 1e-9, 1);
-    else
-        j = find(abs(lonBreaks - min(V(k, 1), V(kNext, 1))) < 1e-9, 1);
-    end
-    if isempty(j)
-        j = k;
-    end
-    colourIdx(k) = j;
-end
 end
 
 function [nx, ny] = outwardNormals(xv, yv, cx, cy, tol)
@@ -453,49 +405,6 @@ for k = 1:nV
     nx(k) = nv(1) * miterScale;
     ny(k) = nv(2) * miterScale;
 end
-end
-
-function tol = coincidenceTolerance(x, y)
-%COINCIDENCETOLERANCE  "The same point", relative to the map's own size.
-%   The guard replaced here was an absolute 1e-12 on a projected
-%   coordinate, and a projected coordinate carries the sphere's radius -
-%   so that threshold was a statement about units rather than about
-%   geometry. At a pole cos(pi/2) evaluates to 6.1e-17 rather than 0, so
-%   the images of the pole edge are very close rather than identical, and
-%   how close scales with the map.
-%
-%   Measured across mollweide, hammer, sinusoidal and a conic apex, the
-%   degenerate separations sit at 5e-18 of the map diagonal and the
-%   smallest LEGITIMATE edge at 2.8e-2 - sixteen orders apart. 1e-9 sits
-%   in the middle with seven orders of headroom on each side. On a
-%   36 000 km map that is 3.6 cm, far under one screen pixel (PV-135).
-d = hypot(max(x) - min(x), max(y) - min(y));
-if ~isfinite(d) || d <= 0
-    d = 1;
-end
-tol = 1e-9 * d;
-end
-
-function keepIdx = keepLastOfEachRun(x, y, tol)
-%KEEPLASTOFEACHRUN  Drop a vertex whose successor lands on the same point.
-%   Walks the ring once. A vertex goes only when it and its successor are
-%   both finite and closer than TOL, so a run of coincident vertices is
-%   reduced to its last member and the ring stays closed.
-%
-%   A NON-FINITE vertex is always kept. GEO.PROJECT returns NaN outside
-%   the domain and the caller skips those edges deliberately - "a gap
-%   beats a wrong half" - and merging across one would join two edges
-%   that the projection had separated on purpose.
-n = numel(x);
-keep = true(1, n);
-for k = 1:n
-    kNext = mod(k, n) + 1;
-    if all(isfinite([x(k) y(k) x(kNext) y(kNext)])) && ...
-            hypot(x(kNext) - x(k), y(kNext) - y(k)) < tol
-        keep(k) = false;
-    end
-end
-keepIdx = find(keep);
 end
 
 function patches = fixedFrame(axH, crs, lonLim, latLim, t, options)

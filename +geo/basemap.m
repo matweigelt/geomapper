@@ -99,6 +99,10 @@ function [figH, axH, H] = basemap(G, crs, options)
 %                                        LIMITATIONS.
 %             LonLimit     (1,2) double  Geographic extent actually
 %             LatLimit     (1,2) double  drawn, AFTER the longitude roll.
+%             LonClosesTurn (1,1) logical  True when the last cell wraps
+%                                    back to the first, so the extent is
+%                                    a full turn even though LonLimit
+%                                    spans 360 minus one step (PV-138).
 %                                        GEO.GRATICULE and GEO.FRAME read
 %                                        these rather than asking the
 %                                        axes, because the axes knows
@@ -228,6 +232,7 @@ dataLimits = struct('XLim', xlim(axH), 'YLim', ylim(axH));
 H = struct('Surface', s, 'CLim', cLim, 'Colormap', cmap, ...
     'Shade', shade, 'DataLimits', dataLimits, 'Crs', crs, ...
     'LonLimit', [min(lon) max(lon)], 'LatLimit', [min(lat) max(lat)], ...
+    'LonClosesTurn', closesTurn(lon), ...
     'HasUnder', any(Z(:) < cLim(1)), 'HasOver', any(Z(:) > cLim(2)));
 
 geo.internal.layout("register", axH, "basemap", @(~) []);
@@ -266,6 +271,42 @@ topo = G.Topo;
 if ~isempty(topo)
     topo = topo(:, ord);
 end
+end
+
+function tf = closesTurn(lon)
+%CLOSESTURN  Does this longitude axis wrap all the way round?
+%   A longitude extent is CYCLIC, so its span is not max minus min. A
+%   grid whose last cell wraps back to its first covers a full turn
+%   while its ENDPOINTS span 360 minus one step: GEO.WRAPLONGITUDE's
+%   window is half-open, so a grid written -180:20:180 arrives as
+%   -180..160 and reading that as a closed interval cut 222 coastline
+%   vertices out of the Pacific (PV-138).
+%
+%   REPORTED, NOT REPAIRED, and that was measured the hard way. Closing
+%   the seam by re-appending the wrap column looked like the tidier fix
+%   and broke ten tests: GEO.PROJECT wraps +180 back onto -180, so the
+%   closing column collapses onto the first in projected space and the
+%   duplicate survives anyway; and Mask, MaskPolygon and every size
+%   contract are defined against the CALLER's Z, which a silently added
+%   column invalidates. A property answers the question without
+%   rewriting the caller's grid.
+%
+%   The seam gap is compared against the LARGEST INTERIOR STEP rather
+%   than a fraction of one: the axis need not be uniform, and the only
+%   honest question is whether the step across the seam is of the same
+%   order as the steps inside it. A regional grid's 320-degree gap
+%   cannot be mistaken for a 20-degree one.
+if numel(lon) < 2
+    tf = false;
+    return
+end
+d = diff(lon);
+d = d(d > 0);
+if isempty(d)
+    tf = false;
+    return
+end
+tf = (360 - (lon(end) - lon(1))) <= max(d) + 1e-9;
 end
 
 function mask = resolveMask(options, Z, LON, LAT)
