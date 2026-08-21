@@ -117,7 +117,14 @@ classdef TestE1_map < GeoMapTestCase
             tc.addTeardown(@() close([off.Figure on.Figure cfg.Figure]));
             tc.verifyFalse(isfield(off, 'Graticule'));
             tc.verifyTrue(isfield(on, 'Graticule'));
-            tc.verifyEqual(cfg.Graticule.LonTicks, -180:60:120, ...
+            % RE-DERIVED at PV-140. The expectation was -180:60:120,
+            % six ticks, because worldGrid is cell-registered and its
+            % NODE range stopped one cell short of the world. Its
+            % REGION always ran -180 to 180; now that the extent says so,
+            % the seventh tick exists and belongs there. The claim being
+            % made is unchanged: the struct reached geo.graticule and
+            % StepLon = 60 was honoured.
+            tc.verifyEqual(cfg.Graticule.LonTicks, -180:60:180, ...
                 'the struct reached geo.graticule');
         end
 
