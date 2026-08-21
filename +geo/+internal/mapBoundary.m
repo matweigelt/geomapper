@@ -89,13 +89,19 @@ function B = mapBoundary(crs, lonBreaks, latBreaks, options)
 %     under a thousandth of the map width.
 %
 %   ERRORS
-%     geo:mapBoundary:Degenerate - fewer than three distinct vertices
-%                                  survive, so the extent has no interior
+%     None of its own. An extent whose ring does not project is ORDINARY
+%     rather than exceptional - an orthographic hemisphere shows a global
+%     extent every time - so that case is REPORTED through Complete and
+%     not raised. The identifier this block used to advertise was removed
+%     when the throw was, because a documented identifier that nothing
+%     raises makes a test asserting it unfailable, which reads as
+%     coverage and is not (audit check identifierAgreement, PV-137).
+%     Malformed arguments are rejected by the arguments block.
 %
 %   EXAMPLE
 %     B = geo.internal.mapBoundary(geo.crs("mollweide"), ...
 %             -180:60:180, -90:30:90);
-%     in = inpolygon(x, y, B.RingX, B.RingY);
+%     if B.Complete, plot(B.RingX, B.RingY); end
 %
 %   See also GEO.FRAME, GEO.COASTLINE, GEO.INTERNAL.CLIPTOBOUNDARY.
 %
