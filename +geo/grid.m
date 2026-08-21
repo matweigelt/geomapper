@@ -82,6 +82,11 @@ function G = grid(lon, lat, Z, options)
 %       geo:grid:NonMonotonic     - a coordinate vector is not strictly
 %                                   monotone
 %       geo:grid:NaNCoordinate    - NaN or Inf in a coordinate vector.
+%     Registration:
+%       geo:grid:RegistrationAmbiguous - longitude and latitude infer
+%                                   different registrations. One grid
+%                                   cannot be both; pass Registration
+%                                   explicitly to say which is meant.
 %                                   NaN is the gap convention for DATA;
 %                                   a gap in an axis is not a gap, it is
 %                                   an unanswerable question about where

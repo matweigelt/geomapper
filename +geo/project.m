@@ -1,4 +1,4 @@
-function [x, y] = project(lon, lat, crs)
+function [x, y] = project(lon, lat, crs, options)
 %GEO.PROJECT  Forward projection, sixteen ways, NaN outside the domain.
 %
 %   SYNTAX

@@ -1,4 +1,4 @@
-function lonOut = wrapLongitude(lon, lon0)
+function lonOut = wrapLongitude(lon, lon0, options)
 %GEO.WRAPLONGITUDE  Wrap longitudes into a half-open window, exactly.
 %
 %   SYNTAX
