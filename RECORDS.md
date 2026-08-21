@@ -25,6 +25,33 @@ changed the specification, the code, or nothing.
 A superseded verification script is left as the record of its own round;
 rewriting a record is not the same as keeping it.
 
+**PV-132 — the mass-closure floor is environment-dependent, and the
+checked-in reference file was nearly overwritten without a machine tag.**
+Re-running the mirror here rewrote
+`mirror/geomap_mirror/out/reference_values.json`. Two things moved:
+
+| | recorded baseline | this sandbox |
+|---|---|---|
+| GDAL | 3.10.3 | **3.12.4** |
+| regrid mass-closure floor, pairwise | 2.150e-14 | **3.936e-14** |
+| two sphere-area totals | — | last 1–2 ULP |
+
+`TolMass` = 1e-13 survives either way, with 2.5× headroom here against
+4.7× on the baseline. **The floor is not a constant of the algorithm; it
+is a constant of the algorithm *and* the summation blocking of the numpy
+build underneath it.** V7 is still discharged — the tolerance was set one
+decade above a measured floor and both measurements sit under it — but
+the margin is smaller than the baseline number suggests, and a future
+environment that widens it further would be a finding rather than a
+surprise.
+
+**The regenerated file was reverted, not committed.** It is the record of
+a specific run on a specific machine; replacing its contents from an
+unrecorded environment would substitute one measurement for another with
+nothing saying so, which is debt V1's failure mode with extra steps. CI
+uploads its own copy as an artefact rather than committing one, and that
+is the right shape.
+
 **Binding items a later stage could be wrong for not reading.** Short.
 This is the section the next session actually reads.
 ```
@@ -1812,4 +1839,120 @@ the code, its data and its manual.
 
 ---
 
-*Entries R-026 onward are written at each stage's green gate.*
+## R-026 — Stage F, checkpoint F.4, 21-Aug-2026, tier B (sandbox) + CI
+
+**Scope.** No cartography. One finding about the document set, the check
+that now catches it, and the re-synchronisation of `HANDOVER.md`
+Parts 0 and 1 with the evidence already sitting in this file.
+
+**Execution tier, declared first (OB-1).** **Tier B in the authoring
+session** — no MATLAB bridge and no filesystem access to the target
+machine were available this round. What the session *did* have was `git`
+and the GitHub API, so gates 1–3 ran here and gate 4 was delegated to CI,
+which provisions R2026a on a hosted runner. **That is a tier refinement
+worth recording: the MATLAB leg does not require Matthias's desktop.** An
+authoring session with only network access can still execute the suite,
+by pushing a branch and reading the run. The desktop bridge remains the
+faster loop; it is no longer the only one.
+
+**What ran, and what did not.**
+
+| gate | where | result |
+|---|---|---|
+| 1 `mcheck` | sandbox | self-test PASS, **111 files, 0 problems** |
+| 2 `provenance_audit` | sandbox | self-test PASS, **0 problems**, 0 PROVISIONAL stamps |
+| 3 mirror + frozen acceptance | sandbox | **74 criteria, 0 breaches**; PROJ **9.5.1** via pyproj 3.7.2, numpy 2.4.4, scipy 1.17.1 — the same PROJ the measurements were taken against, so O4 is reproducible off the target machine |
+| 3a `gdal_oracle` | sandbox | ctypes route, GDAL 3.12.4, slope error **3.58e-06°**, aspect **5.92e-06°** |
+| 4 MATLAB suite + audit | **CI** | see the run linked from the PR |
+
+**PV-130 — the status file had no status in it.** Between 16-Aug and
+20-Aug, Stages D, E and F.1–F.3 were built, executed and merged.
+Fourteen entries were added to this file and seventy rows to the change
+log. **Part 1 of the handover was not touched.** Opening `HANDOVER.md`
+this morning, a fresh session read: Stage 0 *in progress*, Stages D, E
+and F *not started*.
+
+Measured, by the check written below, against the tree at `3bdfb87`:
+
+**seven disagreements** — three stages carrying records entries while
+the ledger called them not started; one checkpoint likewise; and debts
+**V4, V7 and V9** printed as open in Part 0 while this file declared all
+three discharged.
+
+Nothing was red. Every gate in the project looks at code, and no gate
+looked at the document set. The failure is BEST_PRACTICE §6.1 **run
+backwards**: the split exists so that narrative evidence does not crowd
+out status, and what happened instead is that the evidence file grew a
+status and the status file kept none. The cost is not cosmetic — a debt
+recorded as open is re-discharged by the next reader, and V4, V7 and V9
+were each discharged with a real measurement that would have been paid
+for twice.
+
+**PV-131 — a round closed without an entry here.** The PV-127/128/129
+round (commit `3bdfb87`, 20-Aug) reports its green gate in the **commit
+message**: 491 points reconciled three ways, 486 passed, 5 filtered, 0
+failures, 0 audit findings, manifest verified. There is no entry in this
+file for it. **No entry is fabricated here**, because the run was not
+witnessed by this session; the numbers above are cited as the commit's
+own claim and marked as such. If the next bridge session re-runs the
+suite on the target machine, that run gets the entry.
+
+**The instrument: `tools/ledger_sync.py`.** Five rules, stated as rules
+rather than as a list of stage names — PV-128's lesson, that a name-list
+forbids only the instances somebody thought of:
+
+1. a stage with a records entry is not "not started";
+2. a debt the records call discharged is not left un-annotated in Part 0;
+3. a checkpoint with a records entry is not left unticked;
+4. a stage marked done cites a records entry;
+5. a records entry the ledger cites exists.
+
+It is **static and runtime-free**, and that is the point rather than a
+convenience: it is a check on the documents, and the documents drift
+hardest in exactly the sessions where MATLAB is not reachable. It joins
+the first CI job and `tools/gates.sh`, and like `mcheck` and
+`provenance_audit` it refuses to report a clean tree unless its own
+fault-injection self-test passes in the same invocation — six fixtures,
+one per rule plus a false-positive fixture on an agreeing pair.
+
+**Rule 5 was added because this round needed it.** Revision 3.1's first
+draft cited `R-026` in the ledger before this entry existed. Rules 1–4
+all read from records to ledger; none of them can see a citation pointing
+at nothing. The check caught its author within the same hour it was
+written, which is the only kind of evidence a new check has to offer.
+
+**What Part 1 says now.** Stage 0 ☑ (36 points, 15-Aug), A ☑ (113), B ☑
+(182), C ☑ (205), D ☑ (**347**, 16-Aug, seven checkpoints), E ☑
+(**468**, 20-Aug, seven checkpoints), F ◐ — deliverables 1–9 executed,
+**10 (release checklist), 11 (this file's final state) and 12 (the
+independent audit) open**. The planned checkpoint names are replaced by
+the delivered ones: D ran as seven where three were planned, E as seven
+where one was. A checkpoint was cut whenever a confirming run was owed,
+which is the rule working, not drift to be tidied away.
+
+**Obligations moved.** OB-3 closes with V3. **OB-7 is broken and is not
+quietly dropped**: the v1 tree is gone from the target machine, so oracle
+O12 is unreachable and four tests now filter loudly rather than pass
+(PV-129, five filtered is the new normal). Restoring v1 before the
+independent audit would return them; leaving it broken is a decision that
+belongs to Matthias, not to this session.
+
+**Binding items a later stage could be wrong for not reading.**
+
+- **The independent audit (deliverable 12) has not run, and this round is
+  not it.** Its rules say: its own session, findings only, no deference to
+  a green gate, fix nothing until agreed. This round fixed things, which
+  disqualifies it as the audit by construction.
+- **Release checklist items that need a human and a live MATLAB remain
+  open**: `.mltbx` installs in a fresh MATLAB with `doc geoMap`
+  resolving, and the rendered manual rasterised and *looked at*. There is
+  no automated oracle for "the figure is right".
+- **O11 is still unfilled.** The GRACE integration scenario uses a field
+  labelled synthetic in the code, deliberately.
+- The version did not move this round, and correctly so: the patch
+  component is the verified test-point count, and no MATLAB test point
+  was added.
+
+---
+
+*Entries R-027 onward are written at each stage's green gate.*

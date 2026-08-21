@@ -62,6 +62,15 @@ jobs:
       - name: Provenance and honesty audit
         run: python3 tools/provenance_audit.py .
 
+      - name: Ledger sync (handover status vs records evidence)
+        # PV-130: every other gate in this project looks at code, so a
+        # handover whose ledger had stopped matching four days of merged
+        # work was invisible to all of them. Runtime-free and in the first
+        # job on purpose - documents drift hardest in the sessions where
+        # MATLAB is not reachable, which are exactly the sessions that
+        # never reach the MATLAB job.
+        run: python3 tools/ledger_sync.py .
+
   # ------------------------------------------------------------------
   # The mirror, and the frozen numerical criteria.
   # ------------------------------------------------------------------
