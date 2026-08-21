@@ -5,11 +5,11 @@
   "oracle_gdal": {
     "oracle": "O7/O8 GDAL",
     "route": "ctypes",
-    "version": "3.12.4"
+    "version": "3.10.3"
   },
   "oracle_gdal_self_test": {
     "route": "ctypes",
-    "version": "3.12.4",
+    "version": "3.10.3",
     "ok": true,
     "slope_expected_deg": 78.69006752597979,
     "slope_max_abs_error_deg": 3.57997724620418e-06,
@@ -149,12 +149,12 @@
         "rel_error_vs_4pi": 9.775203609854869e-05
       },
       "hammer": {
-        "total": 12.565732634774324,
-        "rel_error_vs_4pi": 5.076880226014718e-05
+        "total": 12.565732634774328,
+        "rel_error_vs_4pi": 5.076880225986447e-05
       },
       "sinusoidal": {
-        "total": 12.566051618053777,
-        "rel_error_vs_4pi": 2.538491941587745e-05
+        "total": 12.566051618053779,
+        "rel_error_vs_4pi": 2.5384919415736093e-05
       }
     },
     "equal_area_worst_relative_error": {
@@ -461,11 +461,11 @@
     "regrid_mass_closure_floor": {
       "grid": "2161x4321 -> 181x361",
       "relative_closure_by_summation_order": {
-        "pairwise": 3.9363396613540554e-14,
+        "pairwise": 2.1501970982541102e-14,
         "naive": 1.649622112417153e-14,
         "exact": 6.484721407432972e-15
       },
-      "measured": 3.9363396613540554e-14,
+      "measured": 2.1501970982541102e-14,
       "tolerance": 1e-13,
       "handover_guess": 1e-12,
       "agrees_with_guess": true,
@@ -479,7 +479,7 @@
     "regrid_vs_O7_gdalwarp_average": {
       "oracle": "O7/O8 GDAL",
       "route": "ctypes",
-      "version": "3.12.4",
+      "version": "3.10.3",
       "band_lat_-10_to_10": {
         "max_abs_diff": 0.0020807092268462224,
         "rms_diff": 0.0005543749480760304,
@@ -506,7 +506,7 @@
     "hillshade_vs_O8_gdal": {
       "oracle": "O7/O8 GDAL",
       "route": "ctypes",
-      "version": "3.12.4",
+      "version": "3.10.3",
       "slope_max_abs_error_deg": 4.195812758922557e-05,
       "aspect_max_abs_error_deg": 0.0008188175676764331,
       "aspect_pixels_compared": 18094,
