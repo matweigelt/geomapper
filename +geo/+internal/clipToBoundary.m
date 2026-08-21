@@ -203,6 +203,9 @@ function tf = isInside(lon, lat, B)
 lon0 = mean(B.LonLim);
 if diff(B.LonLim) >= 360 - 1e-9
     inLon = true(size(lon));            % a full turn excludes nothing
+    % This reads as a closed-interval test and is one, because
+    % GEO.BASEMAP now CLOSES the seam (PV-138). Before it did, a global
+    % grid reported [-180 160] and this guard never fired.
 else
     lonW = geo.wrapLongitude(lon, lon0);
     inLon = lonW >= B.LonLim(1) - 1e-9 & lonW <= B.LonLim(2) + 1e-9;

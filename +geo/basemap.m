@@ -266,6 +266,55 @@ topo = G.Topo;
 if ~isempty(topo)
     topo = topo(:, ord);
 end
+
+% THE SEAM. GEO.WRAPLONGITUDE's window is half-open, so a grid written
+% the natural way for a global field - -180:20:180, with both ends
+% present - has +180 land on -180 and arrive as a DUPLICATE column. The
+% axis then runs -180 .. 160: one cell short of the world, with a
+% duplicated column at its start and a hole at the antimeridian. Nothing
+% measured the drawn extent, so it stayed invisible until a coastline
+% clipped to that extent cut 222 vertices out of the Pacific (PV-138).
+%
+% The duplicate goes, and the turn is CLOSED rather than merely
+% reported: the seam column is re-appended at lon(1)+360, so the axis
+% spans a full 360 and the surface, the frame and any clip all read the
+% same extent. A flag saying "this is really a full turn" would have
+% left three consumers to remember to ask.
+dup = [false, diff(lon) == 0];
+if any(dup)
+    lon(dup) = [];
+    Z(:, dup) = [];
+    if ~isempty(topo)
+        topo(:, dup) = [];
+    end
+end
+if closesTurn(lon)
+    lon(end + 1) = lon(1) + 360;
+    Z(:, end + 1) = Z(:, 1);
+    if ~isempty(topo)
+        topo(:, end + 1) = topo(:, 1);
+    end
+end
+end
+
+function tf = closesTurn(lon)
+%CLOSESTURN  Does this longitude axis wrap all the way round?
+%   A longitude extent is CYCLIC, so its span is not max minus min. The
+%   seam gap is compared against the LARGEST INTERIOR STEP rather than
+%   against a fraction of one: the axis need not be uniform, and the
+%   only honest question is whether the step across the seam is of the
+%   same order as the steps inside it.
+if numel(lon) < 2
+    tf = false;
+    return
+end
+d = diff(lon);
+d = d(d > 0);
+if isempty(d)
+    tf = false;
+    return
+end
+tf = (360 - (lon(end) - lon(1))) <= max(d) + 1e-9;
 end
 
 function mask = resolveMask(options, Z, LON, LAT)

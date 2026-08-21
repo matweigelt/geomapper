@@ -122,6 +122,46 @@ classdef TestD1_elements < GeoMapTestCase
             tc.verifyEqual(unique(F.Patches(1).ZData), 6);
         end
 
+        function aGlobalGridClosesItsOwnSeam(tc)
+            % PV-138. geo.wrapLongitude's window is half-open, so a grid
+            % written -180:20:180 - the natural way to write a global
+            % field - had +180 land on -180 and arrive as a duplicate
+            % column, leaving the axis running -180..160: one cell short
+            % of the world, with a hole at the antimeridian. Nothing
+            % measured the drawn extent, so it stayed invisible until a
+            % coastline clipped to that extent cut 222 vertices out of
+            % the Pacific.
+            lon = -180:20:180;
+            lat = (-90:15:90)';
+            G = geo.grid(lon, lat, sind(3 * repmat(lon, numel(lat), 1)) .* ...
+                cosd(2 * repmat(lat, 1, numel(lon))));
+            ax = tc.axesFor();
+            [~, ~, B] = geo.basemap(G, "equirectangular", Parent = ax);
+            tc.verifyEqual(diff(B.LonLimit), 360, ...
+                'A grid holding both ends of the world spans a full turn.');
+            tc.verifyEqual(numel(unique(B.Surface.XData(1, :))), ...
+                numel(B.Surface.XData(1, :)), ...
+                'The seam wrap must not leave a duplicated column.');
+        end
+
+        function aRegionalGridDoesNotInventASeam(tc)
+            % The control. A grid that does not go round must be left
+            % exactly as it was: same column count, same limits. The
+            % seam test compares the gap against the largest INTERIOR
+            % step, so a regional grid's 320-degree gap cannot be
+            % mistaken for a 20-degree one.
+            lon = 0:2:40;
+            lat = (10:2:50)';
+            G = geo.grid(lon, lat, repmat(lat, 1, numel(lon)) + ...
+                repmat(lon, numel(lat), 1));
+            ax = tc.axesFor();
+            [~, ~, B] = geo.basemap(G, "equirectangular", Parent = ax);
+            tc.verifyEqual(B.LonLimit, [0 40], ...
+                'A regional grid must keep its own limits.');
+            tc.verifyEqual(size(B.Surface.CData, 2), numel(lon), ...
+                'No column may be added to a grid that does not wrap.');
+        end
+
         function theCoastlineIsCutAtTheFrameNotAtTheWorld(tc)
             % PV-136, reported from GettingStarted: on the track map the
             % coastline ran outside the frame. geo.coastline fetched the
