@@ -90,6 +90,7 @@ Stages B and D are delivered in checkpoints — consecutive turns within one cha
 | F | F.2 | `docbuild/build_help.m`, the manual | ☑ 487 points, R-024 |
 | F | F.3 | sync gate, `GettingStarted`, README, `.prj`, changelog | ☑ 489 points, R-025 |
 | F | F.4 | package closure (PV-127/128/129); ledger re-sync (PV-130) | ◐ 491 points on the bridge; ledger gate green in the sandbox, MATLAB leg on CI |
+| F | F.5a | shipped GSHHG fixture subset; `serialEqualsParallel` filters only without PCT | ◐ pushed, CI leg pending |
 | F | — | **deliverable 12: the independent audit** | ☐ its own session, findings only |
 
 **The planned checkpoint names did not survive contact, and the delivered ones are what is recorded above.** Stage D was planned as three checkpoints and ran as seven; Stage E as one and ran as seven. That is not drift to be tidied away — a checkpoint was cut whenever a confirming run was owed, which is the rule working.
@@ -1253,6 +1254,10 @@ anything. R-011, PV-080.
 | C-179 | 21-Aug-2026 | **PV-141: defined is not drawable.** Lambert azimuthal's forward projection is defined at the antipode, which maps to the whole boundary circle — a crossing line lands a full diameter apart and densification converges on a diameter, not on zero. Worst graticule segment **0.708** against 0.005 while all fifteen others sat under it. Clipped 179.5°, the azimuthal branch cut. **Not a regression from C-177**: no graticule tick had ever landed there before the extent reached ±180 | R-027 |
 | C-180 | 21-Aug-2026 | **`LonClosesTurn` withdrawn.** It was the previous day's answer to the same question; the region answers it without a flag | R-027 |
 | C-181 | 21-Aug-2026 | **`mcheck` gains FVAPN**: a name=value argument must be last in its call. The same slip cost two CI round trips in one session. Written three times — 11 false positives, then 3, then none — each failure mode now a self-test fixture | R-027 |
+| C-182 | 21-Aug-2026 | **A-6 acted on: a shipped GSHHG fixture subset, 908 kB.** `gshhs_c.b` complete and unmodified, `gshhs_l.b` and `gshhs_i.b` byte-exact prefixes cut at a record boundary and re-parsed to prove it. `TestC1_io.dataFile` resolves pool → fixture → filter, **pool always preferred**, because two of three are prefixes and a whole-product count asserted against a prefix measures the fixture | A-6, `tests/data/oracle/PROVENANCE.md` |
+| C-183 | 21-Aug-2026 | **The "not redistributable" claim was read, not checked, and is false.** GSHHG is LGPL from v2.2.2; Natural Earth is public domain (*“No permission is needed”*). Eighteen CI points had filtered for four rounds on the strength of one unchecked sentence in a help block | A-6 |
+| C-184 | 21-Aug-2026 | **`tools/makeOracleFixtures.py`** rebuilds the subset from the published archive and refuses to write a prefix that does not consume to its own last byte. A fixture nobody can rebuild is a magic file | C-174 |
+| C-185 | 21-Aug-2026 | **`serialEqualsParallel` filters only when the Parallel Computing Toolbox is absent.** It asked `hasParallelPool(true)` — a pool *already open* — so it filtered on every fresh session including the bridge, where R-023 had proved the path with 16 workers. A pool is now started and torn down; a pool that will not start is a **distinct** reason, never collapsed into “no toolbox” | PV-133 |
 
 ---
 

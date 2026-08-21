@@ -715,16 +715,42 @@ classdef TestC1_io < GeoMapTestCase
 
         function f = dataFile(tc, name)
             %DATAFILE  A real third-party file, or a LOUD filter.
-            %   O5 and O6 are not redistributable and are not in this
-            %   repository. Absent, these tests filter and say why; they
-            %   are never reported as passing.
-            f = fullfile(tc.DataRoot, name);
-            tc.assumeTrue(isfile(f), sprintf( ...
-                ['Oracle data not present at %s. The reference tests ' ...
-                 'for the GSHHG and shapefile readers need real ' ...
-                 'third-party files, which are not redistributable and ' ...
-                 'are therefore not in this repository. Filtered, not ' ...
-                 'passed.'], f));
+            %   Resolution order, and the order is not a convenience:
+            %     1. DATAROOT, the full published products on the bridge
+            %        machine. ALWAYS preferred.
+            %     2. tests/data/oracle, the shipped subset.
+            %     3. neither: the point FILTERS, and says why. It is
+            %        never reported as passing.
+            %
+            %   Why the pool wins. Two of the three shipped GSHHG files
+            %   are byte-exact PREFIXES of the published ones, so a
+            %   whole-product count asserted against them would be
+            %   measuring the fixture. Preferring the pool keeps the
+            %   bridge measuring the real thing while CI measures the
+            %   reader. See tests/data/oracle/PROVENANCE.md.
+            %
+            %   The claim this replaced said these data were "not
+            %   redistributable". That was READ, not checked. GSHHG is
+            %   LGPL from version 2.2.2 and Natural Earth is public
+            %   domain; the licences are quoted in PROVENANCE.md, and
+            %   eighteen points had been filtering on CI on the strength
+            %   of an unchecked sentence (audit finding A-6).
+            pool = fullfile(tc.DataRoot, name);
+            ship = fullfile(geoMapRoot(), 'tests', 'data', 'oracle', name);
+            if isfile(pool)
+                f = pool;
+                return
+            end
+            if isfile(ship)
+                f = ship;
+                return
+            end
+            f = "";
+            tc.assumeTrue(false, sprintf( ...
+                ['Oracle data not present. Looked in the data pool ' ...
+                 '(%s) and in the shipped subset (%s). This reader ' ...
+                 'test needs a real third-party file. Filtered, not ' ...
+                 'passed.'], pool, ship));
         end
     end
 end

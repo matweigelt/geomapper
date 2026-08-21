@@ -214,11 +214,37 @@ classdef TestIntegration < GeoMapTestCase
             % true where gcp does not exist, so the short circuit never
             % fired and the guard called a function that is not there
             % (PV-123).
-            [ok, why] = geo.internal.hasParallelPool(true);
-            tc.assumeTrue(ok, why + " The parallel export path is " + ...
+            % A-6 / PV-133: this asked hasParallelPool(TRUE), which
+            % demands a pool ALREADY OPEN. Every fresh session has none,
+            % so the test filtered on machines that have the toolbox -
+            % including the bridge, where R-023 had already proved the
+            % path with 16 workers. The condition is meant to be "no
+            % Parallel Computing Toolbox", not "nobody has started a
+            % pool yet", so the toolbox is probed and the pool is
+            % STARTED here when it is absent.
+            [hasPct, why] = geo.internal.hasParallelPool(false);
+            tc.assumeTrue(hasPct, why + " The parallel export path is " + ...
                 "unreachable here, so this is filtered rather than " + ...
                 "passed - geoMap needs base MATLAB only and the pool " + ...
                 "is an option, never a requirement.");
+            if isempty(gcp('nocreate'))
+                try
+                    parpool();
+                catch startErr
+                    % A DISTINCT reason, deliberately. The toolbox is
+                    % here and the pool would not start - a cluster
+                    % profile can fail at connection time, which no
+                    % probe can foresee (see GEO.INTERNAL.HASPARALLELPOOL).
+                    % Collapsing that into "no toolbox" would hide a
+                    % broken profile behind an expected filter.
+                    tc.assumeFail("Parallel Computing Toolbox is " + ...
+                        "present but no pool could be started (" + ...
+                        startErr.identifier + "). Filtered, not passed " + ...
+                        "- and this is NOT the same condition as an " + ...
+                        "absent toolbox.");
+                end
+                tc.addTeardown(@() delete(gcp('nocreate')));
+            end
             d = string(tempname());
             mkdir(d);
             tc.addTeardown(@() rmdir(d, 's'));
