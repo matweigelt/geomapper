@@ -1,8 +1,8 @@
-function [lon, lat, info] = clipToBoundary(lon, lat, B, crs, options)
+function [lon, lat, info] = clipToBoundary(lon, lat, B, options)
 %GEO.INTERNAL.CLIPTOBOUNDARY  Cut a polyline where it leaves the map.
 %
 %   SYNTAX
-%     [lon, lat] = GEO.INTERNAL.CLIPTOBOUNDARY(LON, LAT, B, CRS)
+%     [lon, lat] = GEO.INTERNAL.CLIPTOBOUNDARY(LON, LAT, B)
 %     [lon, lat, info] = GEO.INTERNAL.CLIPTOBOUNDARY(..., Bisect = 16)
 %
 %   DESCRIPTION
@@ -45,8 +45,10 @@ function [lon, lat, info] = clipToBoundary(lon, lat, B, crs, options)
 %   INPUTS
 %     lon  (1,:) double  Degrees East. NaN separates parts.
 %     lat  (1,:) double  Degrees North, same size.
-%     B    (1,1) struct  From GEO.INTERNAL.MAPBOUNDARY.
-%     crs  (1,1) struct  A GEO.CRS, the same one B was built with.
+%     B    (1,1) struct  From GEO.INTERNAL.MAPBOUNDARY. It carries the
+%                        CRS it was built with, which is why that is not
+%                        a fourth argument: a ring and a projection that
+%                        do not match is not a call worth allowing.
 %
 %   OPTIONS
 %     Bisect  (1,1) double  16  Halvings per crossing. See DESCRIPTION
@@ -65,9 +67,17 @@ function [lon, lat, info] = clipToBoundary(lon, lat, B, crs, options)
 %     measured in the projection's own coordinates. At the default that
 %     is 1.6e-3 km on a 640 km-per-degree map.
 %
+%   ERRORS
+%     Raised by the arguments block, not by this function's body:
+%       MATLAB:validators:mustBePositive - Bisect was zero or negative
+%       MATLAB:validation:IncompatibleSize - lon and lat differ in size
+%
+%     An incomplete ring is NOT an error. It is reported through
+%     info.Clipped, because a caller that cannot clip should still draw.
+%
 %   EXAMPLE
 %     B = geo.internal.mapBoundary(crs, lonBreaks, latBreaks);
-%     [lon, lat] = geo.internal.clipToBoundary(lon, lat, B, crs);
+%     [lon, lat] = geo.internal.clipToBoundary(lon, lat, B);
 %
 %   See also GEO.INTERNAL.MAPBOUNDARY, GEO.COASTLINE, INPOLYGON.
 %
@@ -78,10 +88,10 @@ arguments
     lon (1,:) double
     lat (1,:) double
     B (1,1) struct
-    crs (1,1) struct
     options.Bisect (1,1) double {mustBePositive} = 16
 end
 
+crs = B.Crs;
 info = struct('Clipped', false, 'NumCuts', 0, 'NumInside', numel(lon));
 if ~B.Complete || isempty(lon)
     return

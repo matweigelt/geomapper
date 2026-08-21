@@ -482,7 +482,7 @@ classdef TestD1_elements < GeoMapTestCase
             lon = [0 0];
             lat = [30 80];              % leaves through the top edge
             [cl, ca] = deal([], []);
-            [cl, ca] = geo.internal.clipToBoundary(lon, lat, B, crs);
+            [cl, ca] = geo.internal.clipToBoundary(lon, lat, B);
             tc.verifyEqual(numel(cl), 2);
             [~, yc] = geo.project(cl(end), ca(end), crs);
             [~, yTop] = geo.project(0, 54, crs);
@@ -504,7 +504,7 @@ classdef TestD1_elements < GeoMapTestCase
             B.Complete = false;
             lon = [0 0 0];
             lat = [30 80 100];
-            [cl, ~, info] = geo.internal.clipToBoundary(lon, lat, B, crs);
+            [cl, ~, info] = geo.internal.clipToBoundary(lon, lat, B);
             tc.verifyFalse(info.Clipped);
             tc.verifyEqual(numel(cl), 3, ...
                 'A declined clip must return its input untouched.');

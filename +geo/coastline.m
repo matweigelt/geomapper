@@ -232,8 +232,7 @@ function [xy, clip] = clipToExtent(xy, crs, lonLim, latLim)
 %   coast that leaves the frame and returns is two parts afterwards.
 B = geo.internal.mapBoundary(crs, [lonLim(1) lonLim(2)], ...
     [latLim(1) latLim(2)]);
-[lon, lat, info] = geo.internal.clipToBoundary(xy(:, 1).', xy(:, 2).', ...
-    B, crs);
+[lon, lat, info] = geo.internal.clipToBoundary(xy(:, 1).', xy(:, 2).', B);
 clip = struct('ClippedToExtent', info.Clipped, 'ExtentCuts', info.NumCuts);
 if ~info.Clipped
     return
