@@ -56,9 +56,11 @@ REGISTER = [
     # same shape. The self-test caught it before CI did, which is what
     # it is for.
     (re.compile(r"/version$"), "provenance", None),
+    (re.compile(r"/route$"), "provenance", None),
     (re.compile(r"(^|/)oracle_gdal"), "provenance", None),
     (re.compile(r"(^|/)regrid_mass_closure_floor(/|$)"), "bound", 1e-13),
     (re.compile(r"(^|/)equal_area_integral(/|$)"), "relative", 1e-9),
+    (re.compile(r"(^|/)round_trips(/|$)"), "bound", 1e-8),
 ]
 
 
