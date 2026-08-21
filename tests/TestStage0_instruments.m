@@ -232,7 +232,8 @@ classdef TestStage0_instruments < GeoMapTestCase
             % NIST empty-string and "abc" vectors: an outside authority,
             % not something built here.
             if ~usejava('jvm')
-                tc.assumeFail('No JVM: the strong hash path is unavailable.');
+                tc.filterBecause("geo:filter:noJvm", ...
+                    'No JVM: the strong hash path is unavailable.');
             end
             tc.verifyEqual(char(geo.internal.sha256OfText('')), ...
                 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
@@ -247,8 +248,9 @@ classdef TestStage0_instruments < GeoMapTestCase
             try
                 v = tc.loadMirrorReference("mercator_y_at_lat35");
             catch err
-                tc.assumeFail(['Mirror reference unavailable (' ...
-                    err.identifier ']. Run the Python mirror first.']);
+                tc.filterBecause("geo:filter:mirrorUnavailable", ...
+                    ['Mirror reference unavailable (' err.identifier ...
+                     '). Run the Python mirror first.']);
                 return
             end
             tc.verifyEqual(v.measured, 0.6528365797197981, 'AbsTol', 1e-12);
@@ -259,7 +261,8 @@ classdef TestStage0_instruments < GeoMapTestCase
             try
                 tc.loadMirrorReference("mercator_y_at_lat35");
             catch
-                tc.assumeFail('Mirror reference unavailable.');
+                tc.filterBecause("geo:filter:mirrorUnavailable", ...
+                    'Mirror reference unavailable.');
                 return
             end
             tc.verifyError(@() tc.loadMirrorReference("no_such_key_here"), ...
@@ -461,7 +464,7 @@ for n = [1e6 4e6 1.6e7 3.2e7]
 end
 
 if calib.onePass < floorSec
-    tc.assumeFail(sprintf([ ...
+    tc.filterBecause("geo:filter:machineTooFast", sprintf([ ...
         'No array size up to 3.2e7 elements makes one pass reach the ' ...
         '%.4g s floor on this machine, so the instrument''s 10%%%% ' ...
         'accuracy claim cannot be asserted here. This is a property of ' ...

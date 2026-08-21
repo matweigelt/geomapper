@@ -239,10 +239,53 @@ classdef GeoMapTestCase < matlab.unittest.TestCase
             end
         end
 
+        function filterBecause(tc, id, why)
+            %FILTERBECAUSE  Filter this point, naming a REGISTERED reason.
+            %   The only door out of a test that is not a pass and not a
+            %   failure. Audit finding A-1: the gate had no idea how much
+            %   of the suite ran, and 42 of 491 points could vanish with
+            %   GREEN GATE still printed. A count would have been an
+            %   absolute figure with no baseline - the thing 3.4.1 threw
+            %   out for all nineteen speed budgets, and a bound that
+            %   permits silent drift up to itself.
+            %
+            %   So the reason is inventoried instead of the number. The
+            %   warning raised here reaches WARNINGINVENTORYPLUGIN, which
+            %   already fails the gate on any identifier not on its
+            %   allow-list; RUNGEOMAPTESTS extends that list with the ids
+            %   registered in tests/FILTERS.md. An unregistered reason is
+            %   therefore red on arrival, in the same way a new warning
+            %   is, and nothing new had to be added to the gate.
+            %
+            %   That a warning raised immediately before ASSUMEFAIL is
+            %   still in LASTWARN once the framework has caught the
+            %   AssumptionFailedException is a claim about MATLAB, not
+            %   about this code. It was MEASURED before this was written:
+            %   probe A-1b, CI run 32494985310, inventory held both the
+            %   filtered test's identifier and a passing test's.
+            %
+            %   id   (1,1) string  Reason id, must begin "geo:filter:".
+            %   why  (1,1) string  What is absent, and what it costs.
+            id = string(id);
+            if ~startsWith(id, "geo:filter:")
+                error('geo:test:BadFilterId', ...
+                    ['"%s" is not a filter reason. A filter id begins ' ...
+                     '"geo:filter:" and is registered in ' ...
+                     'tests/FILTERS.md with what closes it.'], id);
+            end
+            warning(char(id), '%s', char(why));
+            tc.assumeFail(sprintf('[%s] %s', id, why));
+        end
+
         function assumeSpeedTestsEnabled(tc)
             %ASSUMESPEEDTESTSENABLED  Filter speed tiers on request.
             if ~isempty(getenv('GEOMAP_SKIP_SPEED'))
-                tc.assumeFail('GEOMAP_SKIP_SPEED is set; speed tier skipped.');
+                tc.filterBecause("geo:filter:speedTierOff", ...
+                    ['GEOMAP_SKIP_SPEED is set, so this budget was not ' ...
+                     'measured. Use rungeoMapTests("default") to run ' ...
+                     'the correctness tiers alone; "all" with the ' ...
+                     'switch set asks for the speed tier and then ' ...
+                     'refuses to run it.']);
             end
         end
 
