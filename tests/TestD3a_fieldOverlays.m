@@ -51,7 +51,7 @@ classdef TestD3a_fieldOverlays < GeoMapTestCase
             % data is global. That is the real case - a regional map of
             % a global field - and it is how the defect reaches a user.
             world = globalField();
-            ax = tc.axesFor();
+            ax = axes('Parent', tc.figureFor());
             geo.basemap(regionalField(), "equirectangular", Parent = ax);
             [xl, yl] = deal(xlim(ax), ylim(ax));
             G = world;
@@ -70,7 +70,7 @@ classdef TestD3a_fieldOverlays < GeoMapTestCase
 
         function aPointOutsideTheMapIsDroppedNotDrawn(tc)
             % A marker is inside or it is not; there is nothing to cut.
-            ax = tc.axesFor();
+            ax = axes('Parent', tc.figureFor());
             geo.basemap(regionalField(), "equirectangular", Parent = ax);
             P = geo.points([0 30 150], [30 40 -60]);
             H = geo.overlayPoints(ax, P);
@@ -83,7 +83,7 @@ classdef TestD3a_fieldOverlays < GeoMapTestCase
             % nothing, which is the failure mode this project keeps
             % finding. The message names the extent, because "outside
             % the domain" was never the reason on a regional map.
-            ax = tc.axesFor();
+            ax = axes('Parent', tc.figureFor());
             geo.basemap(regionalField(), "equirectangular", Parent = ax);
             P = geo.points([150 160], [-60 -70]);
             tc.verifyError(@() geo.overlayPoints(ax, P), ...
