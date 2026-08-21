@@ -82,6 +82,11 @@ function G = grid(lon, lat, Z, options)
 %       geo:grid:NonMonotonic     - a coordinate vector is not strictly
 %                                   monotone
 %       geo:grid:NaNCoordinate    - NaN or Inf in a coordinate vector.
+%     Angular axes:
+%       geo:grid:AxisNotAngular   - a latitude outside [-90 90], or a
+%                                   longitude span of more than one
+%                                   turn. Usually a projected grid read
+%                                   as a geographic one (A-3).
 %     Registration:
 %       geo:grid:RegistrationAmbiguous - longitude and latitude infer
 %                                   different registrations. One grid
@@ -129,6 +134,7 @@ end
 
 mustBeAxis(lon, "lon");
 mustBeAxis(lat, "lat");
+mustBeAngular(lon, lat);
 
 nLon = numel(lon);
 nLat = numel(lat);
@@ -260,6 +266,70 @@ function tf = measureGlobalLon(lon, step)
 %     0:360    span 360, the seam repeated             -> global
 %     0:350    span 350, genuinely regional            -> not global
 tf = abs(lon(end) - lon(1)) >= 360 - 1.5 * abs(step);
+end
+
+function mustBeAngular(lon, lat)
+%MUSTBEANGULAR  A coordinate axis is in DEGREES, and says so if it is not.
+%
+%   Audit finding A-3. Measured: a NetCDF whose x and y are projected
+%   metres was read straight through - GEO.READGRID's axis picker accepts
+%   the names "x" and "y", and nothing downstream range-checked what came
+%   back. The grid returned Lat -2e+06 .. 2e+06 with no error and no
+%   warning; GEO.PROJECT then returned NaN, so the failure surfaced
+%   several layers later as a blank figure with no cause attached.
+%
+%   The contrast is the finding's own words: eleven MUSTBEINRANGE guards
+%   exist in this package and every one is on a colour channel. Projected
+%   NetCDF is not an exotic input; it is how a large share of gridded
+%   geophysics is distributed.
+%
+%   HERE, NOT IN THE READER. GEO.READGRID is one door of several -
+%   GEO.GRID is called directly by callers, by SELECTFROMGRID and by
+%   GEO.REGRID. Guarding the reader is PV-128 again: banning one name
+%   fixed one instance while another survived eleven checkpoints
+%   underneath it. The rule belongs where the type claims to hold
+%   angular axes.
+%
+%   TWO TRAPS THIS MUST NOT WALK INTO, both already paid for:
+%
+%   1. LONGITUDE IS NOT BOUNDED TO +/-180. Both windows are supported on
+%      purpose - that is why GEO.WRAPLONGITUDE exists and why F2 is on
+%      the defect list. A shifted window at lon0 = -96 runs -276..84 and
+%      is perfectly legal. Only the SPAN is checked, and only against a
+%      full turn plus one cell, because a cell-registered global axis
+%      legitimately spans 360 (PV-140).
+%   2. EXACTLY +/-90 MUST BE ACCEPTED. F17 measured the GSHHG Antarctic
+%      closure landing at exactly -90. A tolerance that rejects the pole
+%      re-opens a defect that is already closed.
+if any(abs(lat) > 90 + 1e-9)
+    error('geo:grid:AxisNotAngular', ...
+        ['lat spans %g .. %g. A grid axis is in DEGREES, and a ' ...
+         'latitude cannot leave [-90 90]. Values of this magnitude ' ...
+         'usually mean a PROJECTED grid was read as a geographic one - ' ...
+         'check whether the file''s x and y are eastings and northings ' ...
+         'in metres.'], min(lat), max(lat));
+end
+span = max(lon) - min(lon);
+if span > 360 + maxStep(lon) + 1e-9
+    error('geo:grid:AxisNotAngular', ...
+        ['lon spans %g degrees, more than one turn. The window may sit ' ...
+         'anywhere - -276 .. 84 is legal and so is 0 .. 360 - but it ' ...
+         'may not go round twice. Values of this magnitude usually ' ...
+         'mean a PROJECTED grid was read as a geographic one.'], span);
+end
+end
+
+function s = maxStep(v)
+%MAXSTEP  The largest gap in an axis, or 0 for one that has none.
+%   The span allowance is one CELL, not one degree: a cell-registered
+%   global axis spans 360 exactly and a posting one 360 minus a step, so
+%   the honest bound is a turn plus the coarsest step the axis carries.
+d = abs(diff(double(v(:)).'));
+if isempty(d)
+    s = 0;
+else
+    s = max(d);
+end
 end
 
 function mustBeAxis(v, what)
