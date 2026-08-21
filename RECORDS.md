@@ -2103,6 +2103,63 @@ reach a defect is a test that cannot see it.
   margin is the densifier stopping exactly at target, by design, not a
   budget nearly missed.
 - `NumParts` rises on a regional map. Approved 21-Aug-2026.
+**Scope.** Audit finding **A-1** only. A-2 to A-5 are untouched and remain open.
+
+**Execution tier.** Tier B in the authoring session; the confirming run is CI.
+
+**The remedy was pre-validated before it was written.** The design routes
+an unregistered filter reason through `warning` and lets the existing
+warning inventory carry the alarm, which rests on one mechanism nobody
+had tested: `WarningInventoryPlugin` clears `lastwarn`, runs the test and
+reads `lastwarn` afterwards, and whether a warning raised immediately
+*before* `assumeFail` survives the framework catching the
+`AssumptionFailedException` is a claim about MATLAB, not about this code.
+**Probe A-1b, CI run 32494985310:** the inventory held both
+`geo:probe:UnregisteredFilter` (filtered test) and `geo:probe:PlainWarning`
+(passing test). The design holds. Had it not, the warning would have been
+cosmetic and the remedy would have had to read the incomplete results
+directly.
+
+**Why the reason and not the count.** A bound (`nInc <= 5`) is an
+absolute figure with no baseline — the thing BEST_PRACTICE §3.4.1 threw
+out for all nineteen speed budgets — and it permits silent drift up to
+itself, with the cheapest repair on red being to raise it. The count is
+reported in the reconciliation block and predicted before the run, like
+every other count here. **The reasons are gated**, through the alarm that
+already existed: nothing was added to the six gate conditions.
+
+**Measured this round, and invisible before it:**
+
+| | filtered |
+|---|---|
+| CI (`ubuntu-latest`, R2026a) | **24** of 491 |
+| bridge (`win64`, R2026a Update 4) | **5** of 491 |
+
+**Nineteen points run on one machine and not on the other**, in a tree
+that is green on both. That number had never been compared, because
+nothing reported it per reason.
+
+**Delivered.** `tests/FILTERS.md` (nine reasons, each with what closes
+it); `GeoMapTestCase.filterBecause`; eleven filter sites migrated so that
+`assumeFail` and `assumeTrue` no longer appear outside the base class;
+`readFilterRegistry` and `reportFilters` in the runner; `speedOk`
+three-state, read from the suite rather than from the records it happened
+to leave; the banner reserving *green gate* for `rungeoMapTests("all")`.
+
+**Predicted before the run: 491 points, unchanged.** No test was added or
+removed — the change is to the instrument, not to what it measures. If
+the number moves, the change was not the change intended.
+
+**Binding items a later stage could be wrong for not reading.**
+
+- **`geo:filter:v1TreeAbsent` is registered as expected on CI and as a
+  breach of OB-7 on the bridge.** The registry records the difference; it
+  does not resolve it. Restoring v1 is still Matthias's decision.
+- **A-2 is not closed and touches this work.** `geo:filter:mirrorUnavailable`
+  guards a reference that is a committed artefact rather than the live
+  oracle. Registering the filter reason says nothing about that.
+- The version does not move: the patch component is the verified
+  test-point count and the count is unchanged.
 
 ---
 

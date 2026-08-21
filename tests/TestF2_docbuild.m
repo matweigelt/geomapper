@@ -186,8 +186,11 @@ classdef TestF2_docbuild < GeoMapTestCase
             % corrupting one page and putting it back: a check never
             % seen to fire is not a check.
             page = fullfile(geoMapRoot(), "docs", "html", "geo_title.html");
-            tc.assumeTrue(isfile(page), ...
-                'docs/html has not been built in this tree, so there is nothing to be stale.');
+            if ~isfile(page)
+                tc.filterBecause("geo:filter:manualNotBuilt", ...
+                    ['docs/html has not been built in this tree, so ' ...
+                     'there is nothing to be stale.']);
+            end
             orig = fileread(page);
             restore = onCleanup(@() TestF2_docbuild.writeBack(page, orig)); %#ok<NASGU>
 

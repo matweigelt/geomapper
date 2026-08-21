@@ -151,11 +151,19 @@ fprintf(['  NOTE: do not compare these across rounds of different\n' ...
          '  diagnostic, resolve a stack and format links, which is not\n' ...
          '  free.\n']);
 
+nInc = sum([result.Incomplete]);   % read here: the filter inventory needs it
+
 fprintf('\n-------------------------------------------------------------\n');
 fprintf(' WARNING INVENTORY\n');
 fprintf('-------------------------------------------------------------\n');
 inv = plugin.Inventory;
-allowed = "geo:internal:testProbe";
+% The filter registry is the allow-list for the geo:filter:* family.
+% Audit finding A-1: a filtered point did not run, and the gate had no
+% way to tell one that was expected from one that was not. Registering
+% the REASON rather than bounding the COUNT reuses the alarm that was
+% already here; nothing was added to the gate.
+registered = readFilterRegistry(fullfile(root, 'tests', 'FILTERS.md'));
+allowed = ["geo:internal:testProbe", registered];
 warnOk = true;
 if isempty(fieldnames(inv))
     fprintf('  (empty)\n');
@@ -174,16 +182,35 @@ else
     end
 end
 if ~warnOk
-    fprintf(['  GATE FAILED: exactly one identifier may appear in a clean\n' ...
-             '  run (%s). Any other is new. A test that raises a warning\n' ...
-             '  on purpose must call tc.suppressWarning(id).\n'], allowed);
+    fprintf(['  GATE FAILED: an identifier appeared that is neither the\n' ...
+             '  deliberate probe (%s) nor a filter\n' ...
+             '  reason registered in tests/FILTERS.md. A test that\n' ...
+             '  raises a warning on purpose must call\n' ...
+             '  tc.suppressWarning(id); a test that filters must call\n' ...
+             '  tc.filterBecause(id, why) with a REGISTERED id.\n'], ...
+             allowed(1));
 end
+
+fprintf('\n-------------------------------------------------------------\n');
+fprintf(' FILTER INVENTORY  (points that did NOT run)\n');
+fprintf('-------------------------------------------------------------\n');
+reportFilters(inv, registered, nInc);
 
 fprintf('\n-------------------------------------------------------------\n');
 fprintf(' MEASUREMENTS LEFT BY PASSING ASSERTIONS\n');
 fprintf('-------------------------------------------------------------\n');
 recs = geoMapTestRecord('get');
 speedOk = true;
+% Audit finding A-1, second half. speedOk was initialised true and then
+% ANDed over whatever ratio records existed, so an empty set earned the
+% tick: the gate could not tell "the budgets were met" from "the budgets
+% were not measured". The three-state answer is decided below, after the
+% records are read, from what the SUITE contained rather than from what
+% it happened to leave behind - five weak graphics ratios survived the
+% probe run and would have gone on earning the tick.
+speedSel = arrayfun(@(x) any(string(x.Tags) == "speed"), suite);
+nSpeedSel = sum(speedSel);
+nSpeedRan = nSpeedSel - sum([result(speedSel).Incomplete]);
 nVal = 0; nRatio = 0; nWeak = 0;
 for i = 1:numel(recs)
     r = recs{i};
@@ -205,6 +232,18 @@ for i = 1:numel(recs)
 end
 fprintf('  (%d value records, %d ratio records, %d of them weak/graphics)\n', ...
     nVal, nRatio, nWeak);
+
+if nSpeedSel > 0 && nSpeedRan == 0
+    speedOk = false;
+    speedNote = sprintf(['NOT MEASURED: %d speed-tagged points were ' ...
+        'selected and every one filtered'], nSpeedSel);
+elseif nSpeedSel == 0
+    speedNote = 'tier not selected by this run';
+else
+    speedNote = sprintf('%d of %d speed-tagged points ran', ...
+        nSpeedRan, nSpeedSel);
+end
+fprintf('  speed tier: %s\n', speedNote);
 
 fprintf('\n-------------------------------------------------------------\n');
 fprintf(' TEST-CATEGORY COVERAGE BY FUNCTION\n');
@@ -231,7 +270,6 @@ end
 
 % --- 5. The gate -----------------------------------------------------
 nFail = sum([result.Failed]);
-nInc  = sum([result.Incomplete]);
 nPass = sum([result.Passed]);
 
 fprintf('\n=============================================================\n');
@@ -247,11 +285,22 @@ fprintf(['  Compare these against the count you predicted BEFORE the\n' ...
          '  made. Do not write the number into any document.\n']);
 
 ok = (nFail == 0) && manifestOk && warnOk && speedOk && covOk && auditOk;
-fprintf('\n GREEN GATE: %s\n', ternary(ok, 'PASS', 'FAIL'));
+% A subset run may be green and is not a green GATE. The words are
+% reserved for the run the gate is defined over, so a screenshot of a
+% partial run cannot be read as one (audit finding A-1).
+isFullRun = (selector == "all");
+if isFullRun
+    fprintf('\n GREEN GATE: %s\n', ternary(ok, 'PASS', 'FAIL'));
+else
+    fprintf('\n PARTIAL RUN (selector "%s"): %s\n', string(selector), ...
+        ternary(ok, 'clean so far', 'FAIL'));
+    fprintf(['   This is NOT the green gate. The gate is defined over\n' ...
+             '   rungeoMapTests("all").\n']);
+end
 fprintf('   zero failures      %s\n', tick(nFail == 0));
 fprintf('   manifest verified  %s\n', tick(manifestOk));
 fprintf('   warning inventory  %s\n', tick(warnOk));
-fprintf('   speed budgets      %s\n', tick(speedOk));
+fprintf('   speed budgets      %s   (%s)\n', tick(speedOk), speedNote);
 fprintf('   category coverage  %s\n', tick(covOk));
 fprintf('   static audit       %s\n', tick(auditOk));
 fprintf('=============================================================\n\n');
@@ -343,4 +392,65 @@ end
 
 function s = missing2str(isAllowed)
 s = ternary(isAllowed, '(deliberate probe)', '<-- NEW, fails the gate');
+end
+
+% ----------------------------------------------------------------------
+function ids = readFilterRegistry(file)
+%READFILTERREGISTRY  Reason ids permitted by tests/FILTERS.md.
+%   The registry is the allow-list, and it is read rather than mirrored
+%   here: one authority per fact. A missing registry is an error, not an
+%   empty list - an allow-list that silently becomes empty forbids
+%   everything, and an allow-list that silently becomes everything
+%   forbids nothing. Which of those a typo produced should not be a
+%   coin flip.
+if ~isfile(file)
+    error('geo:runner:NoFilterRegistry', ...
+        ['tests/FILTERS.md is missing. Every filtered point names a ' ...
+         'registered reason; without the registry the runner cannot ' ...
+         'tell an expected filter from a new one.']);
+end
+tok = regexp(fileread(file), 'geo:filter:[A-Za-z]\w*', 'match');
+ids = unique(string(tok));
+if isempty(ids)
+    error('geo:runner:EmptyFilterRegistry', ...
+        'tests/FILTERS.md registers no reason ids.');
+end
+end
+
+% ----------------------------------------------------------------------
+function reportFilters(inv, registered, nInc)
+%REPORTFILTERS  What did not run, by reason.
+%   The count is REPORTED, never asserted (BEST_PRACTICE 3.4.1 - an
+%   absolute figure with no baseline cannot detect the change it was
+%   written for, and a bound permits silent drift up to itself). Predict
+%   it before the run like every other count. What the gate holds is the
+%   reason: an unregistered one is already red in the warning inventory
+%   above.
+seen = string.empty;
+if ~isempty(fieldnames(inv))
+    keys = string(fieldnames(inv));
+    for i = 1:numel(keys)
+        realId = inv.(keys(i)).id;
+        if startsWith(realId, "geo:filter:")
+            fprintf('  %-46s %4d %s\n', realId, inv.(keys(i)).count, ...
+                ternary(any(realId == registered), '', ...
+                        '<-- NOT REGISTERED, fails the gate'));
+            seen(end+1) = realId; %#ok<AGROW>
+        end
+    end
+end
+if isempty(seen)
+    fprintf('  (no filter reason raised)\n');
+end
+fprintf(['  %d point(s) incomplete. The warning inventory counts a\n' ...
+         '  reason ONCE PER TEST, so these two numbers agree only when\n' ...
+         '  each filtered point raised its own warning; a divergence\n' ...
+         '  means a point was filtered by some other route.\n'], nInc);
+unregistered = setdiff(registered, seen);
+if ~isempty(unregistered)
+    fprintf(['  registered but not raised this run: %s\n' ...
+             '  (not a failure - a reason that stops firing is good\n' ...
+             '  news, and the row says what closes it)\n'], ...
+             strjoin(unregistered, ', '));
+end
 end

@@ -92,6 +92,8 @@ Stages B and D are delivered in checkpoints — consecutive turns within one cha
 | F | F.4 | package closure (PV-127/128/129); ledger re-sync (PV-130) | ◐ 491 points on the bridge; ledger gate green in the sandbox, MATLAB leg on CI |
 | F | F.5a | shipped GSHHG fixture subset; `serialEqualsParallel` filters only without PCT | ◐ pushed, CI leg pending |
 | F | — | **deliverable 12: the independent audit** | ☐ its own session, findings only |
+| F | F.5 | audit finding A-1: filter registry, three-state speed, partial-run banner | ◐ pushed; CI is the confirming run |
+| F | — | **deliverable 12: the independent audit** | ☑ delivered 21-Aug, five findings, R-026 |
 
 **The planned checkpoint names did not survive contact, and the delivered ones are what is recorded above.** Stage D was planned as three checkpoints and ran as seven; Stage E as one and ran as seven. That is not drift to be tidied away — a checkpoint was cut whenever a confirming run was owed, which is the rule working.
 
@@ -1259,6 +1261,10 @@ anything. R-011, PV-080.
 | C-184 | 21-Aug-2026 | **`tools/makeOracleFixtures.py`** rebuilds the subset from the published archive and refuses to write a prefix that does not consume to its own last byte. A fixture nobody can rebuild is a magic file | C-174 |
 | C-185 | 21-Aug-2026 | **`serialEqualsParallel` filters only when the Parallel Computing Toolbox is absent.** It asked `hasParallelPool(true)` — a pool *already open* — so it filtered on every fresh session including the bridge, where R-023 had proved the path with 16 workers. A pool is now started and torn down; a pool that will not start is a **distinct** reason, never collapsed into “no toolbox” | PV-133 |
 | C-186 | 21-Aug-2026 | **PV-134: a speed budget with a hidden argument.** `theCacheIsWorthHaving` asserts cold-parse / warm-cache ≥ 10. The numerator scales with the file and the denominator does not, so against the 535 kB shipped prefix it measured **2.483** and the gate went red — correctly. **The budget is not loosened**; the test is pinned to the full product via a new `poolFile` resolver that refuses the subset. The budget was PREDICTED (V5) and had never been challenged with a second input | PV-134 |
+| C-187 | 21-Aug-2026 | **Audit finding A-1 closed: the filter REASON is gated, the count is not.** `GeoMapTestCase.filterBecause` is the only door out of a test that is neither pass nor failure; it raises a registered `geo:filter:*` warning and the existing warning inventory fails the gate on any id absent from `tests/FILTERS.md`. **Nothing was added to the gate** — the alarm already there was pointed at one more thing. A count was rejected: §3.4.1 forbids an absolute figure with no baseline, and a bound permits silent drift up to itself | A-1, R-027 |
+| C-188 | 21-Aug-2026 | **`speedOk` is three-state.** It was initialised `true` and ANDed over records that need not exist, so an empty set earned the tick. It now reads the SUITE: speed-tagged points selected vs speed-tagged points that ran. Five weak graphics ratios survived the probe run and would have gone on earning it | A-1 |
+| C-189 | 21-Aug-2026 | **The words *green gate* are reserved for `rungeoMapTests("all")`.** A subset run prints `PARTIAL RUN` with its selector, so a screenshot of one cannot be read as the gate | A-1 |
+| C-190 | 21-Aug-2026 | **Measured, and previously invisible: CI filters 24 points, the bridge filters 5.** Nineteen points run on one machine and not the other, in a tree green on both. Registered per reason in `tests/FILTERS.md` | A-1 |
 
 ---
 
