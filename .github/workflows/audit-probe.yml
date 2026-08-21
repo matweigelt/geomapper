@@ -22,9 +22,9 @@ jobs:
         with:
           release: R2026a
           cache: true
-      - name: Probe the lost column
+      - name: Probe flat indexing
         uses: matlab-actions/run-command@v3
         with:
           command: |
             addpath(pwd); geoMapSetup;
-            run(fullfile(pwd,'records','audit','probe_lost_column.m'));
+            run(fullfile(pwd,'records','audit','probe_flat_indexing.m'));
