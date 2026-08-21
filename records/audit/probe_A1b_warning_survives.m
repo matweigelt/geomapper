@@ -5,8 +5,10 @@
 %   geoMap v2.0 | 21-Aug-2026 | Claude Opus 5 (Anthropic)
 
 fprintf('\n########## PROBE A-1b: does a warning survive assumeFail?\n');
+here = fileparts(mfilename('fullpath'));
+addpath(here);                       % fileResolver needs it findable
 suite  = matlab.unittest.TestSuite.fromFile( ...
-    fullfile('records', 'audit', 'ProbeFilterWarning.m'));
+    fullfile(here, 'ProbeFilterWarning.m'));
 runner = matlab.unittest.TestRunner.withTextOutput();
 p = WarningInventoryPlugin();
 runner.addPlugin(p);
