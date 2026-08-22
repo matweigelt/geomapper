@@ -278,8 +278,12 @@ end
 
 function patches = rectangleFrame(axH, crs, lonBreaks, latBreaks, t, options)
 %RECTANGLEFRAME  Closed form for a projection whose map is a rectangle.
+% CLOSED WINDOW: these are the map's CORNERS. On a global extent
+% lonBreaks(end) is +180, and the half-open default folds it onto -180,
+% so xMax equalled xMin and the rectangle collapsed westward (PV-145).
 [xc, yc] = geo.project([lonBreaks(1) lonBreaks(end) lonBreaks(end) lonBreaks(1)], ...
-    [latBreaks(1) latBreaks(1) latBreaks(end) latBreaks(end)], crs);
+    [latBreaks(1) latBreaks(1) latBreaks(end) latBreaks(end)], crs, ...
+    Window = "closed");
 ok = isfinite(xc) & isfinite(yc);
 if nnz(ok) < 4
     patches = gobjects(1, 0);
@@ -293,8 +297,10 @@ nLat = numel(latBreaks) - 1;
 patches = gobjects(1, 2 * nLon + 2 * nLat + 4);
 m = 0;
 for k = 1:nLon
-    [xa, ~] = geo.project(lonBreaks(k), latBreaks(1), crs);
-    [xb, ~] = geo.project(lonBreaks(k + 1), latBreaks(1), crs);
+    [xa, ~] = geo.project(lonBreaks(k), latBreaks(1), crs, ...
+        Window = "closed");
+    [xb, ~] = geo.project(lonBreaks(k + 1), latBreaks(1), crs, ...
+        Window = "closed");
     c = bandColour(k, options.Colors);
     m = m + 1;
     patches(m) = framePatch(axH, [xa xb xb xa], [yMin yMin yMin-t yMin-t], c);
@@ -302,8 +308,10 @@ for k = 1:nLon
     patches(m) = framePatch(axH, [xa xb xb xa], [yMax yMax yMax+t yMax+t], c);
 end
 for k = 1:nLat
-    [~, ya] = geo.project(lonBreaks(1), latBreaks(k), crs);
-    [~, yb] = geo.project(lonBreaks(1), latBreaks(k + 1), crs);
+    [~, ya] = geo.project(lonBreaks(1), latBreaks(k), crs, ...
+        Window = "closed");
+    [~, yb] = geo.project(lonBreaks(1), latBreaks(k + 1), crs, ...
+        Window = "closed");
     c = bandColour(k, options.Colors);
     m = m + 1;
     patches(m) = framePatch(axH, [xMin-t xMin xMin xMin-t], [ya ya yb yb], c);
@@ -355,7 +363,7 @@ for k = 1:nV
     end
     lonS = linspace(lonA, lonB, nSub);
     latS = linspace(latA, latB, nSub);
-    [xs, ys] = geo.project(lonS, latS, crs);
+    [xs, ys] = geo.project(lonS, latS, crs, Window = "closed");
     if any(~isfinite(xs)) || any(~isfinite(ys))
         continue                        % a gap beats a wrong half
     end
@@ -417,7 +425,7 @@ lonB = [lonS, repmat(lonLim(2), 1, nSide), fliplr(lonS), ...
         repmat(lonLim(1), 1, nSide)];
 latB = [repmat(latLim(1), 1, nSide), latS, repmat(latLim(2), 1, nSide), ...
         fliplr(latS)];
-[xb, yb] = geo.project(lonB, latB, crs);
+[xb, yb] = geo.project(lonB, latB, crs, Window = "closed");
 ok = isfinite(xb) & isfinite(yb);
 if nnz(ok) < 10
     patches = gobjects(1, 0);
