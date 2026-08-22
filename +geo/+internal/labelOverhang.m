@@ -55,8 +55,17 @@ function over = labelOverhang(axH)
 %     aspect-ratio computation enters here.
 %
 %     IT IS ONLY AS GOOD AS THE EXTENTS, and those are not final until the
-%     text has been laid out. Callers that have just created the labels
-%     must let the graphics system settle first; GEO.COLORBAR does.
+%     text has been laid out. GEO.INTERNAL.TEXTRECTS settles the layout
+%     itself, so no caller has to remember.
+%
+%     THIS PARAGRAPH USED TO SAY that callers must settle first and that
+%     GEO.COLORBAR does. GEO.COLORBAR did not: the claim was written and
+%     the DRAWNOW never was. On Windows the extents were already valid
+%     and the omission was invisible; on the CI runner this function read
+%     ~0 points of overhang and the colorbar landed on the label row it
+%     exists to clear, 20.4 points deep. A help block is a claim about
+%     the world (R3), and that one was false everywhere and observable
+%     in one place.
 %
 %   ERRORS
 %     (none raised; an absent graticule is a legitimate zero)
