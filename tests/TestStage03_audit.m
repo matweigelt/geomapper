@@ -62,6 +62,47 @@ classdef TestStage03_audit < GeoMapTestCase
     % ==================================================================
     methods (Test, TestTags = {'contract'})
 
+        function theAuditReadsGeoMapSetupsFolderListRatherThanKeepingOne(tc)
+            % D-020. Distribution is git, so the file that decides what a
+            % user receives is geoMapSetup - what a developer runs and a
+            % user does not. The audit's closure check needs that same
+            % list, and PV-126 already paid for what happens when it is
+            % copied: six copies across ci.yml, gates.sh and buildfile.m,
+            % and adding docbuild/ broke a seventh.
+            %
+            % So the audit PARSES it out of geoMapSetup, and this asserts
+            % the parse still finds what that file declares. If the
+            % declaration changes shape the audit raises rather than
+            % silently checking an empty list - which is the failure this
+            % test exists to make impossible.
+            src = string(fileread(which('geoMapSetup')));
+            tok = regexp(src, 'names\s*=\s*\[([^\]]*)\]', 'tokens', 'once');
+            tc.assertNotEmpty(tok, ...
+                'geoMapSetup must declare its folder list readably.');
+            % Element by element. The compact form - string() over a
+            % nested cell, then brace-expanded - collapses to a CHAR ROW,
+            % and `for f = charRow` iterates one letter at a time: the
+            % run reported that "t", "e", "s" and "t" were declared on
+            % the developer path and did not exist.
+            %
+            % I had already fixed exactly this in geoMapAudit two commits
+            % earlier and left the copy here, which is PV-128 arriving
+            % inside a single branch: fix one instance, the other
+            % survives underneath.
+            hits = regexp(tok{1}, '"([^"]+)"', 'tokens');
+            declared = strings(1, numel(hits));
+            for k = 1:numel(hits)
+                declared(k) = string(hits{k}{1});
+            end
+            tc.verifyNotEmpty(declared, ...
+                'and the list must not parse to nothing.');
+            for f = declared
+                tc.verifyTrue(isfolder(fullfile(geoMapRoot(), f)), ...
+                    sprintf(['%s is declared on the developer path ' ...
+                             'and does not exist'], f));
+            end
+        end
+
         function rejectsAMissingRoot(tc)
             tc.verifyError(@() geoMapAudit("no such folder anywhere"), ...
                 'geo:audit:NoSuchRoot');

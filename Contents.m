@@ -3,7 +3,7 @@
 %
 %   THIS FILE IS THE VERSION AUTHORITY.
 %
-%   README.md, CHANGELOG.md, CITATION.cff, geoMap.prj and info.xml are
+%   README.md, CHANGELOG.md, CITATION.cff and info.xml are
 %   CHECKED against the line above by tools/geoMapAudit.m; none of them is
 %   independently maintained. One authority per fact: a version kept in
 %   two places disagrees with itself, and the disagreement surfaces at

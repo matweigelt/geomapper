@@ -854,8 +854,9 @@ if isempty(tok)
     return
 end
 authority = string(tok{1});
-others = ["README.md" "CHANGELOG.md" "geoMap.prj" "info.xml" ...
-          "CITATION.cff"];
+% geoMap.prj is gone: distribution is git (D-020), so there is no
+% add-on spec to keep in step with the version authority.
+others = ["README.md" "CHANGELOG.md" "info.xml" "CITATION.cff"];
 for o = others
     p = fullfile(root, o);
     if ~isfile(p), continue, end
@@ -1066,18 +1067,64 @@ for i = 1:numel(files)
 end
 end
 
+function folders = developerFolders()
+%DEVELOPERFOLDERS  The folder list, read from GEOMAPSETUP rather than kept.
+%   GEOMAPSETUP is the one path authority (PV-126). Repeating its list
+%   here would be a seventh copy of the thing that rule exists to
+%   prevent, so the list is READ out of that file's source. A parse
+%   rather than a call, because the helper that holds it is local to
+%   GEOMAPSETUP and must stay so - a function that a user could invoke
+%   would be a second entry point to the same fact.
+src = string(fileread(which('geoMapSetup')));
+tok = regexp(src, 'names\s*=\s*\[([^\]]*)\]', 'tokens', 'once');
+if isempty(tok)
+    error('geo:audit:FolderListNotFound', ...
+        ['geoMapSetup no longer declares its folder list in the form ' ...
+         'this reads. One authority per fact means this check must ' ...
+         'follow it, not keep a copy.']);
+end
+% Built element by element rather than with STRING on a nested cell.
+% REGEXP 'tokens' gives a cell of 1x1 cells, and the compact form that
+% looks right - string(...) then brace-expanded - is neither one thing
+% nor the other and threw inside the fixture, where the audit caught it
+% and reported no findings at all.
+hits = regexp(tok{1}, '"([^"]+)"', 'tokens');
+folders = strings(1, numel(hits));
+for k = 1:numel(hits)
+    folders(k) = string(hits{k}{1});
+end
+if isempty(folders)
+    error('geo:audit:FolderListNotFound', ...
+        ['geoMapSetup declares a folder list this could not read. An ' ...
+         'empty list would make the closure check pass by measuring ' ...
+         'nothing.']);
+end
+end
+
 function names = harnessNames(root)
-%HARNESSNAMES  Every .m in the repository that the .mltbx does not ship.
-%   The folder list is geoMap.prj's exclude filter, which is the file that
-%   actually decides what a user receives; keeping a second list here
-%   would let the two disagree, and the disagreement would only show up
-%   after somebody installed the result.
+%HARNESSNAMES  Every .m a USER's path does not carry.
+%   Distribution is git, not a packaged toolbox (D-020), so the file that
+%   decides what a user receives is no longer an archive's exclude
+%   filter - it is GEOMAPSETUP, which is what a developer runs and a
+%   user does not. A user clones the repository and puts the ROOT on the
+%   path: that resolves +geo and nothing else.
+%
+%   The closure rule is unchanged by the change of route. What changed is
+%   its REASON: +geo may not call into tests/, tools/, records/ or
+%   docbuild/ because the user's PATH omits them, where it used to be
+%   because the archive did. PV-127 was reproduced with
+%   restoredefaultpath + addpath, which is precisely the user's
+%   situation and not the archive's.
+%
+%   The list is read from GEOMAPSETUP rather than repeated here. Keeping
+%   a second copy would let the two disagree, and the disagreement would
+%   only show up after somebody cloned the result.
 names = strings(1, 0);
 d = dir(fullfile(root, "*.m"));                  % root scripts and runners
 for k = 1:numel(d)
     names(end+1) = string(erase(d(k).name, ".m")); %#ok<AGROW>
 end
-for folder = ["tests" "tools" "records" "docbuild"]
+for folder = developerFolders()
     p = fullfile(root, folder);
     if ~isfolder(p), continue, end
     d = dir(fullfile(p, "**", "*.m"));
@@ -1161,6 +1208,15 @@ for i = 1:numel(reg)
     c = onCleanup(@() geoMapAuditFixtures("clean", d));
     [~, f] = geoMapAudit(d, SelfTest = false, Verbose = false);
     fired = unique([f.check]);
+    if isempty(fired)
+        % TYPED EMPTY. [f.check] on an empty findings struct is a
+        % DOUBLE, so the comparison below raised "Comparison between
+        % double and string is not supported" instead of reporting that
+        % a check had not fired. The self-test could not say what it
+        % exists to say, and the failure looked like a MATLAB error
+        % rather than a red check (F.6).
+        fired = strings(1, 0);
+    end
     if reg(i).check == ""
         good = isempty(fired);
         lines(end+1, 1) = sprintf('  control          %s%s', ...
