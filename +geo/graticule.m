@@ -334,8 +334,7 @@ dropped = strings(1, 0);
 if numel(labels) < 2
     return
 end
-drawnow limitrate                    % extents are not final until laid out
-rects = geo.internal.textRects(labels);
+rects = geo.internal.textRects(labels);   % which settles the layout itself
 keep = true(1, numel(labels));
 % EVERY label is a candidate, not only the parallels. The first version
 % of this pass started at nLon + 1, on the reasoning that meridians win

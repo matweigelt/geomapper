@@ -62,6 +62,20 @@ arguments
     handles (1,:) = matlab.graphics.GraphicsPlaceholder.empty
 end
 
+% THE SETTLE BELONGS HERE, ONCE, AND NOT IN EACH CALLER. An extent is
+% not valid until the graphics system has laid the text out. This
+% function's own help said so and named GEO.COLORBAR as a caller that
+% lets it settle - and GEO.COLORBAR did not, because the claim was
+% written and the DRAWNOW never was. On Windows the extents happened to
+% be valid already and the omission was invisible; on the CI runner they
+% were not, GEO.INTERNAL.LABELOVERHANG read ~0 points of overhang, and
+% the colorbar landed on the longitude label row it was meant to clear -
+% 20.4 points of overlap, on the one platform nobody was looking at.
+%
+% GEO.GRATICULE was calling DRAWNOW itself before its collision pass,
+% which is the second definition of one fact (R1). It no longer does.
+drawnow limitrate
+
 rects = nan(numel(handles), 4);
 for k = 1:numel(handles)
     t = handles(k);
