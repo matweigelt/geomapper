@@ -2755,3 +2755,75 @@ signal the prediction discipline exists to give.
    a wrong fix.
 4. Next action, as a command: `rungeoMapTests("all")` after merge, predicting
    521.
+
+---
+
+## R-034 — Stage G, package G.1a/G.1b, 22-Aug-2026, **tier A (bridge)**
+
+**Scope.** The RGB kind and its renderer. `geo.imageGrid`, and `geo.basemap`
+accepting it. Status in `HANDOVER.md` Parts 1, 4 and 10.
+
+**Confirming run.** Bridge, `win64 | R2026a | 16 threads`. Predicted **532**
+for G.1a and **535** for G.1b, in the commit messages before the runs; both hit
+three ways. Green gate on all seven conditions, census clean, audit 0 findings.
+
+| measurement | value | bound |
+|---|---|---|
+| `geo.imageGrid` / one pass over the raster, 1024x512 | 0.225 | ≤ 6 |
+| imageGrid double→uint8 vs `round(x*255)` | 0 levels | 0 |
+| imageGrid vs grid step on identical axes | 0 deg | ≤ 1e-12 |
+
+`geo.imageGrid` ships **all seven categories with no exemption**.
+
+### Why the reference point compares against `geo.grid`
+
+The likeliest defect a new kind could introduce is a backdrop and a field
+disagreeing about the seam. So the `reference` point puts both kinds on
+*identical axes* and asserts they agree about `IsGlobalLon` and `LonStep`,
+rather than checking the image against itself.
+
+### The index-map carrier (D-027)
+
+An image cannot pass through `rollToCentre`, which rolls one plane. The
+carrier grid's `Z` is therefore `1:numel`, and the bands are gathered through
+the rolled result — so the seam roll reaches the picture by the same code that
+rolls a field, not by a copy that would drift. Alpha is gathered through the
+same map, so a roll cannot move the picture and leave the transparency behind.
+
+### R4 honoured where it can be, and the asymmetry written down
+
+`CLim`, `Colormap` and `Mask` are **refused** for an image: their defaults
+(NaN, empty, empty) make an omission distinguishable from a choice. `Hillshade`
+and `Divergent` default to real values, so an omission cannot be told from a
+choice and refusing them would reject the ordinary call — documented as not
+read instead. That is R5's idiom showing its cost, recorded rather than left as
+an apparent inconsistency.
+
+### Three of my own errors this round
+
+1. **The `Contents.m` summary must BE the H1, character for character.** I
+   wrote a paraphrase with "(G.1)" appended — the exact drift
+   `TestContentsConsistency` exists to stop.
+2. **The first assertion tested the wrong thing.** It said the image leaves
+   `clim()` numerically unchanged. Measured, it does not and should not: an
+   axes auto-ranges `CLim` from whatever `CData` it holds, truecolour included.
+   The real property is that the image does not **pin** the scale —
+   `CLimMode` stays `auto` after an image and becomes `manual` after a field.
+   Criterion before code (Part 9): the criterion was wrong, the code was right.
+3. **A docs commit was never pushed and I did not check.** The bridge command
+   ended `| tail -2`; `tail` does not exist on Windows, the pipeline failed,
+   and the container then pushed past it, diverging the histories. Nothing was
+   lost — the files are generated — but this is the **third** time in one
+   session I read a command's output as evidence that its side effect
+   happened. The other two were a `git push` exit status and a `write_text`
+   that never ran.
+
+### Binding items a later stage could be wrong for not reading
+
+1. **Verify side effects, do not infer them from output.** Three instances in
+   one session. On the bridge, prefer plain `git` with no pipeline: Windows has
+   no `tail`, `head`, or `grep`.
+2. **A new kind gets its `reference` point against the EXISTING kind on
+   identical axes**, not against itself.
+3. Next action, as a command: `rungeoMapTests("all")` after merge, predicting
+   535.
