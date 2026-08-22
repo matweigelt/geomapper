@@ -324,7 +324,7 @@ classdef TestE1_map < GeoMapTestCase
             % pass the test above and destroy a user's figure - strictly
             % worse than the leak it replaced, because a leak is visible
             % and a deleted figure is not.
-            ax = tc.axesFor();
+            ax = axes('Parent', tc.figureFor());
             f = ancestor(ax, 'figure');
             tc.verifyError(@() geo.map(tc.worldGrid(), Parent = ax, ...
                 Points = struct('LineWidth', 1)), 'geo:map:MissingField');
