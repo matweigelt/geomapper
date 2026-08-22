@@ -16,12 +16,14 @@ classdef TestIntegration < GeoMapTestCase
 %     also do element by element, and the two are the same map. Without
 %     it, "L4 orchestrates L3" is a diagram rather than a fact.
 %
-%     NO COVEREDFUNCTIONS IS DECLARED, deliberately. These scenarios
+%     COVEREDFUNCTIONS IS DECLARED EMPTY, deliberately. These scenarios
 %     cover no single function - that is what makes them integration
 %     tests - and claiming one would mean promising all seven categories
-%     for it here, where they belong in that function's own suite. The
-%     runner prints "no CoveredFunctions declared - skipped", which is
-%     visible rather than silent.
+%     for it here, where they belong in that function's own suite.
+%
+%     It was an OMISSION until A-5, and an omission cannot be told from
+%     forgetting. An empty declaration says the same thing as a decision,
+%     and the runner reports it as one.
 %
 %   ACCURACY
 %     The composition guarantee is EXACT: isequal on CData, isequal on
@@ -47,6 +49,14 @@ classdef TestIntegration < GeoMapTestCase
 %
 %   ---------------------------------------------------------------------
 %   geoMap v2.0 | 20-Aug-2026 | Claude Opus 5 (Anthropic)
+
+    properties (Constant)
+        % EMPTY ON PURPOSE - see DESCRIPTION. An integration scenario
+        % covers a composition, not a function, and A-5 made the
+        % difference between that decision and a forgotten declaration
+        % something the runner can see.
+        CoveredFunctions = strings(1, 0)
+    end
 
     methods (Access = private)
 
