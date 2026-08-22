@@ -329,11 +329,26 @@ for i = 1:numel(classes)
         mc = meta.class.fromName(char(cls));
         pIdx = find(string({mc.PropertyList.Name}) == "CoveredFunctions", 1);
         if isempty(pIdx)
-            fprintf('  %-30s (no CoveredFunctions declared - skipped)\n', cls);
+            % A FINDING, NOT A SKIP. Audit finding A-5: this printed and
+            % left ok untouched, so a suite could opt out of category
+            % coverage by forgetting to declare what it covers - the
+            % same shape as A-1, a condition satisfied by the absence of
+            % the thing it checks. Every suite declares it today; a new
+            % one is exactly how it would have arrived.
+            fprintf(['  %-30s NO CoveredFunctions DECLARED. Category ' ...
+                     'coverage cannot be measured for a suite that does ' ...
+                     'not say what it covers.\n'], cls);
+            ok = false;
             continue
         end
         covered = string(mc.PropertyList(pIdx).DefaultValue);
-    catch
+    catch loadErr
+        % And a class whose metaclass will not load printed NOTHING at
+        % all, which is worse: it left no trace that a suite had been
+        % passed over.
+        fprintf('  %-30s METACLASS WOULD NOT LOAD (%s)\n', cls, ...
+            loadErr.identifier);
+        ok = false;
         continue
     end
     m = startsWith(string({suite.Name}), cls);

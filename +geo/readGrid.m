@@ -299,9 +299,30 @@ function [lon, lat, Z] = readNetcdf(name, wanted, sel)
 %READNETCDF  Read a variable, or a window of it, with its axes.
 try
     info = ncinfo(char(name));
-catch
-    error('geo:readGrid:FileNotFound', ...
-        'Could not open "%s" as NetCDF.', name);
+catch ME
+    % NAMED, NOT SWALLOWED. Audit finding A-4: a bare catch here sent a
+    % corrupt file, an unsupported HDF5 filter, a permissions failure
+    % and a genuinely absent file to the caller as the same
+    % FileNotFound, with the real cause discarded. The rule it broke is
+    % this toolbox's own, written eight lines into
+    % GEO.INTERNAL.LAYOUT: v1's bare catch made a broken element look
+    % like an absent one. The sibling catch forty lines below already
+    % does this correctly, which is why this one reads as an oversight
+    % rather than a decision.
+    %
+    % The identifier still distinguishes the case a caller can act on -
+    % the file is not there - from every other way an open can fail,
+    % because "create it" and "it is corrupt" are different repairs.
+    if isfile(name)
+        err = MException('geo:readGrid:NotReadable', ...
+            ['"%s" exists but could not be opened as NetCDF. The ' ...
+             'underlying error is attached as the cause.'], name);
+    else
+        err = MException('geo:readGrid:FileNotFound', ...
+            'Could not open "%s" as NetCDF: no such file.', name);
+    end
+    err = addCause(err, ME);
+    throw(err);
 end
 have = string({info.Variables.Name});
 

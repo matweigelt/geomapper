@@ -421,6 +421,45 @@ classdef TestC1_io < GeoMapTestCase
     % ==================================================================
     methods (Test, TestTags = {'robustness'})
 
+        function anUnreadableFileKeepsItsCause(tc)
+            % Audit finding A-4. A bare catch sent a corrupt file, an
+            % unsupported filter, a permissions failure and an absent
+            % file to the caller as the same FileNotFound with the cause
+            % discarded. The rule it broke is this toolbox's own, written
+            % into geo.internal.layout: NAMED, NOT SWALLOWED.
+            %
+            % The two cases are asserted separately, because "create it"
+            % and "it is corrupt" are different repairs and an identifier
+            % that cannot tell them apart is not carrying its weight.
+            % scratch() is TestE0_export's, not the base class's - the
+            % fixture reach that has cost this session three CI cycles
+            % already. This suite uses tempdir directly, so this does
+            % too, and cleans up after itself.
+            gone = string(fullfile(tempdir, "geoMapNoSuchFile.nc"));
+            if isfile(gone)
+                delete(gone);
+            end
+            tc.verifyError(@() geo.readGrid(gone), ...
+                'geo:readGrid:FileNotFound');
+
+            % A file that exists and is not NetCDF.
+            bad = string(fullfile(tempdir, "geoMapNotReallyNetcdf.nc"));
+            fid = fopen(bad, 'w');
+            fwrite(fid, uint8(1:64));
+            fclose(fid);
+            tc.addTeardown(@() delete(bad));
+            caught = false;
+            try
+                geo.readGrid(bad);
+            catch ME
+                caught = true;
+                tc.verifyEqual(ME.identifier, 'geo:readGrid:NotReadable');
+                tc.verifyNotEmpty(ME.cause, ...
+                    'The underlying error must survive as a cause.');
+            end
+            tc.verifyTrue(caught, 'A file that is not NetCDF must raise.');
+        end
+
         function aFailedParseLeavesNoPoisonedEntry(tc)
             % THE CACHE HAZARD THAT WOULD HAVE BEEN QUIETEST. Nothing is
             % stored until the value exists, so a reader that throws half
