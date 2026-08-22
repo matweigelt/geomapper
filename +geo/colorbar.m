@@ -239,6 +239,10 @@ function geom = layoutOf(axH, options)
 %   and the axis label into overlapping bands. Here each row of content
 %   contributes its own height and they are stacked.
 box = geo.internal.plottedBox(axH);
+% PV-152: the plotted box is the MAP, and the graticule's labels sit
+% outside it. Anchoring to the box alone put this bar's tick numbers
+% through the longitude label row on the toolbox's own showcase call.
+over = geo.internal.labelOverhang(axH);
 isHoriz = any(options.Location == ["southoutside" "northoutside"]);
 lineH = options.FontSize * 1.4;
 tickLen = 5;
@@ -279,24 +283,28 @@ else
     geom.BarX = [numberBand + labelBand, numberBand + labelBand + options.Thickness];
     geom.BarY = [0 barLen];
 end
-geom.Position = anchorBox(box, geom, options);
+geom.Position = anchorBox(box, over, geom, options);
 end
 
-function pos = anchorBox(box, geom, options)
+function pos = anchorBox(box, over, geom, options)
 %ANCHORBOX  Where the bar's axes goes, in figure points.
+%   OVER is how far the graticule's labels reach past BOX on each side,
+%   [left right bottom top]. Only the side this bar is going gets it: a
+%   southoutside bar must clear the bottom label row and has no reason to
+%   move sideways because a latitude label sticks out on the left.
 gap = 8;
 switch options.Location
     case "southoutside"
         pos = [box(1) + (box(3) - geom.Width) / 2, ...
-               box(2) - gap - geom.Height, geom.Width, geom.Height];
+               box(2) - gap - over(3) - geom.Height, geom.Width, geom.Height];
     case "northoutside"
         pos = [box(1) + (box(3) - geom.Width) / 2, ...
-               box(2) + box(4) + gap, geom.Width, geom.Height];
+               box(2) + box(4) + gap + over(4), geom.Width, geom.Height];
     case "westoutside"
-        pos = [box(1) - gap - geom.Width, ...
+        pos = [box(1) - gap - over(1) - geom.Width, ...
                box(2) + (box(4) - geom.Height) / 2, geom.Width, geom.Height];
     otherwise
-        pos = [box(1) + box(3) + gap, ...
+        pos = [box(1) + box(3) + gap + over(2), ...
                box(2) + (box(4) - geom.Height) / 2, geom.Width, geom.Height];
 end
 % Keep it on the figure. v1 clamped twice with two different constants
