@@ -116,7 +116,19 @@ arguments
 end
 
 [V, colourIdx] = traceExtent(lonBreaks, latBreaks);
-[xv, yv] = geo.project(V(:, 1).', V(:, 2).', crs);
+
+% THE RING IS A MAP EDGE, so it is projected in the CLOSED window. A
+% global extent runs -180 .. 180 since registration (PV-140), and the
+% half-open default folds +180 onto -180 - so the ring's EASTERN
+% meridian landed on top of its western one, PV-135's coincident-vertex
+% collapse then removed the duplicates, and the frame was drawn on the
+% west side only. Measured on the target machine: frame x -2.911 .. -1.7e-16
+% against a surface spanning -2.828 .. 2.828 (PV-145).
+%
+% GEO.BASEMAP already projects its surface vertices this way. The frame
+% is the same kind of thing - the boundary of the drawn map - and was
+% left on the default when the option was introduced.
+[xv, yv] = geo.project(V(:, 1).', V(:, 2).', crs, Window = "closed");
 ok = isfinite(xv) & isfinite(yv);
 if nnz(ok) < 3
     % REPORTED, NOT THROWN. An extent whose ring does not project is
@@ -247,7 +259,9 @@ for k = 1:nV
     end
     lonS = linspace(lonA, lonB, nSub);
     latS = linspace(V(k, 2), V(kNext, 2), nSub);
-    [xs, ys] = geo.project(lonS, latS, crs);
+    % Densified points ALONG the ring: same window, or an edge segment
+    % would jump the seam its endpoints were kept off (PV-145).
+    [xs, ys] = geo.project(lonS, latS, crs, Window = "closed");
     xs = xs(1:end-1);                   % the next edge repeats the corner
     ys = ys(1:end-1);
     good = isfinite(xs) & isfinite(ys);

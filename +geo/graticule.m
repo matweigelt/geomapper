@@ -297,14 +297,18 @@ function [px, py] = anchorOnEdge(lonAt, latAt, crs, lonSpan, latSpan, edge)
 %   the line and take the LAST FINITE point instead. That is the edge, by
 %   construction, without a visible-radius table and without a search for
 %   the farthest point from the origin.
-[px, py] = geo.project(lonAt, latAt, crs);
+% Label anchors and edge tangents are all points ON the boundary, so
+% they take the same closed window the ring does. Left on the default
+% they fold +180 onto -180 and a label for the eastern rim is placed on
+% the western one (PV-145).
+[px, py] = geo.project(lonAt, latAt, crs, Window = "closed");
 if isfinite(px) && isfinite(py)
     return
 end
 n = 256;
 lonV = linspace(lonSpan(1), lonSpan(2), n);
 latV = linspace(latSpan(1), latSpan(2), n);
-[x, y] = geo.project(lonV, latV, crs);
+[x, y] = geo.project(lonV, latV, crs, Window = "closed");
 ok = find(isfinite(x) & isfinite(y));
 if isempty(ok)
     px = NaN;
@@ -329,8 +333,10 @@ function [nx, ny] = outwardNormal(edgePoint, u, crs, px, py, lonLim, latLim)
 h = 0.25;                               % degrees, half-step
 [lonA, latA] = edgePoint(u - h);
 [lonB, latB] = edgePoint(u + h);
-[xa, ya] = geo.project(lonA, min(max(latA, -90), 90), crs);
-[xb, yb] = geo.project(lonB, min(max(latB, -90), 90), crs);
+[xa, ya] = geo.project(lonA, min(max(latA, -90), 90), crs, ...
+    Window = "closed");
+[xb, yb] = geo.project(lonB, min(max(latB, -90), 90), crs, ...
+    Window = "closed");
 tx = xb - xa;
 ty = yb - ya;
 if ~isfinite(tx) || ~isfinite(ty) || hypot(tx, ty) < 1e-12
@@ -362,7 +368,7 @@ end
 function [cx, cy] = mapCentroid(crs, lonLim, latLim)
 %MAPCENTROID  Mean of the projected extent corners, NaNs dropped.
 [x, y] = geo.project([lonLim(1) lonLim(2) lonLim(2) lonLim(1)], ...
-    [latLim(1) latLim(1) latLim(2) latLim(2)], crs);
+    [latLim(1) latLim(1) latLim(2) latLim(2)], crs, Window = "closed");
 ok = isfinite(x) & isfinite(y);
 if ~any(ok)
     cx = 0;
