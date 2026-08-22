@@ -79,8 +79,21 @@ classdef TestStage03_audit < GeoMapTestCase
             tok = regexp(src, 'names\s*=\s*\[([^\]]*)\]', 'tokens', 'once');
             tc.assertNotEmpty(tok, ...
                 'geoMapSetup must declare its folder list readably.');
-            declared = string(regexp(tok{1}, '"([^"]+)"', 'tokens'));
-            declared = reshape([declared{:}], 1, []);
+            % Element by element. The compact form - string() over a
+            % nested cell, then brace-expanded - collapses to a CHAR ROW,
+            % and `for f = charRow` iterates one letter at a time: the
+            % run reported that "t", "e", "s" and "t" were declared on
+            % the developer path and did not exist.
+            %
+            % I had already fixed exactly this in geoMapAudit two commits
+            % earlier and left the copy here, which is PV-128 arriving
+            % inside a single branch: fix one instance, the other
+            % survives underneath.
+            hits = regexp(tok{1}, '"([^"]+)"', 'tokens');
+            declared = strings(1, numel(hits));
+            for k = 1:numel(hits)
+                declared(k) = string(hits{k}{1});
+            end
             tc.verifyNotEmpty(declared, ...
                 'and the list must not parse to nothing.');
             for f = declared
