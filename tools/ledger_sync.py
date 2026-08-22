@@ -58,8 +58,16 @@ import sys
 # The stage letter is captured, and the checkpoint when the entry names
 # one. The template entry in RECORDS.md writes "Stage <X>", which this
 # deliberately does not match: a template is not evidence.
+# THE STAGE ALPHABET WAS [0A-F] AND STAGE G OUTGREW IT (22-Aug-2026).
+# R-033 was written, the ledger cited it, and this gate reported the
+# citation as pointing at nothing - correctly, from its own point of
+# view, and wrongly about the tree. A hardcoded alphabet fails silently
+# exactly once per stage, at the moment a new stage opens, which is the
+# moment the record matters most. [0A-Z] never needs editing again; a
+# bogus letter shows up as a record nobody cites, which the other half
+# of this gate already catches.
 RE_RECORD = re.compile(
-    r"^##\s+R-(\d+)\s*[-\u2013\u2014]+\s*Stage\s+([0A-F])\b"
+    r"^##\s+R-(\d+)\s*[-\u2013\u2014]+\s*Stage\s+([0A-Z])\b"
     r"(?:[^\n]*?checkpoint\s+([0A-F]\.\d[a-z]?))?",
     re.IGNORECASE | re.MULTILINE)
 

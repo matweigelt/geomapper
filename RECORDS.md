@@ -2654,3 +2654,104 @@ project with no instrument, which is debt **V12** and package **G.0**.
    split/merge property, which are narrower and true.
 5. Next action, as a command:
    `rungeoMapTests("all")` after `git checkout claude/g1-figure-leak-and-ci`.
+
+---
+
+## R-033 — Stage G, package G.0, 22-Aug-2026, **tier A (bridge)**
+
+**Scope.** The oracle register's first instrument (G.0a) and PV-152's repair
+(G.0b). Status is in `HANDOVER.md` Parts 0, 1, 3, 4 and 10; this holds the
+evidence.
+
+**Execution tier. Tier A**, over the working tree at
+`C:\Users\matth\Documents\MATLAB\geoMap`. Python gates in the container; the
+mirror tier is CI's, because the sandbox has no GDAL — stated rather than
+left as an unexplained gap.
+
+### Confirming run
+
+| | |
+|---|---|
+| predicted, in the commit message before the run | **521** = 518 + 3 |
+| passed + failed + incomplete | 521 + 0 + 0 |
+| suite size / per-class sum | 521 / 521 |
+| warning inventory | empty |
+| figure census | clean |
+| static audit | 0 findings |
+| **green gate** | **PASS**, all seven |
+
+New record: `worst text overlap, robinson, full front [none] — 0 points
+(bound <= 0.5)`.
+
+### G.0a — four register rows were wrong, and one gate found them all
+
+`O2` open while `mirror/acceptance.json` cited it as the `source` of two
+frozen criteria; `O7` bundling two claims with different evidence; `O8` open
+while its module ran on every push; `O12` dated without a year. O7 was
+**split** rather than reworded — mass closure is now O13, open, debt V10.
+O13–O20 seeded for the Stage G packages.
+
+**The self-test was vacuous for two runs.** Its third planted defect called
+`ROW.sub()` without `re.M`, so the anchors bound to the whole string and it
+planted nothing. It passed regardless, because `check()` was returning real
+findings from a dirty register — **the dirt was hiding the vacuum**. It
+surfaced the moment the register came clean. Repaired, and a *silence half*
+added: the gate must also be quiet on a repaired register.
+
+**This is a question the other three gates have not been asked.** `mcheck`,
+`provenance_audit` and `ledger_sync` all inject a defect and check they fire;
+none, as far as this session checked, verifies it is silent on a repaired
+tree. Not a claim that they are vacuous — a claim that the question now has a
+precedent and has not been put to them. Recorded here so a later session
+cannot mistake the omission for a finding of health.
+
+### G.0b — PV-152, and a first repair that was wrong in the way that looks right
+
+Two causes. `geo.colorbar` anchored to `plottedBox`, which is the **map**,
+while the graticule's labels sit outside it. And `placeLabels` compared each
+label to nothing, so on a projection whose parallels converge the extreme
+parallel and the seam meridian met at the same corner.
+
+**The first `labelOverhang` DERIVED the overhang**, mapping data-unit extents
+onto `plottedBox` on the assumption that `plottedBox` is the rectangle the
+axis limits map onto. It is not, and `geo.frame` widens the limits after the
+graticule has drawn:
+
+| | derived | measured |
+|---|---|---|
+| labels reach below the map | 6.9 pt | **44.8 pt** |
+| colliding pairs after "repair" | 5 | — |
+
+The colorbar moved a seventh of what it needed, six pairs became five, and
+the vertical overlaps got *worse* (4.3 → 9.8 pt): rearranged, not repaired.
+**Had the count been read as progress the defect would have shipped.**
+CODING_GUIDE R3 — read the property from the object, never infer it from a
+convention about how the object was built. `geo.internal.textRects` now owns
+measure-don't-derive and the restoration of the Units it changes.
+
+**`LabelsOmitted` is a returned field and not a warning.** A warning was
+written first and withdrawn: that corner collides on almost every *global*
+map, so it would have fired on the most ordinary call in the toolbox, taught
+its users to silence the identifier, and put a permanent entry in an
+inventory whose entire value is being empty.
+
+**Three defects came out of the red run**, all mine: `tc.worldGrid()` is a
+local of `TestE1_map` and not a base-class fixture (`demoGrid` is) — the
+second time this session a per-suite helper was reached for as if shared;
+`%#ok<AGROW>` inside `+geo`, which the audit bans on F13's evidence; and a
+stale `geo_graticule.html`. The suite size read **521 in the red run too**,
+so the prediction was right and only the outcomes were wrong — which is the
+signal the prediction discipline exists to give.
+
+### Binding items a later stage could be wrong for not reading
+
+1. **A graphics assertion that measures one element against its own claim
+   proves nothing about the map.** Six pairs overlapped for a whole release
+   behind 518 such assertions. New front-level work adds a
+   `verifyNoTextOverlap` point.
+2. **Ask every instrument whether it is silent on a repaired tree**, not only
+   whether it fires on a broken one.
+3. **A symptom count going down is not evidence of a repair.** 6 → 5 here was
+   a wrong fix.
+4. Next action, as a command: `rungeoMapTests("all")` after merge, predicting
+   521.
