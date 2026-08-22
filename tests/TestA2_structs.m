@@ -31,6 +31,7 @@ classdef TestA2_structs < GeoMapTestCase
 
     properties (Constant)
         CoveredFunctions = ["geo.grid" "geo.track" "geo.points" ...
+                            "geo.imageGrid" ...
                             "geo.internal.mustBeIdentity" ...
                             "geo.internal.mustBeSeries" ...
                             "geo.internal.countGaps"]
@@ -487,4 +488,188 @@ classdef TestA2_structs < GeoMapTestCase
                 InnerBatch = 20);
         end
     end
+    % ==================================================================
+    %  geo.imageGrid  (G.1)
+    % ==================================================================
+    methods (Access = private)
+        function [lon, lat, RGB] = imgFixture(~, nLon, nLat)
+            %IMGFIXTURE  A cell-registered world raster with a known ramp.
+            %   The ramp is the point: every pixel's value is a function
+            %   of its own indices, so a flip, a transpose or an off-by-one
+            %   is visible in the VALUES and not only in the size.
+            arguments
+                ~
+                nLon (1,1) double = 8
+                nLat (1,1) double = 4
+            end
+            step = 360 / nLon;
+            lon = -180 + step/2 + (0:nLon-1) * step;
+            lat = -90 + (180/nLat)/2 + (0:nLat-1) * (180/nLat);
+            [I, J] = ndgrid(1:nLat, 1:nLon);
+            RGB = uint8(cat(3, I * 10, J * 10, I + J));
+        end
+    end
+
+    methods (Test, TestTags = {'contract'})
+
+        function imageGridRejectsEveryDocumentedWay(tc)
+            [lon, lat, RGB] = tc.imgFixture();
+            tc.verifyError(@() geo.imageGrid(lon, lat, RGB(:, 1:end-1, :)), ...
+                'geo:imageGrid:SizeMismatch');
+            tc.verifyError(@() geo.imageGrid(lon, lat, RGB(:, :, 1:2)), ...
+                'geo:imageGrid:SizeMismatch');
+            bad = lon; bad(3) = bad(2);
+            tc.verifyError(@() geo.imageGrid(bad, lat, RGB), ...
+                'geo:imageGrid:NonMonotonic');
+            uneven = lon; uneven(3) = uneven(3) + 5;
+            tc.verifyError(@() geo.imageGrid(uneven, lat, RGB), ...
+                'geo:imageGrid:UnevenStep');
+            tc.verifyError(@() geo.imageGrid(lon, lat, RGB, ...
+                Alpha = ones(2, 2)), 'geo:imageGrid:AlphaMismatch');
+            tc.verifyError(@() geo.imageGrid(lon, lat, double(RGB)), ...
+                'geo:imageGrid:BadRange');
+        end
+
+        function itCarriesItsOwnProvenance(tc)
+            % R2. A raster that has lost track of where it came from is
+            % indistinguishable from one that never had a source.
+            [lon, lat, RGB] = tc.imgFixture();
+            IG = geo.imageGrid(lon, lat, RGB, Source = "NASA BMNG 2004-08");
+            tc.verifyEqual(IG.Identity, "geo.imageGrid");
+            tc.verifyEqual(IG.Source, "NASA BMNG 2004-08");
+            tc.verifyEqual(IG.Registration, "cell");
+            tc.verifyClass(IG.RGB, 'uint8');
+        end
+    end
+
+    methods (Test, TestTags = {'reference'})
+
+        function aWorldRasterKnowsItIsGlobal(tc)
+            % Oracle: the arithmetic of a cell-registered world grid,
+            % which geo.grid already asserts for scalar fields. The two
+            % kinds must agree, or a field and its backdrop disagree
+            % about the seam.
+            [lon, lat, RGB] = tc.imgFixture(8, 4);
+            IG = geo.imageGrid(lon, lat, RGB);
+            tc.verifyTrue(IG.IsGlobalLon);
+            G = geo.grid(lon, lat, double(RGB(:, :, 1)));
+            tc.verifyEqual(IG.IsGlobalLon, G.IsGlobalLon, ...
+                "an image and a field on the SAME axes must agree");
+            tc.verifyAndRecord(abs(IG.LonStep - G.LonStep), 1e-12, ...
+                "imageGrid vs grid step on identical axes", "deg");
+        end
+
+        function aRegionalRasterKnowsItIsNot(tc)
+            lon = 10:0.5:20;
+            lat = 40:0.5:50;
+            RGB = zeros(numel(lat), numel(lon), 3, 'uint8');
+            tc.verifyFalse(geo.imageGrid(lon, lat, RGB).IsGlobalLon);
+        end
+    end
+
+    methods (Test, TestTags = {'precision'})
+
+        function doubleToUint8IsTheDocumentedRounding(tc)
+            % The help says 0..1 becomes uint8 ONCE, here. That is a
+            % numerical claim and it gets a number: exact agreement with
+            % round(x*255), not "close enough".
+            [lon, lat, ~] = tc.imgFixture();
+            d = rand(numel(lat), numel(lon), 3);
+            d(1) = 0; d(2) = 1;
+            IG = geo.imageGrid(lon, lat, d);
+            tc.verifyAndRecord(max(abs(double(IG.RGB(:)) - round(d(:) * 255))), ...
+                0, "imageGrid double->uint8 vs round(x*255)", "levels");
+        end
+    end
+
+    methods (Test, TestTags = {'metamorphic'})
+
+        function aFlippedRasterComesBackTheSameWayUp(tc)
+            % The claim that pays for the Flipped field: feeding the
+            % north-to-south form of a raster must give BITWISE the same
+            % struct as the south-to-north form, apart from the flag.
+            [lon, lat, RGB] = tc.imgFixture();
+            up = geo.imageGrid(lon, lat, RGB);
+            down = geo.imageGrid(lon, fliplr(lat), flipud(RGB));
+            tc.verifyEqual(down.RGB, up.RGB, "bitwise: this is a permutation");
+            tc.verifyEqual(down.Lat, up.Lat);
+            tc.verifyFalse(up.Flipped);
+            tc.verifyTrue(down.Flipped);
+        end
+
+        function alphaFollowsItsPixels(tc)
+            % A flip that moved the raster and left the mask behind would
+            % put the transparency on the wrong hemisphere - and every
+            % individual value would still look plausible, which is the
+            % class of defect metamorphic tests exist for.
+            [lon, lat, RGB] = tc.imgFixture();
+            A = reshape(1:numel(lat) * numel(lon), numel(lat), numel(lon)) ...
+                / (numel(lat) * numel(lon));
+            down = geo.imageGrid(lon, fliplr(lat), flipud(RGB), ...
+                Alpha = flipud(A));
+            tc.verifyEqual(down.Alpha, A, "bitwise");
+        end
+    end
+
+    methods (Test, TestTags = {'vectorisation'})
+
+        function everyPixelSurvivesTheTrip(tc)
+            % An image constructor has no batched form, so the property
+            % standing in for it is that the whole raster is carried
+            % element for element: a 1-pixel call and the full call must
+            % agree at every pixel.
+            [lon, lat, RGB] = tc.imgFixture(16, 8);
+            IG = geo.imageGrid(lon, lat, RGB);
+            for k = [1 17 63 numel(lat) * numel(lon)]
+                [i, j] = ind2sub([numel(lat) numel(lon)], k);
+                one = geo.imageGrid(lon(j), lat(i), RGB(i, j, :));
+                tc.verifyEqual(squeeze(IG.RGB(i, j, :)), ...
+                    squeeze(one.RGB(1, 1, :)), "bitwise");
+            end
+        end
+    end
+
+    methods (Test, TestTags = {'robustness'})
+
+        function aSinglePixelRasterIsNotAnError(tc)
+            % One pixel has no step to measure. It is a legitimate input -
+            % the degenerate case of a region - and must not be rejected
+            % by machinery that assumed at least two.
+            IG = geo.imageGrid(0, 0, zeros(1, 1, 3, 'uint8'));
+            tc.verifyEqual(size(IG.RGB), [1 1 3]);
+            tc.verifyFalse(IG.IsGlobalLon);
+        end
+
+        function aPostedWorldRasterIsGlobalToo(tc)
+            % The other registration, and it closes the globe by a
+            % different arithmetic: posted spans a full 360 with a
+            % repeated seam column, cell spans 360 minus one step. Getting
+            % one right and the other wrong shifts a backdrop by half a
+            % cell against the field on top of it.
+            lon = -180:45:180;
+            lat = -90:45:90;
+            RGB = zeros(numel(lat), numel(lon), 3, 'uint8');
+            tc.verifyTrue(geo.imageGrid(lon, lat, RGB, ...
+                Registration = "posting").IsGlobalLon);
+            tc.verifyFalse(geo.imageGrid(lon, lat, RGB, ...
+                Registration = "cell").IsGlobalLon);
+        end
+    end
+
+    methods (Test, TestTags = {'speed'})
+
+        function wrappingARasterCostsLessThanCopyingIt(tc)
+            % The budget that matters: this function must not be doing
+            % real work. A ratio against ONE pass over the same bytes,
+            % both timed on the same arrays, per VALIDATION_GUIDE Part 4.
+            tc.assumeSpeedTestsEnabled();
+            [lon, lat, RGB] = tc.imgFixture(1024, 512);
+            tc.assertRatioBudget( ...
+                @() geo.imageGrid(lon, lat, RGB), ...
+                @() sum(RGB(:)), ...
+                6, 2, "geo.imageGrid / one pass over the raster, 1024x512");
+        end
+    end
+
+
 end
