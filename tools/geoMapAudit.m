@@ -1083,8 +1083,22 @@ if isempty(tok)
          'this reads. One authority per fact means this check must ' ...
          'follow it, not keep a copy.']);
 end
-folders = string(regexp(tok{1}, '"([^"]+)"', 'tokens'));
-folders = reshape([folders{:}], 1, []);
+% Built element by element rather than with STRING on a nested cell.
+% REGEXP 'tokens' gives a cell of 1x1 cells, and the compact form that
+% looks right - string(...) then brace-expanded - is neither one thing
+% nor the other and threw inside the fixture, where the audit caught it
+% and reported no findings at all.
+hits = regexp(tok{1}, '"([^"]+)"', 'tokens');
+folders = strings(1, numel(hits));
+for k = 1:numel(hits)
+    folders(k) = string(hits{k}{1});
+end
+if isempty(folders)
+    error('geo:audit:FolderListNotFound', ...
+        ['geoMapSetup declares a folder list this could not read. An ' ...
+         'empty list would make the closure check pass by measuring ' ...
+         'nothing.']);
+end
 end
 
 function names = harnessNames(root)
@@ -1194,6 +1208,15 @@ for i = 1:numel(reg)
     c = onCleanup(@() geoMapAuditFixtures("clean", d));
     [~, f] = geoMapAudit(d, SelfTest = false, Verbose = false);
     fired = unique([f.check]);
+    if isempty(fired)
+        % TYPED EMPTY. [f.check] on an empty findings struct is a
+        % DOUBLE, so the comparison below raised "Comparison between
+        % double and string is not supported" instead of reporting that
+        % a check had not fired. The self-test could not say what it
+        % exists to say, and the failure looked like a MATLAB error
+        % rather than a red check (F.6).
+        fired = strings(1, 0);
+    end
     if reg(i).check == ""
         good = isempty(fired);
         lines(end+1, 1) = sprintf('  control          %s%s', ...
