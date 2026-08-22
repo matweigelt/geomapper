@@ -2379,4 +2379,66 @@ superseded twenty-five commits over, and the run above is witnessed.
 
 ---
 
-*Entries R-031 onward are written at each stage's green gate.*
+## R-031 — Stage F, checkpoint F.9, 22-Aug-2026, **tier A (bridge)**
+
+**Scope.** The release checklist, verified item by item, and the version
+chain moved to **2.0.516**.
+
+**Execution tier. Tier A.** Every item below was executed, and the two
+that have no automated oracle were done by the means the checklist names
+rather than waved through.
+
+| item | verified by |
+|---|---|
+| `rungeoMapTests("all")` green | bridge, **516 + 0 + 0**, gate green on all six, `speed budgets ok (24 of 24)` |
+| the same commit elsewhere | CI 32568624405, 500 + 0 + 16, every filter registered |
+| docs build, zero broken links | `build_help`: 43 functions, **398 arguments documented, 398 rendered**, completeness 1, 0 broken links, 0 bad examples |
+| the rendered pages **rasterised and looked at** | Matthias, 22-Aug. No automated oracle exists and none is pretended |
+| **a fresh clone, root on the path only** | see below |
+| every Part 0 debt discharged or carried | V1 … V9, all annotated with the measurement that closed them |
+| the ledger fully ticked | Part 1.1 and 1.2, and `ledger_sync` green |
+
+**The fresh-clone check, which is D-020's whole claim.** Cloned from
+GitHub into a temp folder, then run in a **separate MATLAB with
+`restoredefaultpath`** so the path is a user's and not a developer's:
+
+```
+geo.map resolves      : 1
+tools on path         : 0        <- sha256OfText must NOT resolve
+GettingStarted        : ran      (wrote geomap_getting_started.pdf)
+manual present        : 1        (46 pages)
+info.xml help_location: docs/html  (exists)
+```
+
+**That is the package-closure rule verified from the user's side rather
+than the archive's**, which is exactly the re-derivation F.6 argued for
+and had not yet demonstrated. Had `docs/html` still been ignored, the
+last line would have read `(MISSING)`, and PV-146 would have shipped.
+
+**Version 2.0.491-alpha.1 → 2.0.516.** The patch component is the
+verified test-point count, so it moves because the evidence moved: 491
+was the count at PV-127 and twenty-five points have been added since,
+each with a defect behind it. The `-alpha.1` is dropped because the
+checklist it was waiting on is complete.
+
+**What is NOT closed, and is carried rather than tidied.**
+
+- **O11 is unfilled.** The GRACE integration scenario uses a field
+  labelled synthetic in the code. Filling it needs a named mascon release
+  and its data file, and the expectation re-derived when a newer release
+  supersedes it. Carried openly rather than faked with a
+  plausible-looking number.
+- **PV-131.** The PV-127 round has no records entry; its gate is reported
+  only in commit `3bdfb87` and no session witnessed it. Not fabricated.
+- **Sixteen points do not run on CI** — A-6, reduced from twenty-four and
+  named per reason. The union of the two hosts is the whole suite.
+
+**The reading this release leaves behind.** Nine defects reached shipped
+code across Stages C to F. **Seven were found by a human running the
+toolbox or by a run on the target machine; none by CI.** A suite of 516
+points is necessary and is not sufficient, because a figure and a host
+are both outside what it can see.
+
+---
+
+*Entries R-032 onward are written at each stage's green gate.*

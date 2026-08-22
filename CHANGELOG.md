@@ -9,7 +9,72 @@ It moves when the evidence moves.
 
 ---
 
-## Unreleased — 2.0.491-alpha.1
+## 2.0.516 — 2026-08-22
+
+**First release.** 516 test points, reconciled three ways, green on both
+hosts. The patch component is the verified test-point count; it moves
+when the evidence moves.
+
+### Verified for this release
+
+- `rungeoMapTests("all")` on the target machine: **516 passed, 0 failed,
+  0 filtered**, green gate on all six conditions.
+- The same commit on CI: 500 passed, 16 filtered, every filter carrying a
+  registered reason. Neither host runs the whole suite alone; the union
+  does.
+- A **fresh clone with only the repository root on the path**: `geo.map`
+  resolves, `tools/` does not, `GettingStarted` runs end to end, and
+  `info.xml` points `doc geoMap` at a `docs/html` that is there.
+- The rendered manual rasterised and read by a human. There is no
+  automated oracle for "the figure is right".
+
+### Fixed since the last entry
+
+- **The frame is drawn all the way round.** On mollweide, hammer,
+  robinson, sinusoidal, equirectangular and winkeltripel a global map's
+  frame was drawn on the western half only: a boundary ring is a map
+  edge, and it was being projected in the window meant for data, so its
+  eastern meridian folded onto its western one (PV-145).
+- **A frame band no longer collapses at a point pole.** mollweide, hammer
+  and sinusoidal map the pole to a single point, and the band tapered to
+  nothing there — the frame read as a triangle (PV-135).
+- **Overlays are cut at the frame.** The coastline, contours, polygons,
+  points, stipple and tracks were clipped to the projection's domain and
+  never to the map's extent: on a regional map, 92% of the coastline
+  drawn lay outside the frame (PV-136, PV-142, PV-144).
+- **A grid says whether its values sit at points or over areas.**
+  Registration — gridline versus pixel, in GMT's terms — is inferred from
+  the axes and decides the region a map covers. Without it a global grid
+  was one cell short of the world and every cell sat half a step from
+  where its value belonged (PV-140).
+- **Lambert azimuthal clips short of its antipode**, where a meridian
+  crossing the singularity jumped the full diameter of the disc (PV-141).
+- **A coordinate axis is checked for being angular.** A NetCDF on a
+  projected grid was read straight through and produced a blank figure
+  with no cause attached (A-3).
+- **`geo.readGrid` distinguishes an absent file from an unreadable one**,
+  and attaches the underlying error as a cause (A-4).
+- **The manual ships with the toolbox.** Distribution is git, so an
+  ignored `docs/html` was an undelivered manual (PV-146, D-020).
+
+### Instruments added
+
+- **A filter register.** Every point that does not run names a registered
+  reason, and an unregistered one fails the gate. Before this, 42 of 491
+  points could vanish and the gate still printed PASS (A-1).
+- **A reference-sync gate.** The committed mirror reference is checked
+  against what the mirror computes, with a register naming which values
+  may move between environments and by how much (A-2).
+- **A ledger gate.** The handover's status and the records' evidence are
+  checked against each other (PV-130).
+- **A GSHHG oracle subset ships with the tests**, so the real-data reader
+  tier runs on CI and not only on one machine (A-6).
+
+---
+
+---
+
+## Superseded — 2.0.491-alpha.1
 
 ### Fixed
 - **The toolbox now runs when installed.** `geo.cache` called `sha256OfText`

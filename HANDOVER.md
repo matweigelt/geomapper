@@ -54,7 +54,7 @@
 | **C** | L2 I/O and caching (4 files + edit) | 0, A, B | **A** (bridge) | **☑ done** — 205 points predicted, 205 run, 205 passed. **V3 discharged**, O5 and O6 filled against real data. GeoTIFF/worldfile deferred with its identifier and contract test in place | **15-Aug-2026** | R-008 |
 | **D** | L3 cartographic elements (14 files) | 0, A–C | **A** (bridge) | **☑ done** — seven checkpoints. **347 points predicted, 347 run, 347 passed, 0 failed.** Fourteen L3 elements and five internals replace v1's 3413-line plotting function, its two near-clones and its five plumbing functions | **16-Aug-2026** | R-009 … R-015 |
 | **E** | L4 fronts (6 files) | 0, A–D | **A** (bridge) | **☑ done** — seven checkpoints. **468 points predicted, 468 run, 468 passed, 0 failed.** `geo.map` is 128 lines against `geoImagesc`'s 3413. V9 discharged at E.1c | **20-Aug-2026** | R-016 … R-022 |
-| **F** | Docs, packaging, release, independent audit | 0, A–E | **A** (bridge) + CI | **◐ in progress** — deliverables 1–7, 9, **11** delivered and executed; **8 withdrawn (D-020)**; **12 done**, all six findings discharged (#32–#36). **Open: deliverable 10's last item only — the rendered manual rasterised and looked at, which has no automated oracle and belongs to Matthias.** Bridge run 22-Aug: **516 + 0 + 0, nothing filtered**, gate green on all six | — | R-023 … R-030 |
+| **F** | Docs, packaging, release, independent audit | 0, A–E | **A** (bridge) + CI | **☑ done** — deliverables 1–7, 9, 10, 11, 12 executed; **8 withdrawn (D-020)**. Release checklist complete, every item verified including the two with no automated oracle: **a fresh clone with only the root on the path runs `GettingStarted` and resolves `doc geoMap`**, and **the rendered manual read by a human**. Bridge: **516 + 0 + 0, nothing filtered** | **22-Aug-2026** | R-023 … R-030 |
 
 Status values, and nothing else: `☐ not started` · `◐ in progress` · `◐ provisional (code shipped, not executed)` · `☑ done`.
 
@@ -96,6 +96,7 @@ Stages B and D are delivered in checkpoints — consecutive turns within one cha
 | F | F.6 | git distribution, D-020 | ☑ 515 points, R-029 |
 | F | F.7 | PV-145 … PV-148, **on the bridge** | ☑ **516 points, 0 filtered**, R-030 |
 | F | F.8 | `RECORDS.md` final state, deliverable 11 | ☑ this round |
+| F | F.9 | release checklist verified; version chain to **2.0.516** | ☑ **2.0.516**, R-031 |
 | F | F.5a | shipped GSHHG fixture subset; `serialEqualsParallel` filters only without PCT | ◐ pushed, CI leg pending |
 | F | — | **deliverable 12: the independent audit** | ☐ its own session, findings only |
 | F | F.5 | audit finding A-1: filter registry, three-state speed, partial-run banner | ◐ pushed; CI is the confirming run |
@@ -1043,7 +1044,7 @@ anything. R-011, PV-080.
 7. **`README.md`** — v1's structure updated, plus a **migration table**: old call → new call for the six main functions, and the `Projection` → `geo.crs` change.
 8. ~~**`geoMap.prj`** — `matlab.addons.toolbox` spec.~~ **WITHDRAWN at F.6 (D-020).** `.mltbx` is deprecated; distribution is via git. The file that decides what a user receives is now `geoMapSetup`, which a developer runs and a user does not.
 9. **`CHANGELOG.md`** — v2.0.0 entry referencing the F-numbers fixed **and the probe result for each** (a defect claimed fixed that never reproduced is not a fix).
-10. **Release checklist** — `rungeoMapTests("all")` green; `buildtool check` clean; docs build with zero broken links **and the rendered pages rasterised and looked at**; **a fresh clone with only the root on the path runs `GettingStarted` and resolves `doc geoMap`** (D-020: the `.mltbx` item it replaces is withdrawn, not skipped); **every debt row in Part 0 either discharged or explicitly carried with its reason**; the ledger fully ticked.
+10. ~~**Release checklist**~~ **COMPLETE, 22-Aug-2026.** `rungeoMapTests("all")` green on the bridge — **516 + 0 + 0, nothing filtered**; `buildtool check` clean; docs build with zero broken links, **43 functions, 398 arguments documented and 398 rendered**, and the pages **rasterised and read**; **a fresh clone with only the root on the path resolves `geo.map`, does NOT resolve `sha256OfText`, runs `GettingStarted` end to end and points `doc geoMap` at a `docs/html` that exists** — the closure rule verified from the user's side rather than the archive's; every debt row in Part 0 discharged; the ledger fully ticked.
 11. **`RECORDS.md` final state** — one entry per stage, per Appendix D's template.
 
 **4. Accuracy requirements.** Doc completeness counted in the artefact, target 100% of public arguments rendered; zero broken links; the version chain agreeing across all six files that name it.
