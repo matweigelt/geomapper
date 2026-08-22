@@ -51,7 +51,7 @@ function folders = geoMapSetup()
 %   geoMap v2.0 | 20-Aug-2026 | Claude Opus 5 (Anthropic)
 
 root = string(fileparts(mfilename('fullpath')));
-names = ["tests" "tools" "records" "docbuild"];
+names = geoMapSetup_developerFolders();
 
 folders = root;
 for n = names
@@ -64,4 +64,22 @@ for n = names
     folders(end + 1) = p;                                   %#ok<AGROW>
 end
 addpath(folders{:});
+end
+
+% ======================================================================
+function names = geoMapSetup_developerFolders()
+%GEOMAPSETUP_DEVELOPERFOLDERS  The folders a DEVELOPER needs, and only.
+%   THE ONE LIST. PV-126 made this file the single path authority after
+%   six copies had grown across ci.yml, gates.sh and buildfile.m; the
+%   audit then grew a seventh of its own to decide what a user does NOT
+%   receive. It reads this instead.
+%
+%   The distinction the list encodes is the whole of the closure rule: a
+%   USER clones the repository and puts the ROOT on the path, which
+%   resolves +geo and nothing else. Everything named here is on the path
+%   only because a developer ran this function. So +geo may not call
+%   into any of it - not because a package archive omits the file, but
+%   because the user's path does (PV-127, re-derived for git
+%   distribution at F.6).
+names = ["tests" "tools" "records" "docbuild"];
 end

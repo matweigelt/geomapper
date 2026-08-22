@@ -62,6 +62,34 @@ classdef TestStage03_audit < GeoMapTestCase
     % ==================================================================
     methods (Test, TestTags = {'contract'})
 
+        function theAuditReadsGeoMapSetupsFolderListRatherThanKeepingOne(tc)
+            % D-020. Distribution is git, so the file that decides what a
+            % user receives is geoMapSetup - what a developer runs and a
+            % user does not. The audit's closure check needs that same
+            % list, and PV-126 already paid for what happens when it is
+            % copied: six copies across ci.yml, gates.sh and buildfile.m,
+            % and adding docbuild/ broke a seventh.
+            %
+            % So the audit PARSES it out of geoMapSetup, and this asserts
+            % the parse still finds what that file declares. If the
+            % declaration changes shape the audit raises rather than
+            % silently checking an empty list - which is the failure this
+            % test exists to make impossible.
+            src = string(fileread(which('geoMapSetup')));
+            tok = regexp(src, 'names\s*=\s*\[([^\]]*)\]', 'tokens', 'once');
+            tc.assertNotEmpty(tok, ...
+                'geoMapSetup must declare its folder list readably.');
+            declared = string(regexp(tok{1}, '"([^"]+)"', 'tokens'));
+            declared = reshape([declared{:}], 1, []);
+            tc.verifyNotEmpty(declared, ...
+                'and the list must not parse to nothing.');
+            for f = declared
+                tc.verifyTrue(isfolder(fullfile(geoMapRoot(), f)), ...
+                    sprintf('%s is declared on the developer path and ' ...
+                            'does not exist', f));
+            end
+        end
+
         function rejectsAMissingRoot(tc)
             tc.verifyError(@() geoMapAudit("no such folder anywhere"), ...
                 'geo:audit:NoSuchRoot');

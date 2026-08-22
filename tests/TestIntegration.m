@@ -91,7 +91,7 @@ classdef TestIntegration < GeoMapTestCase
             % THE ONLY THING HERE THAT CI CANNOT SEE FOR ITSELF.
             % geoMapSetup puts tests/, tools/, records/ and docbuild/ on
             % the path, so a call from +geo into any of them resolves and
-            % every suite passes. The .mltbx ships +geo, data and
+            % every suite passes. A user's path carries +geo, data and
             % docs/html; the same call is undefined for everyone who
             % installs it. Twice now: geo.readGrid reaching for
             % geoMapRoot (PV-115), and geo.cache calling sha256OfText out
