@@ -58,7 +58,27 @@ import sys
 # The stage letter is captured, and the checkpoint when the entry names
 # one. The template entry in RECORDS.md writes "Stage <X>", which this
 # deliberately does not match: a template is not evidence.
-# THE STAGE ALPHABET WAS [0A-F] AND STAGE G OUTGREW IT (22-Aug-2026).
+# THE STAGE ALPHABET WAS [0A-F] IN FOUR PLACES AND STAGE G OUTGREW IT
+# (22-Aug-2026), and the four failed in two different ways.
+#
+# RE_RECORD failed LOUDLY: it reported the ledger's citation of R-033 as
+# pointing at nothing. RE_STAGE_ROW and RE_CKPT_ROW failed SILENTLY -
+# they did not match a row beginning "| **G** |" at all, so every Stage G
+# row was invisible and the gate reported zero disagreements about a
+# section it was not reading. The loud one announced itself; the silent
+# ones had to be looked for, and were found only because the loud one
+# prompted a grep.
+#
+# A fifth thing went wrong and belongs here rather than in a commit
+# message: the first attempt to widen these three ended in an assertion
+# that fired BEFORE the file was written, so nothing was saved - and the
+# traceback was misread as proof that the only survivor was this comment.
+# A commit then claimed the repair. VALIDATION_GUIDE Part 3: read what
+# the instrument actually inspected, and never take a script's output as
+# evidence that its side effect happened.
+#
+# [0A-Z] never needs editing again. A bogus stage letter surfaces as a
+# record nobody cites, which the other half of this gate already catches.
 # R-033 was written, the ledger cited it, and this gate reported the
 # citation as pointing at nothing - correctly, from its own point of
 # view, and wrongly about the tree. A hardcoded alphabet fails silently
@@ -68,7 +88,7 @@ import sys
 # of this gate already catches.
 RE_RECORD = re.compile(
     r"^##\s+R-(\d+)\s*[-\u2013\u2014]+\s*Stage\s+([0A-Z])\b"
-    r"(?:[^\n]*?checkpoint\s+([0A-F]\.\d[a-z]?))?",
+    r"(?:[^\n]*?checkpoint\s+([0A-Z]\.\d[a-z]?))?",
     re.IGNORECASE | re.MULTILINE)
 
 # "V4 discharged", "**V9 discharged**", "| V9 | discharged at E.1c |".
@@ -78,11 +98,11 @@ RE_DISCHARGED = re.compile(
     r"V(\d+)\**\s*(?:\|\s*)?\**[^.\n|]{0,40}?discharged", re.IGNORECASE)
 
 # Part 1.1 stage row: first cell is the stage, bold or plain.
-RE_STAGE_ROW = re.compile(r"^\|\s*\**([0A-F])\**\s*\|(.*)$", re.MULTILINE)
+RE_STAGE_ROW = re.compile(r"^\|\s*\**([0A-Z])\**\s*\|(.*)$", re.MULTILINE)
 
 # Part 1.2 checkpoint row: "| B | B.1 | contents | status |".
 RE_CKPT_ROW = re.compile(
-    r"^\|\s*\**[0A-F]\**\s*\|\s*\**([0A-F]\.\d[a-z]?)\**\s*\|(.*)$",
+    r"^\|\s*\**[0A-Z]\**\s*\|\s*\**([0A-Z]\.\d[a-z]?)\**\s*\|(.*)$",
     re.MULTILINE)
 
 # Part 0 debt row: "| V4 | claim | why | discharged by | severity |".

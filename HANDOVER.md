@@ -62,7 +62,7 @@
 | **E** | L4 fronts (6 files) | 0, A–D | **A** (bridge) | **☑ done** — seven checkpoints. **468 points predicted, 468 run, 468 passed, 0 failed.** `geo.map` is 128 lines against `geoImagesc`'s 3413. V9 discharged at E.1c | **20-Aug-2026** | R-016 … R-022 |
 | **F** | Docs, packaging, release, independent audit | 0, A–E | **A** (bridge) + CI | **☑ done** — deliverables 1–7, 9, 10, 11, 12 executed; **8 withdrawn (D-020)**. Release checklist complete, every item verified including the two with no automated oracle: **a fresh clone with only the root on the path runs `GettingStarted` and resolves `doc geoMap`**, and **the rendered manual read by a human**. Bridge: **516 + 0 + 0, nothing filtered** | **22-Aug-2026** | R-023 … R-030 |
 
-| **G** | Post-2.0: oracle gate, image backdrop + data cache, spherical filtering, sampling and grid algebra, animation and vectors | F | **A** (bridge) + CI | **☐ not started.** Scope set by the three-reviewer examination of 22-Aug (R-032) and specified in **Part 10**. Six packages G.0 … G.5; G.0 first because it is the instrument the rest are judged by | — | R-032 |
+| **G** | Post-2.0: oracle gate, image backdrop + data cache, sampling, animation and vectors, colour interchange | F | **A** (bridge) + CI | **◐ in progress.** G.0 closed (register gate, PV-152); G.1–G.5 open. Scope set by the three-reviewer examination of 22-Aug (R-032), **corrected the same day by D-025** once the division of labour with `shAnalysis` was stated, and specified in **Part 10**. Six packages G.0 … G.5; G.0 first because it is the instrument the rest are judged by | 22-Aug | R-032, R-033 |
 
 Status values, and nothing else: `☐ not started` · `◐ in progress` · `◐ provisional (code shipped, not executed)` · `☑ done`.
 
