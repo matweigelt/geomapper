@@ -16,13 +16,27 @@
 
 name: gates
 
-# Deliberately BOTH triggers. The twin run looks redundant and is an
-# instrument: when a runner step hangs, the only way to tell platform
-# trouble from a genuine hang is to compare the step's duration against
-# its twin from the other trigger. That comparison settled four hang
-# diagnoses in one session of a reference project.
+# PUSH ON main PLUS pull_request, and NOT push on every branch.
+#
+# The previous block ran both triggers on every branch and defended the
+# duplicate as an instrument: a twin run whose step durations could be
+# compared when a runner hung. WORKFLOW_GUIDE Part 4 forbids exactly
+# that pairing, and the defence does not survive being costed. The twin
+# is a permanent doubling of every job on every push - roughly 2x the
+# runner minutes and 2x the queue depth for the whole life of the
+# project - bought to make one rare diagnosis marginally easier, and
+# that diagnosis has a cheaper instrument already in the file: the
+# step-level timeout on the MATLAB setup step, which turns a hang into
+# a named failure in eight minutes without any comparison at all.
+#
+# What is NOT lost: a branch with an open pull request still gets a run
+# on every push, because pull_request fires on synchronize. What is
+# lost is the run on a branch nobody has opened a PR for - which is the
+# run WORKFLOW_GUIDE Part 5 says should not exist, since the draft PR
+# is what buys the verdict.
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 

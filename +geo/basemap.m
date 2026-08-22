@@ -112,6 +112,15 @@ function [figH, axH, H] = basemap(G, crs, options)
 %                                        of these is true, because a cap
 %                                        MEANS the data continues.
 %             Crs          (1,1) struct
+%             Registration (1,1) string   as carried by the grid
+%             CreatedFigure (1,1) logical True when THIS call created the
+%                                        figure, false when it drew into
+%                                        an axes the caller supplied. A
+%                                        front that fails after this call
+%                                        reads it to decide whether the
+%                                        figure is its to discard, rather
+%                                        than testing Parent a second
+%                                        time (PV-149, CODING_GUIDE R1).
 %
 %   ACCURACY
 %     No numerical claim of its own beyond arithmetic already asserted
@@ -240,7 +249,12 @@ CData = geo.colormaps("truecolor", Z, cmap, ...
     CLim = cLim, Mask = mask, MaskColor = options.MaskColor, ...
     NaNColor = options.NaNColor, Shade = shade);
 
-[figH, axH] = resolveAxes(options.Parent, options.NaNColor);
+[figH, axH, createdFigure] = resolveAxes(options.Parent, options.NaNColor);
+% FROM HERE ON A FAILURE MUST NOT LEAVE THE FIGURE BEHIND (PV-149). Every
+% statement below can raise - the surface, the layout registration, the
+% axes styling - and until this guard existed each of them leaked a
+% visible, half-drawn figure on the way out.
+try
 prior = geo.internal.layout("data", axH, "basemap");
 if ~isempty(prior) && isgraphics(prior.Surface)
     delete(prior.Surface);              % replace, never accumulate
@@ -269,11 +283,15 @@ dataLimits = struct('XLim', xlim(axH), 'YLim', ylim(axH));
 H = struct('Surface', s, 'CLim', cLim, 'Colormap', cmap, ...
     'Shade', shade, 'DataLimits', dataLimits, 'Crs', crs, ...
     'LonLimit', [min(lonE) max(lonE)], 'LatLimit', [min(latE) max(latE)], ...
-    'Registration', G.Registration, ...
+    'Registration', G.Registration, 'CreatedFigure', createdFigure, ...
     'HasUnder', any(Z(:) < cLim(1)), 'HasOver', any(Z(:) > cLim(2)));
 
 geo.internal.layout("register", axH, "basemap", @(~) []);
 geo.internal.layout("setData", axH, "basemap", H);
+catch err
+    geo.internal.discardOnFailure(figH, createdFigure);
+    rethrow(err);
+end
 end
 
 % ======================================================================
@@ -518,9 +536,15 @@ shade = geo.hillshade(lon, lat, source, ...
     Ambient = options.Ambient, Multi = options.Hillshade == "multi");
 end
 
-function [figH, axH] = resolveAxes(parent, nanColor)
-%RESOLVEAXES  The axes to draw into, and its background.
-if isempty(parent)
+function [figH, axH, created] = resolveAxes(parent, nanColor)
+%RESOLVEAXES  The axes to draw into, its background, and who made it.
+%   CREATED is returned rather than re-derived by each caller. Whether
+%   this toolbox owns the figure is one fact, and the only place that
+%   can state it without guessing is the branch that took the decision
+%   (CODING_GUIDE R1). GEO.MAP reads it from H.CreatedFigure; it does
+%   NOT test isempty(Parent) a second time.
+created = isempty(parent);
+if created
     figH = figure('Color', 'w');
     axH = axes('Parent', figH);
 else

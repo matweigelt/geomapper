@@ -291,6 +291,47 @@ classdef TestE1_map < GeoMapTestCase
     % ==================================================================
     methods (Test, TestTags = {'robustness'})
 
+        function aFrontThatFailsLeavesNoFigureBehind(tc)
+            % PV-149, and it is the test that should have existed before
+            % the four windows did. anElementThatNeedsItsDataSaysWhichField
+            % above asserts the IDENTIFIER and stops there; the identifier
+            % was always right, and a correct error can still abandon a
+            % half-drawn figure on screen. Asserting only the exception is
+            % VALIDATION_GUIDE Part 3's proxy - something implied by the
+            % claim rather than the claim.
+            %
+            % Four rungs, deliberately: two that fail below the graticule
+            % (Polygons, Stipple) and two above it (Track, Points). The
+            % pair below is what a reader sees as an "unfinished" plot -
+            % a bare surface with no graticule, no coastline and no
+            % frame - and a guard that only covered the late rungs would
+            % pass this test with two of the four still leaking.
+            before = numel(findall(groot, 'Type', 'figure'));
+            for spec = ["Polygons" "Stipple" "Track" "Points"]
+                args = {spec, struct('LineWidth', 1)};
+                tc.verifyError(@() geo.map(tc.worldGrid(), args{:}), ...
+                    'geo:map:MissingField', spec);
+            end
+            tc.verifyEqual(numel(findall(groot, 'Type', 'figure')), ...
+                before, ['a front that raises must leave the graphics ' ...
+                'root as it found it']);
+        end
+
+        function aFailingFrontLeavesTheCallersAxesAlone(tc)
+            % The other half of the rule, and the one a careless repair
+            % breaks: discard what THIS call created, never what the
+            % caller supplied. A guard that deleted unconditionally would
+            % pass the test above and destroy a user's figure - strictly
+            % worse than the leak it replaced, because a leak is visible
+            % and a deleted figure is not.
+            ax = axes('Parent', tc.figureFor());
+            f = ancestor(ax, 'figure');
+            tc.verifyError(@() geo.map(tc.worldGrid(), Parent = ax, ...
+                Points = struct('LineWidth', 1)), 'geo:map:MissingField');
+            tc.verifyTrue(isgraphics(f, 'figure'), ...
+                'the caller''s figure is not geo.map''s to delete');
+        end
+
         function everyElementAtOnceStillDraws(tc)
             tc.suppressWarning('geo:scalebar:ScaleVaries');
             G = tc.worldGrid();

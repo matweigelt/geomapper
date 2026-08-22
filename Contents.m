@@ -1,5 +1,5 @@
 % geoMap — cartographic visualisation in base MATLAB
-% Version 2.0.516 22-Aug-2026
+% Version 2.0.518 22-Aug-2026
 %
 %   THIS FILE IS THE VERSION AUTHORITY.
 %
@@ -12,9 +12,13 @@
 %   THE PATCH COMPONENT IS THE VERIFIED TEST-POINT COUNT (handover 6.7).
 %   It moves when the EVIDENCE moves, so a pure rename correctly bumps
 %   nothing and adding a checkpoint's tests bumps it by exactly what they
-%   added. 491 is the count `rungeoMapTests("all")` reconciles three ways.
-%   The -alpha.n suffix carries until the Stage F release checklist is
-%   complete.
+%   added. The patch component of the Version line above IS that count,
+%   and no other line here restates it - a count written twice in one
+%   file is the F6 shape at its smallest scale. This paragraph carried
+%   the literal 491 for twenty-five points after the version had moved
+%   to 516, and every gate stayed green: `versionAgreement` compares
+%   version DECLARATIONS, and a number in prose is not one
+%   (DOCUMENTATION_GUIDE Part 3 - a stamp is not the content).
 %
 %   EVERY SUMMARY BELOW IS ITS FUNCTION'S H1 LINE, CHARACTER FOR
 %   CHARACTER, and TestContentsConsistency asserts it. A contents file

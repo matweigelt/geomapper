@@ -11,7 +11,12 @@ function ok = rungeoMapTests(selector, opts)
 %
 %     A green gate means: zero failures AND every suite loaded AND no new
 %     warning identifier AND no speed budget exceeded AND the manifest
-%     verified. Not "the number went up".
+%     verified AND no test left a figure open. Not "the number went up".
+%
+%     The figure census was added last and is the one that had already
+%     been failing silently: a green 516-point run left four visible
+%     figures on the target machine, and no gate here could see them
+%     (PV-149).
 %
 %   SYNTAX
 %     ok = rungeoMapTests()             % correctness tiers
@@ -123,6 +128,8 @@ geoMapTestRecord('reset');
 runner = TestRunner.withTextOutput('OutputDetail', opts.Verbosity);
 plugin = WarningInventoryPlugin();
 runner.addPlugin(plugin);
+figCensus = FigureCensusPlugin();
+runner.addPlugin(figCensus);
 
 result = runner.run(suite);
 
@@ -246,6 +253,30 @@ end
 fprintf('  speed tier: %s\n', speedNote);
 
 fprintf('\n-------------------------------------------------------------\n');
+fprintf(' FIGURE CENSUS  (methods that left a figure open)\n');
+fprintf('-------------------------------------------------------------\n');
+% PV-149. Every other condition below reads results, warnings, filters,
+% budgets, coverage or sources; none of them reads the graphics root,
+% and a green 516-point run left four visible figures behind without a
+% single instrument noticing. Reported, never cleaned up: closing them
+% here would make the gate green by destroying its evidence, and would
+% close figures the operator opened for their own reasons.
+leaks = figCensus.Leaks;
+figOk = isempty(leaks);
+if figOk
+    fprintf('  (none - the graphics root ends as it began)\n');
+else
+    for i = 1:numel(leaks)
+        fprintf('  %-58s +%d\n', leaks(i).name, leaks(i).delta);
+    end
+    fprintf(['  GATE FAILED: a test that leaves a figure open has\n' ...
+             '  changed the machine it measures. Either the method must\n' ...
+             '  close what it opened, or - the usual case - a library\n' ...
+             '  function created a figure and failed before finishing\n' ...
+             '  it. See geo.internal.discardOnFailure.\n']);
+end
+
+fprintf('\n-------------------------------------------------------------\n');
 fprintf(' TEST-CATEGORY COVERAGE BY FUNCTION\n');
 fprintf('-------------------------------------------------------------\n');
 covOk = reportCategoryCoverage(root, suite);
@@ -284,7 +315,8 @@ fprintf(['  Compare these against the count you predicted BEFORE the\n' ...
          '  signal that the change was not the change you thought you\n' ...
          '  made. Do not write the number into any document.\n']);
 
-ok = (nFail == 0) && manifestOk && warnOk && speedOk && covOk && auditOk;
+ok = (nFail == 0) && manifestOk && warnOk && speedOk && covOk && ...
+     auditOk && figOk;
 % A subset run may be green and is not a green GATE. The words are
 % reserved for the run the gate is defined over, so a screenshot of a
 % partial run cannot be read as one (audit finding A-1).
@@ -302,6 +334,8 @@ fprintf('   manifest verified  %s\n', tick(manifestOk));
 fprintf('   warning inventory  %s\n', tick(warnOk));
 fprintf('   speed budgets      %s   (%s)\n', tick(speedOk), speedNote);
 fprintf('   category coverage  %s\n', tick(covOk));
+fprintf('   figure census      %s   (%d leaking method(s))\n', ...
+    tick(figOk), numel(leaks));
 fprintf('   static audit       %s\n', tick(auditOk));
 fprintf('=============================================================\n\n');
 end

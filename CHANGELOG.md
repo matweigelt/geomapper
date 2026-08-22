@@ -9,6 +9,50 @@ It moves when the evidence moves.
 
 ---
 
+## 2.0.518 — 2026-08-22
+
+**PV-149 — a green run left four figures open, and nothing could see them.**
+`geo.basemap` creates the figure; `geo.map` then climbs a fourteen-rung
+ladder into it. Any rung may raise, and until now nothing owned the
+figure while it was climbed: a front that failed left a visible,
+half-drawn map on screen. Four survived every 516-point green run. Two
+of them showed only the basemap surface, because `Polygons` and
+`Stipple` sit below `Graticule` on the ladder — the "unfinished plot" a
+reader sees is not unfinished, it is abandoned.
+
+- `geo.internal.discardOnFailure` is the one authority for the rule:
+  delete a figure this toolbox created and did not finish, never one the
+  caller supplied.
+- `geo.basemap` returns `H.CreatedFigure`; `geo.map` reads it rather than
+  testing `Parent` a second time.
+- The basemap body, the draw ladder and the export step are each inside
+  the guard.
+- `FigureCensusPlugin` counts figures around every test method, and the
+  green gate now includes it. It reports and never closes: cleaning up
+  here would make the gate green by destroying its own evidence.
+- Two `robustness` points in `TestE1_map` assert both halves of the
+  rule — a failing front leaves no figure, and never deletes the
+  caller's.
+
+**Why no instrument caught it.** Every gate the runner applies reads
+results, warning identifiers, filter reasons, speed records, category
+coverage or source files. Not one read the graphics root. The leak was
+found by a human noticing windows on a desktop, which is not an
+instrument.
+
+**CI no longer runs everything twice.** `on: push` was unrestricted and
+paired with `on: pull_request`, so every push to a branch with an open
+PR bought two identical runs. The duplicate was defended in a comment as
+a hang-diagnosis instrument; the step-level timeout on the MATLAB setup
+step already does that job for eight minutes instead of for a permanent
+doubling of every job. Now `push` on `main` only, plus `pull_request` —
+which still fires on every push to an open PR.
+
+**Stale prose behind a correct stamp.** `Contents.m` and `README.md` both
+said "491 test points" while the version had moved to 516. The
+`versionAgreement` check compares version *declarations*; a count written
+into prose is not one.
+
 ## 2.0.516 — 2026-08-22
 
 **First release.** 516 test points, reconciled three ways, green on both
