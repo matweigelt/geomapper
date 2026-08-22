@@ -1296,7 +1296,9 @@ anything. R-011, PV-080.
 
 ## Part 10 — Stage G: the post-2.0 plan
 
-*Written 22-Aug-2026 after the three-reviewer examination recorded in R-032. Stage G is the first stage whose scope was set by a review rather than by a migration target: v2.0 discharged its obligation to replace v1, and what follows is decided against the field, not against `geoImagescToolbox`.*
+*Written 22-Aug-2026 after the three-reviewer examination recorded in R-032; **scope corrected the same day by D-025 after the premise was refuted**. Stage G is the first stage whose scope was set by a review rather than by a migration target: v2.0 discharged its obligation to replace v1, and what follows is decided against the field, not against `geoImagescToolbox`.*
+
+> **READ D-025 BEFORE THE TABLES BELOW.** The first version of this Part treated geoMap as a GRACE *processing* toolbox and put spherical filtering at the head of the queue. **That is wrong.** geoMap is a visualisation toolbox; `shAnalysis` does the processing, and it already ships `gaussian`, `fan`, `destripe`, `filter`, `applyDDK` and `basinAverage` — in the spectral domain, where they are exact rather than approximated. The tables have been corrected in place rather than quietly rewritten, because a plan that changed its mind should show that it did.
 
 **Stage G does not begin until PR for `claude/g1-figure-leak-and-ci` is merged.** That branch carries PV-149 and PV-150 and is the confirming run this plan is written on top of.
 
@@ -1326,11 +1328,11 @@ The Generic Mapping Tools is the reference implementation of this domain and has
 
 | GMT capability | geoMap v2.0 | Verdict for this project |
 |---|---|---|
-| `grdfilter` — spatial filtering with spherical support | **absent** | **Critical.** A 300 km Gaussian is not an optional garnish on a GRACE field, it is how the field is made presentable at all. A GRACE toolbox that cannot smooth is incomplete in its own domain. **G.2** |
+| `grdfilter` — spatial filtering with spherical support | **absent** | ~~Critical~~ **OUT OF SCOPE (D-025).** `shAnalysis` ships `shSeries.gaussian(radiusKm)`, `.fan`, `.destripe`, `.filter`, `.applyDDK`. Those act on the coefficients, where a Gaussian is a per-degree weight and therefore **exact**; a spatial `grdfilter` is a discrete approximation of the same operator. Building it here would be a worse duplicate of a better implementation |
 | `grdtrack` — sample a grid along a path | **absent** | **High.** The toolbox draws tracks and draws grids and cannot ask what the grid says under the track. **G.3** |
-| `grdmath` — grid algebra | **absent** | **High**, but cheap: MATLAB *is* the grid algebra. What is missing is not arithmetic, it is arithmetic that carries provenance and checks that two grids are on the same axes. **G.3** |
-| `surface`, `nearneighbor`, `sphinterpolate` — scattered → grid | **absent** | **Medium.** `geo.points` goes in and only ever comes out as markers. Deferred to G.5; `scatteredInterpolant` covers the plane case and the spherical case is real work |
-| `grdlandmask` | **absent** | **Medium.** Basin and land/ocean averaging is standard GRACE practice. Falls out of G.2's polygon machinery |
+| `grdmath` — grid algebra | **absent** | **Low (D-025).** `shCoefficients` overloads `plus`, `minus`, `times`, `mtimes` and checks epoch and degree agreement. Differencing belongs upstream of synthesis, not downstream of it |
+| `surface`, `nearneighbor`, `sphinterpolate` — scattered → grid | **absent** | **Out of scope (D-025).** Gridding is analysis. `shCoefficients.analysis(grid,…)` is the spectral route and already exists |
+| `grdlandmask` | **absent** | **OUT OF SCOPE (D-025).** `shSeries.basinAverage(B)` exists and `shAnalysis/data` ships basin definitions for AIS, GIS and river basins |
 | `grdvector`, `psvelo` — vector fields, error ellipses | **absent** | **Medium.** Displacement and velocity fields are adjacent to this project's users. **G.4** |
 | Remote datasets (`@earth_relief`, `@earth_day`) with auto-download and cache | **partial** — one shipped 10-arcmin topography | **High**, and it is the same work package as the requested imagery backdrop. **G.1** |
 | `grdview` — 3D perspective | **absent** | **Low.** Perspective relief is a presentation idiom this domain has largely abandoned for quantitative work; it hides data behind terrain |
@@ -1345,14 +1347,67 @@ Each is a stage in the sense Part 1 uses: it declares its tier, predicts its cou
 
 | id | Package | Depends on | Oracles it needs | Why it is where it is in the order |
 |---|---|---|---|---|
-| **G.0** | Oracle-register gate; O7 re-specification; O8/O12 status | — | none new | It is the instrument that watches the others' evidence. An instrument ships before what it measures (D-004) |
+| **G.0** | Oracle-register gate; O7 re-specification; O8/O12 status; **the cross-element text-overlap check (PV-152)** | — | none new | It is the instrument that watches the others' evidence. An instrument ships before what it measures (D-004) |
 | **G.1** | **Image backdrop and the data cache.** RGB grids end to end: `geo.imageGrid`, `readGrid` for `.tif`/`.png`/`.jpg`, RGB resampling in projected space, `Background` accepting an image, and a cached fetch for NASA Blue Marble | G.0 | **O13** Blue Marble BMNG source tile, **O14** GeoTIFF with a known geotransform | The requested feature, and it discharges the deferred GeoTIFF debt from Stage C in the same round because they are one mechanism |
-| **G.2** | **`geo.filter`** — spherical Gaussian, boxcar and fan filters on a grid, with the half-width in kilometres | G.0 | **O15** `grdfilter -Fg`, **O16** analytic: a filtered constant is that constant; the filter's kernel integrates to 1 | The domain's real gap. Ships before anything cosmetic |
-| **G.3** | **`geo.sample`** (grid along track/points) and **`geo.gridMath`** (provenance-carrying two-grid arithmetic with axis agreement enforced) | G.2 | **O17** `grdtrack` on a known analytic surface | Makes the toolbox answer questions, not only draw answers |
-| **G.4** | **`geo.animate`** (a grid sequence to GIF/MP4 with one fixed colour scale) and **`geo.overlayVectors`** | G.1 | **O18** frame count and duration read back from the written file | Depends on G.1 only for the backdrop; otherwise independent |
-| **G.5** | Scattered → grid; `grdlandmask` equivalent; CPT import | G.2, G.3 | **O19** `sphinterpolate`; **O20** a published `.cpt` | Last because each has a usable workaround today |
+| **G.2** | **The `shAnalysis` bridge.** `geo.grid` construction from a synthesised field, carrying latitude convention, quantity→units and product type. **Owned by `shAnalysis`, not by geoMap** — see 10.8 | G.0 | **O21** a synthesised field whose geographic placement is checked against an independent evaluation | Replaces the withdrawn filtering package (D-025). It is the gap that actually exists between the two toolboxes |
+| **G.3** | **`geo.sample`** — the value of a displayed grid under a track or a point set, so a map and its profile cannot disagree. **Display-side only**: it samples what is drawn, and does no analysis | G.2 | **O17** `grdtrack` on a known analytic surface | Survives D-025 because it is about the *figure*: a wiggle drawn beside a map must come from the same array the map drew |
+| **G.4a** | **`geo.animate`** — a *stack* of grids to GIF/MP4 under **one colour scale fixed across every frame**, with the epoch label drawn from the data. Consumes an `shSeries` through the G.2 bridge | G.2 | **O18** frame count, duration and dimensions read back from the written file | GRACE is a monthly product; the toolbox can draw one month beautifully and has no way to show 240 |
+| **G.4b** | **`geo.overlayVectors`** (static arrows) and **`geo.particles`** (advected tracer animation) | G.4a | **O22** a solid-body rotation field: every particle returns to its start after one period, and the closure error is the integrator's | See 10.9. The vector field is real and already exists — `shCoefficients.deformation` returns north and east components |
+| **G.5** | CPT import; Crameri scientific colour maps (`vik`, `roma`, `broc`) | G.0 | **O20** a published `.cpt` parsed and re-emitted unchanged | The toolbox ships perceptually correct *sequential* ramps and no perceptually correct *diverging* one, which is the ramp a signed GRACE field actually needs. Cheap, and it is squarely visualisation |
 
 **Scope is frozen per package before implementation, and G.0 is never mixed with anything** — it changes an instrument, and `WORKFLOW_GUIDE` Part 6b forbids mixing a change to the judging apparatus with a change it judges.
+
+
+### 10.8 The `shAnalysis` interface — measured, not assumed
+
+The two toolboxes were tested end to end on real data this session: twelve ITSG-Grace2018 monthly solutions at nmax 60, residuals against their own mean, synthesised to EWH and drawn by `geo.map`. **It works today with no changes to either side.** `shCoefficients.synthesis` returns `[grid, lat, lon]` — a plain array and two axis vectors — and `geo.grid(lon, lat, Z)` accepts exactly that. The interface is numbers, which is the right interface.
+
+Four things about it are nonetheless wrong or fragile, and all four are measurements.
+
+**1. The latitude convention differs silently, and nothing would notice.** `synthesis` documents its latitudes as **geocentric**. With `LatType = "geodetic"` it converts the *input* — and then returns the *converted* value as its `lat` output. Measured: an input of 89.5 … −89.5 comes back as 89.4966 … −89.4966, a maximum discrepancy of **0.1924° = 21.4 km** north–south at ±45°, and 0.124° = 13.8 km at 70° N. geoMap's coastlines are Natural Earth and GSHHG, which are **geodetic** WGS84. A user who feeds the returned `lat` into `geo.grid` therefore draws a geocentric field against a geodetic coastline.
+
+Whether that matters is a question of scale, and the answer is measured rather than asserted: on a 17 cm global map the offset is **0.091 mm** — invisible, and D-001's spherical approximation is already larger. On a 17 cm regional map 20° tall — Greenland, West Antarctica, the Amazon, which is what these fields are actually made for — it is **1.64 mm**, a systematic shift of the whole signal relative to the coast, in the direction that would be read as a real geophysical offset.
+
+This is exactly the test `CODING_GUIDE` R2 poses: *if two objects from different sources were combined by mistake, would anything notice?* Nothing would. **The repair belongs on the `shAnalysis` side**, because that is the side that knows which convention it used: a bridge method that returns geodetic latitudes and says so, or a `LatType` field carried in the returned metadata so geoMap can refuse a mismatch.
+
+**2. Units and product type do not travel.** `geo.grid` carries `Source` and `Units`, and both had to be typed by hand in the test. `shSeries` knows `productType` ("GSM"), knows the quantity requested, and carries a `history`. All three should arrive as metadata rather than be retyped by a user who may get them wrong — R2 again.
+
+**3. A full field and a residual are indistinguishable to geoMap, and one of them is unplottable.** Measured: the mean of twelve GSM solutions synthesised to EWH gives **11 637 400 … 11 777 640 m** — the static field expressed as water, which is not a mass anomaly and which `geo.symmetricLimits` would render as a single flat colour. The residuals give **−1.136 … 1.194 m**, which is right. geoMap drew the first without complaint. It is not geoMap's job to know GRACE conventions, which is precisely why the bridge must carry the product type: `Units = "m"` is true of both and distinguishes nothing.
+
+**4. `shAnalysis` contains a second cartographic renderer.** `shLowLevel.plotSHMap` (115 lines) draws maps with its own coastlines, its own colour limits and its own colorbar, in **two** projections — "plate" and "hammer" — reached through `shCoefficients.map()`. `shLowLevel.errorMap` and `resolutionMap` sit beside it; the plotting-ish files total **693 lines**. geoMap v2.0 offers sixteen projections certified against PROJ and published point values, a graticule tested at every boundary, and a frame.
+
+This is the F6 shape — one fact, two implementations — raised to the level of the workspace: **two map renderers in two toolboxes that will disagree, and no instrument that compares them.** It is not a defect in either file. It is a decision nobody has taken, and the decision belongs to Matthias, not to this document. The options are to route `plotSHMap` through geoMap and delete the duplicate; to keep it deliberately as a dependency-free quick-look and say so in its help text; or to keep both silently, which is the only option that is certainly wrong.
+
+### 10.9 Particle animation — is it real, and what would make it honest
+
+**It is real, and the vector field it needs already exists.** `shCoefficients.deformation(lat, lon)` returns `[up, north, east]`; `north` and `east` are a genuine horizontal vector field on the sphere — elastic loading displacement — and advecting tracers through it is a legitimate rendering of that field, not decoration. A second honest field is the horizontal gradient of a scalar, which is what a "flows downhill" animation of EWH would show. A third, and the most physically interesting, is the irrotational mass-flux field recovered from continuity: solving ∇·**q** = −∂h/∂t for **q** = −∇φ gives the transport that the mass change implies, which is a published way of reading a GRACE series.
+
+**What separates an honest particle animation from a pretty one**, and every point here is a decision the toolbox would have to get right rather than a rendering trick:
+
+- **Advect in geographic space, project only to draw.** Stepping a particle in projected coordinates makes its speed wrong by the local scale factor, so a Mercator animation would show the high latitudes racing. geoMap already computes exactly the correction that proves this is being done right: `geo.scaleFactors` returns *h* and *k* per point.
+- **Seed by area, not by coordinate.** Uniform sampling in latitude clusters particles at the poles. Sampling uniformly in sin(lat) does not. This is the same error class as a naive global mean, and it is visible in the output.
+- **Trails are an accumulation buffer with decay, not a thousand line objects.** The classic look is a persistent RGB image multiplied by a decay factor each frame; base MATLAB does this with one `image` object.
+- **Respawn deterministically.** Particles must die and restart or they all collect in the convergence zones. A fixed seed keeps two runs of the same data identical, which the rest of this project would demand of anything else it draws.
+- **A particle animation shows direction and relative speed; it does not show magnitude.** Nothing in a flowing-tracer image carries a number. It must therefore be drawn **over** a scalar field that does carry one, and never instead of one — otherwise it is a picture that cannot be read off, which is the failure this whole toolbox exists to prevent. That constraint goes in the function's own help text, not only here.
+
+**Verdict: schedule it, and after the movie.** G.4b, behind G.4a, because the frame writer, the fixed colour scale and the epoch labelling are shared and the movie needs them first.
+
+### 10.10 Finding PV-152 — six pairs of overlapping labels in the flagship output
+
+A real GRACE field drawn through `geo.map` on Robinson, with graticule, frame, colorbar and title — the toolbox's own showcase call — was measured for text-extent overlap. **Six colliding pairs**, in points:
+
+| pair | overlap |
+|---|---|
+| `"90°S"` × `"180°"` | 12.4 × 9.6 |
+| `"-0.5"` × `"180°"` | 15.9 × 4.3 |
+| `"0.5"` × `"180°"` | 13.5 × 4.3 |
+| `"-0.5"` × `"90°S"` | 9.6 × 5.2 |
+| `"EWH residual [m]"` × `"0°"` | 9.0 × 2.2 |
+| `"0"` × `"0°"` | 5.2 × 4.3 |
+
+Two distinct causes. The graticule's own labels collide with each other where the ±90 parallel meets the ±180 meridian on a projection whose parallels converge; and **the colorbar and its tick labels are placed without reference to the graticule's label row at all**. `geo.internal.avoidRectCollisions` exists, is tested in every category, and is applied *within* an element — it never sees the other elements' text.
+
+**518 green points did not see this, and the reason is instructive.** Every graphics assertion in the suite measures one element against its own claim: the tick sits at its exact fraction, the label anchor unprojects to its own longitude, the title clears the map by the fraction asked for. **Not one assertion compares two elements' output to each other**, which is the one thing a finished map is. The check that found it is fifteen lines and belongs in the suite: *no two text objects in a completed front may overlap*. That is package **G.0**'s second deliverable — it is an instrument, and instruments ship first.
 
 ### 10.5 Performance: what was measured, and what is worth doing
 
@@ -1373,6 +1428,8 @@ Each is a stage in the sense Part 1 uses: it declares its tier, predicts its cou
 |---|---|---|---|---|
 | V10 | The mass-closure claim has no genuinely conservative second toolkit behind it — see O7 above. Present evidence is an analytic invariant and a metamorphic property, both real, both narrower than "checked against `cdo remapcon`" | The register named an oracle that cannot certify the claim, and nobody re-read the row against the module that implements it | `cdo remapcon` or ESMF in the mirror, in G.0 | **Medium** |
 | V11 | Every speed ratio in the run is still stamped **PREDICTED**. V5 discharged the *machine baseline*; the budgets themselves were never rebaselined against it | Predictions transferred from the mirror were never replaced by measurements once the measurements existed | One round that reads the recorded bands and rewrites each budget as `3 × measured`, then removes the stamp | **Low** — the budgets are not wrong, they are merely wider than they need to be, so they detect less than they could |
+| V13 | The `shAnalysis` ↔ geoMap interface has no test on either side. It was exercised once, by hand, in one session. | Neither repository's suite imports the other, and neither can: CI has no gravity data and shAnalysis is not a dependency. | A fixture-based point on the geoMap side that builds a `geo.grid` from a small committed synthesised field, plus its twin on the shAnalysis side. Package G.2. | **Medium** |
+| V14 | PV-152: six pairs of overlapping labels in the standard front, measured. No repair yet, and no gate. | Every graphics assertion measures one element against its own claim; none compares two elements to each other. | The cross-element text-overlap check, package G.0. | **Medium** |
 | V12 | The oracle register has no instrument. Three rows were wrong for days across a release | Every gate reads code or the stage ledger; none reads Part 3 | G.0 | **Medium** |
 
 ### 10.7 New decisions
@@ -1382,6 +1439,7 @@ Each is a stage in the sense Part 1 uses: it declares its tier, predicts its cou
 | D-021 | 22-Aug-2026 | A figure this toolbox created and did not finish is **deleted** on the way out; a figure the caller supplied is never touched. One authority: `geo.internal.discardOnFailure` | An `onCleanup` in each front; or leaving the figure so the user can inspect the failure | PV-149: four figures survived a green 516-point run. `DELETE` and not `CLOSE`, because `CloseRequestFcn` is user-replaceable and may refuse, and error unwinding must not run user code or be refusable. Leaving the figure was rejected because a half-drawn map is read as a *result*, not as wreckage — two of the four showed a bare surface and were reported as an "unfinished plot" | A user asks to inspect a partially drawn map after a failure, which would make this an option rather than a rule |
 | D-022 | 22-Aug-2026 | The green gate includes a **figure census**, which reports and never closes | Closing leaked figures in the runner; or a global `close all` before the suite | `VALIDATION_GUIDE` Part 10: the instrument may not change the machine it measures. Closing them would make the gate green by destroying its own evidence, and would close figures the operator opened for their own reasons | Never — a consequence of a paid-for rule |
 | D-023 | 22-Aug-2026 | CI triggers are `push` on `main` plus `pull_request`. The twin run is withdrawn | Keeping both triggers as a hang-diagnosis instrument, as the file's own comment argued | `WORKFLOW_GUIDE` Part 4 forbids the pairing by name. The defence does not survive costing: a permanent doubling of every job to make one rare diagnosis easier, when the step-level 8-minute timeout on the MATLAB setup step already turns a hang into a named failure. **The original reasoning was not wrong about the diagnosis being hard — it was wrong about this being the cheapest instrument for it** | A hang occurs that the step timeout does not localise, **and** the twin comparison would have localised it |
+| D-025 | 22-Aug-2026 | **Stage G's scope is corrected: geoMap does not process, it draws.** Spherical filtering, gridding, land masking and grid algebra are withdrawn from the plan | The first version of Part 10, which put `geo.filter` at the head of the queue as "the domain's real gap" | **The premise was refuted, not merely outvoted.** `shAnalysis` already ships `gaussian`, `fan`, `destripe`, `filter`, `applyDDK`, `basinAverage` and `analysis` — and it does them on the **coefficients**, where a Gaussian is a per-degree weight and therefore exact, while a spatial `grdfilter` is a discrete approximation of the same operator. Building it here would have been a worse duplicate of a better implementation. **What the original got right and is retained:** that the plan should be set against the field rather than against v1, that the gap analysis should be scored by a real workflow, and that animation is a genuine absence — GRACE is a monthly product and the toolbox could draw one month and not two hundred. What changed it: being told the division of labour, and then reading `shSeries.m` | A capability is needed that is genuinely about *display* and happens to resemble processing — resampling for a figure's resolution is the existing example, and it stays here because a map may not show more cells than it has pixels |
 | D-024 | 22-Aug-2026 | An RGB backdrop is a **separate grid kind**, not a three-band `geo.grid` | Overloading `geo.grid` with an M×N×3 `Z` | A `geo.grid` carries `CLim`, a colormap and a colorbar; an image carries none of those and must never consume the colour scale the data overlay owns. Overloading would put a `if ndims(Z)==3` branch in every consumer of every grid | The two kinds acquire more shared behaviour than distinct behaviour |
 
 ---
