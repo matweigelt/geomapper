@@ -76,6 +76,16 @@ jobs:
       - name: Provenance and honesty audit
         run: python3 tools/provenance_audit.py .
 
+      - name: Oracle register vs the tree that cites it
+        # V12: every other gate reads code, provenance or the stage
+        # ledger. None read Part 3, and FOUR of its twelve rows were wrong
+        # across a released version - two marked open while the modules
+        # filling them ran on every push, one naming an oracle that cannot
+        # certify its own claim, and one cited by two frozen acceptance
+        # criteria. An empty row is read as a known gap; a wrong row reads
+        # identically and is not one.
+        run: python3 tools/oracle_sync.py .
+
       - name: Ledger sync (handover status vs records evidence)
         # PV-130: every other gate in this project looks at code, so a
         # handover whose ledger had stopped matching four days of merged

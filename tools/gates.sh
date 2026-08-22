@@ -15,15 +15,20 @@ cd "$(dirname "$0")/.."
 fail=0
 run () { echo; echo "=== $1 ==="; shift; "$@" || { echo ">>> GATE FAILED"; fail=1; }; }
 
-run "1/5 structural check"        python3 tools/mcheck.py .
-run "2/5 provenance audit"        python3 tools/provenance_audit.py .
+run "1/6 structural check"        python3 tools/mcheck.py .
+run "2/6 provenance audit"        python3 tools/provenance_audit.py .
 # The document set is checked with the code, not after it. A status
 # that has stopped matching its evidence is invisible to every other
 # gate here, because every other gate looks at code (PV-130).
-run "3/5 ledger sync"             python3 tools/ledger_sync.py .
-run "4/5 mirror"                  bash -c "cd mirror && python3 -m geomap_mirror.gdal_oracle && python3 -m geomap_mirror.references && python3 check_reference_sync.py && python3 check_acceptance.py"
+run "3/6 ledger sync"             python3 tools/ledger_sync.py .
+# The oracle register is the one status surface with no instrument until
+# now (V12). It sits beside the ledger because both are documents, and
+# documents drift hardest in the sessions where MATLAB is unreachable -
+# which are exactly the sessions that never reach the MATLAB gate.
+run "4/6 oracle register"         python3 tools/oracle_sync.py .
+run "5/6 mirror"                  bash -c "cd mirror && python3 -m geomap_mirror.gdal_oracle && python3 -m geomap_mirror.references && python3 check_reference_sync.py && python3 check_acceptance.py"
 
-echo; echo "=== 5/5 MATLAB suite ==="
+echo; echo "=== 6/6 MATLAB suite ==="
 if command -v matlab >/dev/null 2>&1; then
   # geoMapAudit runs FIRST and with its self-test on. It is the only gate
   # here that proves every one of its checks against a planted defect
