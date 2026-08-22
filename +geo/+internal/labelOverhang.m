@@ -85,24 +85,41 @@ if isempty(g) || ~isfield(g, 'Labels') || isempty(g.Labels)
 end
 
 box = geo.internal.plottedBox(axH);
-xl = xlim(axH);
-yl = ylim(axH);
-if diff(xl) <= 0 || diff(yl) <= 0
-    return
-end
-sx = box(3) / diff(xl);
-sy = box(4) / diff(yl);
+
+% THE EXTENT IS MEASURED IN POINTS, NEVER DERIVED FROM THE LIMITS.
+% The first version of this function mapped the label's data-unit Extent
+% onto PLOTTEDBOX linearly, on the assumption that PLOTTEDBOX is the
+% rectangle the axis limits map onto. IT IS NOT: it is the rectangle the
+% MAP occupies, and with GEO.FRAME widening the limits after the graticule
+% has drawn, the two differ enough to matter. Measured on the showcase
+% call, the derived figure said the labels reached 6.9 pt below the map
+% and they reached 44.8 - so the colorbar was moved by a seventh of what
+% it needed and the overlap survived, slightly rearranged. This is
+% CODING_GUIDE R3 exactly: a property is read from the object, never
+% inferred from a convention about how the object was built.
+%
+% Setting Units mutates the text, so every label is restored on every
+% path, including an error one. A diagnostic that leaves the figure
+% reconfigured is worse than no diagnostic.
+prior = get(axH, 'Units');
+restoreAxes = onCleanup(@() set(axH, 'Units', prior));
+set(axH, 'Units', 'points');
+ap = get(axH, 'Position');
 
 for t = reshape(g.Labels, 1, [])
     if ~isgraphics(t, 'text')
         continue
     end
-    e = get(t, 'Extent');            % data units, [x y w h]
-    x0 = box(1) + (e(1) - xl(1)) * sx;
-    y0 = box(2) + (e(2) - yl(1)) * sy;
+    u = get(t, 'Units');
+    restoreText = onCleanup(@() set(t, 'Units', u));
+    set(t, 'Units', 'points');
+    e = get(t, 'Extent');            % points, from the axes origin
+    clear restoreText                %#ok<CLEAR> restore before the next
+    x0 = ap(1) + e(1);
+    y0 = ap(2) + e(2);
     over(1) = max(over(1), box(1) - x0);
-    over(2) = max(over(2), (x0 + e(3) * sx) - (box(1) + box(3)));
+    over(2) = max(over(2), (x0 + e(3)) - (box(1) + box(3)));
     over(3) = max(over(3), box(2) - y0);
-    over(4) = max(over(4), (y0 + e(4) * sy) - (box(2) + box(4)));
+    over(4) = max(over(4), (y0 + e(4)) - (box(2) + box(4)));
 end
 end
