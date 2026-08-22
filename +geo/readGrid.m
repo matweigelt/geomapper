@@ -112,7 +112,14 @@ function G = readGrid(source, options)
 %
 %   ERRORS
 %     Source:
-%       geo:readGrid:FileNotFound      - the file cannot be opened
+%       geo:readGrid:FileNotFound      - no such file
+%       geo:readGrid:NotReadable       - the file is there and NCINFO
+%                                        refused it. The underlying
+%                                        error is attached as a CAUSE,
+%                                        so a corrupt file, an
+%                                        unsupported filter and a
+%                                        permissions failure stay
+%                                        distinguishable (A-4)
 %       geo:readGrid:UnknownFormat     - extension not recognised
 %       geo:readGrid:VariableNotFound  - no candidate matched; the message
 %                                        lists what was tried and what the
