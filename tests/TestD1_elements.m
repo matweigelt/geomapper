@@ -62,15 +62,30 @@ classdef TestD1_elements < GeoMapTestCase
             % colorbar beside the map would describe the picture instead
             % of the data.
             ax = axes('Parent', tc.figureFor());
-            before = clim(ax);
             IG = tc.imageFixture();
             [~, ~, H] = geo.basemap(IG, "equirectangular", Parent = ax);
             tc.verifyTrue(H.IsImage);
             tc.verifyEmpty(H.Colormap);
-            tc.verifyEqual(clim(ax), before, ...
-                "an image backdrop must leave the axes colour scale alone");
             tc.verifySize(get(H.Surface, 'CData'), ...
                 [numel(IG.Lat) + 1, numel(IG.Lon) + 1, 3]);
+
+            % THE CLAIM IS ABOUT MODE, NOT VALUE, and the first draft of
+            % this point got that wrong. An axes auto-ranges CLim from
+            % whatever CData it holds, truecolour included, so the NUMBER
+            % moves and asserting it unchanged fails for a reason that
+            % has nothing to do with the defect. What matters is that the
+            % image does not PIN the scale: CLimMode stays auto, so the
+            % field drawn on top still owns it.
+            tc.verifyEqual(ax.CLimMode, 'auto', ...
+                "an image must not pin the axes colour scale");
+
+            % And the consequence, which is what a user would notice: a
+            % field drawn over the backdrop gets ITS OWN limits.
+            G = geo.grid(IG.Lon, IG.Lat, ...
+                repmat((1:numel(IG.Lat))', 1, numel(IG.Lon)) * 1.0);
+            geo.basemap(G, "equirectangular", Parent = ax, Hillshade = "off");
+            tc.verifyEqual(clim(ax), [1 numel(IG.Lat)], 'AbsTol', 1e-12, ...
+                "the field on top owns the colour scale, not the backdrop");
         end
 
         function anImageRefusesAColourScaleItCannotHonour(tc)
