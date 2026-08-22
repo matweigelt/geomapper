@@ -116,6 +116,17 @@ jobs:
         working-directory: mirror
         run: python3 -m geomap_mirror.references
 
+      - name: The committed reference is what the mirror computes
+        # A-2: the MATLAB reference tier asserts against the COMMITTED
+        # reference_values.json while this job regenerates it and uploads
+        # it as an artefact - the two never met, and the two already
+        # disagreed in a green tree (PV-132). The mirror step above has
+        # just overwritten the working-tree copy, so this compares it
+        # against the committed blob. Unregistered drift is red;
+        # mirror/DRIFT.md says which values may move and by how much.
+        working-directory: mirror
+        run: python3 check_reference_sync.py
+
       - name: Frozen acceptance criteria
         # The scientific instrument: a numerical criterion that can reject
         # a wrong algorithm before any human reads the diff. Fails on a
