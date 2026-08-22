@@ -36,7 +36,7 @@
 %     geo.grid             - Validated lon/lat grid, checked once so nothing re-checks it.
 %     geo.track            - Validated along-track series, NaN gaps preserved.
 %     geo.points           - Validated scattered point set, with optional size and labels.
-%     geo.imageGrid        - True-colour raster on a geographic axes pair (G.1).
+%     geo.imageGrid        - A true-colour raster on a geographic axes pair.
 %     geo.region           - Resolve an area of interest into a padded box and outline.
 %
 %   L2 — numerics, no graphics
