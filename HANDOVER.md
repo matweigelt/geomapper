@@ -54,7 +54,7 @@
 | **C** | L2 I/O and caching (4 files + edit) | 0, A, B | **A** (bridge) | **☑ done** — 205 points predicted, 205 run, 205 passed. **V3 discharged**, O5 and O6 filled against real data. GeoTIFF/worldfile deferred with its identifier and contract test in place | **15-Aug-2026** | R-008 |
 | **D** | L3 cartographic elements (14 files) | 0, A–C | **A** (bridge) | **☑ done** — seven checkpoints. **347 points predicted, 347 run, 347 passed, 0 failed.** Fourteen L3 elements and five internals replace v1's 3413-line plotting function, its two near-clones and its five plumbing functions | **16-Aug-2026** | R-009 … R-015 |
 | **E** | L4 fronts (6 files) | 0, A–D | **A** (bridge) | **☑ done** — seven checkpoints. **468 points predicted, 468 run, 468 passed, 0 failed.** `geo.map` is 128 lines against `geoImagesc`'s 3413. V9 discharged at E.1c | **20-Aug-2026** | R-016 … R-022 |
-| **F** | Docs, packaging, release, independent audit | 0, A–E | **A** (bridge) + CI | **◐ in progress** — deliverables 1–7 and 9 delivered and executed; **8 withdrawn (D-020, git distribution)**; **12 done** — the independent audit ran and all six findings are discharged: A-1 #33, A-2 #35, A-3 #34, A-4/A-5 #36, A-6 #32. Eleven defects found and fixed since: PV-135 … PV-144. **Open: 10 (release checklist) and 11 (`RECORDS.md` final state)**, plus PV-131, which needs a bridge session for numbers witnessed rather than copied | — | R-023 … R-027 |
+| **F** | Docs, packaging, release, independent audit | 0, A–E | **A** (bridge) + CI | **◐ in progress** — deliverables 1–7, 9, **11** delivered and executed; **8 withdrawn (D-020)**; **12 done**, all six findings discharged (#32–#36). **Open: deliverable 10's last item only — the rendered manual rasterised and looked at, which has no automated oracle and belongs to Matthias.** Bridge run 22-Aug: **516 + 0 + 0, nothing filtered**, gate green on all six | — | R-023 … R-030 |
 
 Status values, and nothing else: `☐ not started` · `◐ in progress` · `◐ provisional (code shipped, not executed)` · `☑ done`.
 
@@ -90,6 +90,12 @@ Stages B and D are delivered in checkpoints — consecutive turns within one cha
 | F | F.2 | `docbuild/build_help.m`, the manual | ☑ 487 points, R-024 |
 | F | F.3 | sync gate, `GettingStarted`, README, `.prj`, changelog | ☑ 489 points, R-025 |
 | F | F.4 | package closure (PV-127/128/129); ledger re-sync (PV-130) | ◐ 491 points on the bridge; ledger gate green in the sandbox, MATLAB leg on CI |
+| F | F.5 | PV-135 pole frame, PV-136 coastline clip | ☑ 504 points, R-027 |
+| F | F.5a | A-6 oracle fixtures; A-1 filter registry | ☑ 509 points, R-028 |
+| F | F.5b | A-2, A-3, A-4, A-5 | ☑ 514 points, R-028 |
+| F | F.6 | git distribution, D-020 | ☑ 515 points, R-029 |
+| F | F.7 | PV-145 … PV-148, **on the bridge** | ☑ **516 points, 0 filtered**, R-030 |
+| F | F.8 | `RECORDS.md` final state, deliverable 11 | ☑ this round |
 | F | F.5a | shipped GSHHG fixture subset; `serialEqualsParallel` filters only without PCT | ◐ pushed, CI leg pending |
 | F | — | **deliverable 12: the independent audit** | ☐ its own session, findings only |
 | F | F.5 | audit finding A-1: filter registry, three-state speed, partial-run banner | ◐ pushed; CI is the confirming run |
@@ -1061,10 +1067,12 @@ anything. R-011, PV-080.
 | 0 | 4 | 15 | 21 | 3 (PV-035/036/037 — all in Stage 0.2 code, found at 0.3) |
 | A | 3 | 6 | 10 | 1 (PV-043, in the Stage 0.2 harness, found the first time any code raised a warning) |
 | B | 3 | 0 | 12 | 1 (PV-057, a documentation/code disagreement in the Stage 0.3 mirror) |
-| C | | | | |
-| D | | | | |
-| E | | | | |
-| F | | | | |
+| C | 2 | 3 | 8 | 1 (PV-104, an export nondeterminism found at E.0) |
+| D | 7 | 9 | 21 | 2 (PV-135 and PV-145, both in frame.m, both reported from a FIGURE rather than by the suite) |
+| E | 7 | 4 | 16 | 1 (PV-136, the coastline clip, reported from a figure) |
+| F | 12 | 11 | 34 | 4 (PV-129's misdiagnosis, the stale manual, PV-146, PV-147 — none visible from CI) |
+
+**Reading at Stage F, offered rather than asserted.** The table has told us something and it is not what it was built to test. Pre-validation kept paying — 11 findings at F, against 34 from the run — but the column that matters is the last one. **Seven of the nine defects that reached shipped code were found by a human running the toolbox or by a run on the target machine, and none by CI.** PV-135, PV-136 and PV-145 arrived through `GettingStarted`; the stale manual, PV-146, PV-147 and PV-148 arrived through a bridge run. A suite of 516 points did not see any of them, because each was either a property of a FIGURE or a property of a HOST. That is an argument for the two instruments the checklist keeps and CI cannot replace: somebody looking at the output, and a second machine. Keep the row.
 
 **Reading after Stage 0, offered rather than asserted.** Pre-validation is still paying, but the split has moved. At checkpoint 0.1 every finding came from pre-validation; at 0.3 **thirteen of sixteen came from execution**, and three of those came only from CI running on a machine unlike the author's. The instrument that earned its place this round is not the mirror but the **second machine**: a 1-core Linux runner disagreed with a 16-thread Windows box about a constructed ratio, and the twin triggers disagreed with each other on the same commit. If that holds at Stage A, it is an argument for treating CI as a measuring instrument rather than as a gate — and the row above is what will say so.
 

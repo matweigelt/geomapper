@@ -2163,4 +2163,220 @@ the number moves, the change was not the change intended.
 
 ---
 
-*Entries R-028 onward are written at each stage's green gate.*
+## R-028 — Stage F, checkpoint F.5b, 21/22-Aug-2026, tier B (sandbox) + CI
+
+**Scope.** The independent audit's six findings, discharged. Deliverable
+12 ran at F.4 and produced A-1 … A-6; this entry records what closing
+them cost and what closing them found.
+
+**Execution tier.** Tier B authoring, every MATLAB claim executed on CI.
+
+| finding | severity | closed by | confirming run |
+|---|---|---|---|
+| A-6 the suite that runs is host-dependent | High | #32 | 32531236585, 492 + 0 + 17 |
+| A-1 the gate does not bound how much ran | High | #33 | 32532648516, 492 + 0 + 17 |
+| A-3 no layer range-checks latitude | Med-High | #34 | 32535991602, 496 + 0 + 17 |
+| A-2 the reference tier asserts against an artefact | Med-High | #35 | green, 4 registered drifts |
+| A-4 / A-5 the audit's tail | Low / Low | #36 | 32540976617, 497 + 0 + 17 |
+
+**A-6 first, and the order mattered.** The fixtures change seven of the
+answers A-1's register records, so a registry written before them would
+have been stale on arrival. **The finding under the finding: the "not
+redistributable" claim that had kept eighteen CI points filtered for
+four rounds was READ, NOT CHECKED, and is false** — GSHHG has been LGPL
+since v2.2.2 and Natural Earth is public domain. That is debt V1's
+failure mode in prose rather than in a number. 908 kB ships; two of the
+three files are byte-exact prefixes cut at a record boundary and
+re-parsed to prove the cut is clean, and `dataFile` prefers the pool
+because a whole-product count asserted against a prefix measures the
+fixture rather than the reader.
+
+**A-1 was closed by adding nothing to the gate.** `filterBecause` raises
+a warning carrying a registered id and then filters; the warning
+inventory, which already fails on any unregistered identifier, does the
+rest. Measured before: `GEOMAP_SKIP_SPEED` set, **42 of 491 points did
+not run and the gate printed PASS**. The count is reported and the
+REASON is gated, because the correct count is a property of the host —
+CI filtered 24 where the bridge filtered 5, with no instrument saying so.
+
+**A-1's pre-validation refuted its own design.** A `QualifyingPlugin`
+subclass overriding `assumptionFailed` captured **zero events** over a
+full suite — the obvious analogy to `WarningInventoryPlugin`, and dead.
+Written from that analogy the inventory would have shipped capturing
+nothing and calling every run clean.
+
+**A-3 found a defect in the suite on its first run.**
+`validationNeverTouchesTheData` built its 2161×4321 grid from
+`lat = 1:2161` — indices standing in for coordinates. A latitude cannot
+be 2161. The guard refused it, correctly, in a test that had been green
+for weeks.
+
+**A-2's gate found two classes the sandbox could not show.** `/values/*/route`
+moving `ctypes` → `cli`, and two round-trip maxima moving at 1e-16 and
+1e-13. Neither is reachable where the route never changes and the libm
+is the one the committed file was written on. A **register**, not a
+tolerance: one global tolerance would have to be as loose as the
+mass-closure floor's 8.3e-1 and would then wave through a projection
+value that had moved by a factor of two.
+
+**A-5's first repair refused a legitimate answer.** It went red on
+`TestIntegration`, and `TestIntegration` was right: an integration
+scenario covers no single function, and claiming one would promise all
+seven categories for it in the wrong suite. The finding stood — an
+omission and a decision were indistinguishable — but forbidding the
+omission without letting the decision be stated just moves the error. An
+empty `CoveredFunctions` is now a reported decision; an absent one is a
+finding.
+
+**Binding items a later stage could be wrong for not reading.**
+
+- **A-6 is reduced, not closed.** Sixteen points still run on one host
+  and not the other. The gap is now named per reason rather than being a
+  fact about a drive letter.
+- **Nothing forbids a bare `assume*` outside `filterBecause`.** The
+  registry can be bypassed by the next test written, which is PV-128's
+  lesson pointed at A-1's own fix. It wants an audit check.
+- **`mcheck` gained Code Analyzer's FVAPN rule** after the same slip cost
+  two CI round trips. Three false-positive classes on the way to zero;
+  each is now a self-test fixture.
+
+---
+
+## R-029 — Stage F, checkpoint F.6, 22-Aug-2026, tier B (sandbox) + CI
+
+**Scope.** `.mltbx` is deprecated and distribution is git (D-020). One
+decision, and what it moved.
+
+**Execution tier.** Tier B authoring, CI confirming: run **32542998647**,
+515 points, **498 + 0 + 17**, green gate on all six.
+
+**The rule survived and its reason was re-derived.** `+geo` may not call
+into `tests/`, `tools/`, `records/` or `docbuild/` — because a **user's
+path** omits them, where it used to be because an archive did. That is
+not a weakening: PV-127 was reproduced with `restoredefaultpath` +
+`addpath`, which is exactly the user's situation and never was the
+archive's. The defect was always about the path; the archive was only how
+it became visible.
+
+`harnessNames` had justified its folder list by pointing at
+`geoMap.prj`'s exclude filter. With the `.prj` withdrawn that file is
+`geoMapSetup` — which PV-126 already made the one path authority after
+six copies had grown across `ci.yml`, `gates.sh` and `buildfile.m`. The
+audit had quietly grown a seventh. It reads the list now, and raises
+`geo:audit:FolderListNotFound` rather than falling back to an empty one,
+because a check that silently measures nothing is A-1 and A-5 both.
+
+**A latent defect surfaced, and it was not in this change.** The audit's
+self-test compared `[f.check]` against a string; on an empty findings
+struct that expression is a `double`, so when a check FAILED TO FIRE the
+self-test raised a MATLAB error instead of reporting it. Latent since the
+self-test was written, in precisely the run where you most need it to
+speak. Typed empty now.
+
+**One check withdrawn.** An attempt to teach `mcheck` the
+unbracketed-continuation parse error produced **six false positives in
+three attempts**, on code that had compiled for weeks: stripping comments
+at `%` also truncates a format specifier inside a literal. Doing it
+properly needs a MATLAB-grade lexer for something Code Analyzer catches
+one job later. A check that cries on valid source teaches people to
+ignore it; shipping it because the effort was spent is the sunk cost
+talking.
+
+---
+
+## R-030 — Stage F, checkpoint F.7, 22-Aug-2026, **tier A (bridge)**
+
+**Scope.** Four defects, every one of them found by running on the target
+machine rather than on CI.
+
+**Execution tier. TIER A, and it is the point of this entry.** Confirming
+run on the bridge, R2026a Update 4:
+
+```
+passed + failed + incomplete = 516 + 0 + 0 = 516
+suite size                   = 516
+per-class sum                = 516
+GREEN GATE: PASS   (all six)
+speed budgets      ok   (24 of 24 speed-tagged points ran)
+FILTER INVENTORY   0 point(s) incomplete
+```
+
+**The first run in this project with nothing skipped.** CI on the same
+commit: **500 + 0 + 16**, run 32567769608, each filter registered. The
+union of the two hosts is the whole suite; neither host alone is.
+
+**PV-145 — the frame was drawn on the west side only.** Reported from
+`GettingStarted`. Registration made a global extent run −180…180, so the
+ring's eastern meridian is at +180, and `geo.project`'s half-open default
+folds +180 onto −180: the east side landed on the west and PV-135's
+coincident-vertex collapse removed what it correctly saw as duplicates.
+Every link behaved as specified. **The ring is a map EDGE and was being
+projected with the window meant for DATA.** Measured before: mollweide
+frame x −2.9108 … −0.0000 against a surface at ±2.8282. Fourteen call
+sites now take `Window = "closed"` — and the first pass fixed
+`mapBoundary` and `graticule` and left `frame.m`, which does its own
+projecting in seven more places. The option had been applied where the
+symptom was, not everywhere the rule holds; then I repeated that inside
+the repair.
+
+**PV-146 — an ignored manual is an undelivered one.** `docs/html` was
+ignored as a build output, right while the `.mltbx` shipped it and wrong
+the moment a clone became the delivery. A user would have run
+`doc geoMap` and found `help_location` pointing at a folder they did not
+have — the checklist item F.6 had re-derived one round earlier. Found
+because the manual exists on the bridge, so `documentationSync` had
+something to compare against and reported **five stale help blocks, one
+from each of the last five rounds**. On CI the folder is absent, the
+check filters, and none of it is visible.
+
+**PV-147 — validation walked each axis four times, and sorted to find a
+constant.** Ratio 0.1075 against a budget of 0.1. Registration and the
+angular guard had each added an innocuous O(n) pass; together they
+crossed a line neither could cross alone. **The budget was not raised.**
+Measured: `median` of both axes is 16.3 µs of 59.8, and it sorts. Mean
+plus a one-pass uniformity check costs 4 µs, with median kept for
+genuinely irregular axes. Ratio **0.0767**, six repeats, band 0.0747…0.0827.
+
+*After sharing the diffs, validation fell 97 → 84 µs and the ratio did
+not move, because one pass over Z got faster too. That is why the budget
+is a ratio against work the caller already pays for, and it is what sent
+me to measure components instead of guessing a third time.*
+
+**PV-148 — the v1 tree was never absent, the path was.** Two copies of
+one developer's absolute path, both one folder too deep. **Four points
+filtered for four rounds**, and PV-129 recorded the cause as *gone from
+disk*. Nobody looked, because the filter came with a reason that sounded
+like an explanation: *"normal on CI and a breach of OB-7 anywhere else"*
+— both halves true, conclusion false. **That is A-1's finding inside
+out: registering the reason made the filter visible, and made it easier
+to accept.** One resolver now, searching `GEOMAP_V1_ROOT` and every
+sibling of the geoMap root.
+
+Against the real tree: **17 of 18 probes reproduced, 0 refuted, 1
+blocked** (F17, on O6), and **177 options, 0 unmapped**. V4 and V9 are
+discharged by a run rather than by a record; **OB-7 is met and never was
+broken**, and PV-129's diagnosis is withdrawn rather than amended.
+
+**On PV-131, honestly.** The PV-127 round still has no entry of its own,
+and none is fabricated here: its green gate is reported only in commit
+`3bdfb87` and this session did not witness it. What has changed is that
+the claim no longer matters much — the tree it described has been
+superseded twenty-five commits over, and the run above is witnessed.
+
+**Binding items a later stage could be wrong for not reading.**
+
+- **O11 is still unfilled.** The GRACE integration scenario uses a field
+  labelled synthetic in the code, deliberately.
+- **The rendered manual has not been looked at.** There is no automated
+  oracle for "the figure is right" and pretending otherwise would be
+  worse than saying so. It is the last open item of deliverable 10 and it
+  belongs to Matthias.
+- **Four of this session's defects were found by a human running the
+  toolbox**, not by 516 points. PV-135, PV-136, PV-145 and the stale
+  manual all reached daylight through `GettingStarted` or through a
+  bridge run. That is the strongest argument in this record for keeping
+  the human step in the release checklist.
+
+---
+
+*Entries R-031 onward are written at each stage's green gate.*
