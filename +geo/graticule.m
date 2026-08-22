@@ -318,8 +318,8 @@ function [labels, dropped] = resolveCollisions(labels, nLon)
 %   not see it, because every graphics assertion here measures ONE
 %   element against its own claim and none compares two to each other.
 %
-%   MERIDIAN LABELS WIN. They are placed first and kept; a parallel label
-%   that collides is dropped. The asymmetry is deliberate and is what a
+%   EARLIER LABELS WIN, and meridians are placed first, so a parallel
+%   label loses the corner to a meridian. The asymmetry is deliberate and is what a
 %   cartographer does by hand: on a pseudocylindrical projection the
 %   "left edge" at the pole is not an edge, it is the point the parallel
 %   has collapsed to, so the parallel label there is the one with least
@@ -337,7 +337,14 @@ end
 drawnow limitrate                    % extents are not final until laid out
 rects = geo.internal.textRects(labels);
 keep = true(1, numel(labels));
-for k = nLon + 1:numel(labels)       % parallels only; meridians are kept
+% EVERY label is a candidate, not only the parallels. The first version
+% of this pass started at nLon + 1, on the reasoning that meridians win
+% the corner - which is true and is still true, because they are placed
+% first and an earlier label always wins. But it left two MERIDIAN
+% labels free to overlap each other, which they do on a small axes, and
+% the rule the suite asserts is that no two SURVIVING labels overlap.
+% The implementation was weaker than the claim; this is the claim.
+for k = 2:numel(labels)
     if any(isnan(rects(k, :)))
         continue
     end
