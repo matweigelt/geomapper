@@ -185,8 +185,17 @@ end
 [figH, axH, H] = drawLadder(G, crs, options);
 
 if strlength(options.Export) > 0
-    nv = namedargs2cell(options.ExportOptions);
-    geo.export(figH, options.Export, nv{:});
+    % THE EXPORT IS INSIDE THE GUARD TOO. A map that drew perfectly and
+    % then could not write its file is still a failed call, and a failed
+    % call leaves nothing behind (PV-149). An unwritable path is the
+    % likeliest way for a user to meet this.
+    try
+        nv = namedargs2cell(options.ExportOptions);
+        geo.export(figH, options.Export, nv{:});
+    catch err
+        geo.internal.discardOnFailure(figH, H.Basemap.CreatedFigure);
+        rethrow(err);
+    end
 end
 H.Figure = figH;
 H.Axes = axH;
@@ -245,6 +254,17 @@ if ~isempty(options.Parent) && ~any(string(baseNv(1:2:end)) == "Parent")
 end
 [figH, axH, base] = geo.basemap(G, crs, baseNv{:});
 
+% THE LADDER IS THE DANGEROUS PART, and until PV-149 nothing owned the
+% figure while it was climbed. Every rung below can raise - a missing
+% data field, a bad option, an element refusing its own arguments - and
+% the figure GEO.BASEMAP has just built is already on screen. Four such
+% figures survived a GREEN 516-point run.
+%
+% CREATEDFIGURE IS READ, NOT RE-DERIVED. isempty(options.Parent) is the
+% same fact stated a second time, and a second statement of one fact is
+% the defect this project has spent the most repairs on.
+try
+
 % Name, the field its data arrives in, whether it draws text, and the
 % call. One row per rung of the ladder, in the order the ladder is
 % climbed - so the order is READ off this table rather than inferred
@@ -290,6 +310,10 @@ for k = 1:size(step, 1)
     drawn{end + 1} = name;
 end
 H.Order = ["Basemap", string(drawn)];
+catch err
+    geo.internal.discardOnFailure(figH, base.CreatedFigure);
+    rethrow(err);
+end
 end
 
 function tf = isOff(want)
