@@ -351,12 +351,20 @@ for k = nLon + 1:numel(labels)       % parallels only; meridians are kept
              - max(rects(k,2), rects(j,2));
         if ox > 0 && oy > 0
             keep(k) = false;
-            dropped(end + 1) = string(labels(k).String); %#ok<AGROW>
-            delete(labels(k));
             break
         end
     end
 end
+
+% F13: nothing grows in a loop inside +geo, and the audit enforces it.
+% One pass decides, one reports, one deletes - and the report is taken
+% BEFORE the delete, because a deleted handle has no String to read.
+gone = find(~keep);
+dropped = strings(1, numel(gone));
+for i = 1:numel(gone)
+    dropped(i) = string(labels(gone(i)).String);
+end
+delete(labels(gone));
 labels = labels(keep);
 end
 
