@@ -132,9 +132,9 @@ if isstruct(lon)
     return
 end
 
-mustBeAxis(lon, "lon");
-mustBeAxis(lat, "lat");
-mustBeAngular(lon, lat);
+dLon = mustBeAxis(lon, "lon");
+dLat = mustBeAxis(lat, "lat");
+mustBeAngular(lon, lat, dLon);
 
 nLon = numel(lon);
 nLat = numel(lat);
@@ -155,8 +155,8 @@ end
 
 lonRow = double(lon(:)).';
 latCol = double(lat(:));
-lonStep = median(diff(lonRow));
-latStep = median(diff(latCol));
+lonStep = median(dLon);
+latStep = median(dLat);
 reg = resolveRegistration(options.Registration, lonRow, lonStep, ...
     latCol(:).', latStep);
 
@@ -268,7 +268,7 @@ function tf = measureGlobalLon(lon, step)
 tf = abs(lon(end) - lon(1)) >= 360 - 1.5 * abs(step);
 end
 
-function mustBeAngular(lon, lat)
+function mustBeAngular(lon, lat, dLon)
 %MUSTBEANGULAR  A coordinate axis is in DEGREES, and says so if it is not.
 %
 %   Audit finding A-3. Measured: a NetCDF whose x and y are projected
@@ -310,7 +310,7 @@ if any(abs(lat) > 90 + 1e-9)
          'in metres.'], min(lat), max(lat));
 end
 span = max(lon) - min(lon);
-if span > 360 + maxStep(lon) + 1e-9
+if span > 360 + maxStep(dLon) + 1e-9
     error('geo:grid:AxisNotAngular', ...
         ['lon spans %g degrees, more than one turn. The window may sit ' ...
          'anywhere - -276 .. 84 is legal and so is 0 .. 360 - but it ' ...
@@ -319,21 +319,24 @@ if span > 360 + maxStep(lon) + 1e-9
 end
 end
 
-function s = maxStep(v)
+function s = maxStep(d)
 %MAXSTEP  The largest gap in an axis, or 0 for one that has none.
 %   The span allowance is one CELL, not one degree: a cell-registered
 %   global axis spans 360 exactly and a posting one 360 minus a step, so
 %   the honest bound is a turn plus the coarsest step the axis carries.
-d = abs(diff(double(v(:)).'));
 if isempty(d)
     s = 0;
 else
-    s = max(d);
+    s = max(abs(d));
 end
 end
 
-function mustBeAxis(v, what)
+function d = mustBeAxis(v, what)
 %MUSTBEAXIS  A coordinate vector: numeric, real, finite, strictly monotone.
+%   Returns the successive differences it had to compute anyway. Four
+%   separate walks of the same axis - here, mustBeAngular's maxStep,
+%   inferAxis's median and regionOf's step - pushed validation past its
+%   budget at 2161x4321 (0.1075 against 0.1). One walk, four readers.
 if ~isnumeric(v) || ~isreal(v) || ~isvector(v)
     error('geo:grid:NotAVector', ...
         '%s must be a real numeric vector.', what);
