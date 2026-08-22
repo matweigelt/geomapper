@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.greatCircle - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.greatCircle</h1>
+<p class="h1line">Spherical distance, bearing and destination.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     OUT = GEO.GREATCIRCLE(FROM, TO)
+     OUT = GEO.GREATCIRCLE(FROM, TO, Radius = R)
+     TO  = GEO.GREATCIRCLE(FROM, Bearing = B, Distance = D)
+</pre>
+<h2>Description</h2>
+<p>The toolbox's only spherical geometry. GEO.SCALEBAR calibrates its bar with it, GEO.SPLITTRACKS measures spatial jumps with it, and Stage D's inset uses it for extent rectangles - in v1 each of those carried its own haversine, and two of them disagreed about the radius.</p>
+<p>COORDINATES COME IN PAIRS, Nx2 [lon lat], and that is a DELIBERATE DEVIATION from the handover's §7.3 signature geo.greatCircle(lon1, lat1, lon2, lat2, ...). Four positional arguments breaks the toolbox's own arity rule, which caps public functions at three because v1's geoNorthArrow took fifteen and a caller who got one wrong had no way to learn which (defect F7). A rule with an exception written for the first function that finds it inconvenient is not a rule. Pairing the coordinates also makes the two arguments symmetric and unswappable-by-accident in a way four loose numbers are not. Recorded as finding PV-042.</p>
+<p>THE DESTINATION FORM TAKES ITS ARGUMENTS BY NAME for the same reason: Bearing and Distance are not interchangeable, and greatCircle(p, 45, 100) would not say which was which.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>from</code></td><td>(N,2) double</td><td>[lon lat] in degrees. N = 1 broadcasts.</td></tr>
+<tr><td><code>to</code></td><td>(N,2) double</td><td>[lon lat] in degrees. Omitted in the destination form.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Radius</code></td><td>(1,1) double</td><td>[6371.0072]  km, authalic (D-001).</td></tr>
+<tr><td><code>Bearing</code></td><td>(N,1) double</td><td>[]           Degrees clockwise from north. Destination form only.</td></tr>
+<tr><td><code>Distance</code></td><td>(N,1) double</td><td>[]           km along the great circle. Destination form only.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>DistanceKm</code></td><td>(N,1) double</td><td>Great-circle distance.</td></tr>
+<tr><td><code>InitialBearingDeg</code></td><td>(N,1) double</td><td>At FROM, clockwise from north, in [0, 360).</td></tr>
+<tr><td><code>FinalBearingDeg</code></td><td>(N,1) double</td><td>Arriving at TO. Destination form - OUT (N,2) double, [lon lat] of the destination, longitude wrapped into [-180, 180).</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>SPHERICAL, and the difference from a geodesic is quantified rather than waved at. Measured against oracle O4 (pyproj.Geod, WGS84) on Paris (2.3522, 48.8566) to New York (-74.0060, 40.7128), values in mirror/geomap_mirror/out/reference_values.json under stage_a_great_circle:</p>
+<p>spherical, authalic radius 5837.2475 km WGS84 geodesic 5852.9353 km difference -0.268% initial bearing, spherical 291.7939 deg initial bearing, geodesic 291.8261 deg (0.032 deg apart)</p>
+<p>That -0.268% is the measurement decision D-001's &quot;at most about 0.3%&quot; rests on. It is invisible at figure scale and quite unsuitable for survey work, which is the whole position of this toolbox.</p>
+<p>The haversine form is used rather than the spherical law of cosines: acos(...) loses precision catastrophically for short separations, where a scale bar on a regional map lives.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:greatCircle:SizeMismatch</code></dt><dd>from and to have different N and neither is 1 Shape is enforced by the ARGUMENTS block, so an input that is not Nx2 fails with MATLAB's own size-mismatch identifier before the body runs. No geo:* twin is coined for it: a deprecated alias for an error is still an alias. Form selection:</dd>
+<dt><code>geo:greatCircle:AmbiguousForm</code></dt><dd>both TO and Bearing/Distance given, or neither</dd>
+<dt><code>geo:greatCircle:IncompleteForm</code></dt><dd>Bearing without Distance, or the reverse</dd></dl>
+<h2>Example</h2>
+<pre class="example">paris = [2.3522 48.8566];
+ny    = [-74.0060 40.7128];
+g = geo.greatCircle(paris, ny);
+g.DistanceKm          <span class="cmt">% 5837.2</span>
+p = geo.greatCircle(paris, Bearing = 291.79, Distance = 5837.25);</pre>
+<h2>Limitations</h2>
+<p>A sphere, not an ellipsoid, and no geodesic solver. For antipodal or near-antipodal pairs the initial bearing is ill-conditioned - every direction is a shortest path - and the returned value is whatever atan2 makes of two nearly zero arguments. The distance stays accurate there; the bearing does not.</p>
+
+<h2>See also</h2>
+<p><a href="geo_splitTracks.html"><code>geo.splitTracks</code></a>, <a href="geo_crs.html"><code>geo.crs</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 895b6c05d0a2a16cd73d9717eb1aa91ac993c04e280615d0ef491fcbd1589472 -->

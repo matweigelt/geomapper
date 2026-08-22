@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.series - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.series</h1>
+<p class="h1line">One time series: line, gaps, and an uncertainty band.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.SERIES(AX, T)
+     H = GEO.SERIES(AX, T, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Draws one station's record into an ordinary axes: Time against Obs, broken at gaps, optionally inside a shaded uncertainty band and offset vertically so several can be stacked.</p>
+<p>WHY THIS EXISTS. GEO.TIMESERIES is one of Stage E's six fronts, and a front draws nothing - it orchestrates public elements. There was no element that drew a series, so the rule fired exactly as it did for the title: the missing capability belongs at L3. This is it. Without it, GEO.TIMESERIES would have been v1's geoImagescTimeSeries with the plotting inlined, which is where every one of F8's 3413 lines came from.</p>
+<p>THE GAP LOGIC IS GEO.SPLITTRACKS', NOT A SECOND COPY. A break is where the sampling stops, and deciding that from the median step is a real algorithm with real edge cases - repeated timestamps, a single sample, an unsorted record. v1 wrote it twice, once here and once in the track plotter, and the two used different thresholds. Handover 4.1 names this as the thing not to repeat.</p>
+<p>THE BAND IS DRAWN FIRST AND SITS BEHIND, at a lower z than the line it belongs to, so an uncertainty envelope never hides the measurement it describes. Both are drawn per segment, so a gap in the record is a gap in the band as well - a band that bridged a gap would assert a confidence over an interval with no data.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>axH</code></td><td>(1,1) matlab.graphics.axis.Axes</td><td>Any axes. Unlike the map elements this needs no basemap, because a series is not on a map.</td></tr>
+<tr><td><code>T</code></td><td>(1,1) struct</td><td>A GEO.TRACK carrying Time and Obs. Lon and Lat are ignored here; the same value struct describes where a record was taken and what it recorded, and a series uses the second half.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Offset</code></td><td>0</td><td>Added to Obs before drawing, for stacking.</td></tr>
+<tr><td><code>Color</code></td><td></td><td>[0 0 0]</td></tr>
+<tr><td><code>LineWidth</code></td><td></td><td>1</td></tr>
+<tr><td><code>LineStyle</code></td><td></td><td>&quot;-&quot;</td></tr>
+<tr><td><code>Marker</code></td><td></td><td>&quot;none&quot;</td></tr>
+<tr><td><code>MarkerSize</code></td><td></td><td>4</td></tr>
+<tr><td><code>Uncertainty</code></td><td>[]</td><td>Half-width of the band, one value per sample or one for all. Empty draws no band.</td></tr>
+<tr><td><code>BandAlpha</code></td><td></td><td>0.25</td></tr>
+<tr><td><code>BandColor</code></td><td>[]</td><td>Empty uses Color. GapThreshold &quot;auto&quot;   Passed to GEO.SPLITTRACKS as TimeGapThreshold; &quot;none&quot; never breaks.</td></tr>
+<tr><td><code>GapFactor</code></td><td>5</td><td>Passed as TimeGapFactor.</td></tr>
+<tr><td><code>Label</code></td><td>&quot;&quot;</td><td>Drawn at the end of the trace, in the series' own colour. AT THE TRACE, not in a legend: a legend makes the reader match a colour to a name across the figure, which is the task stacking was meant to remove.</td></tr>
+<tr><td><code>LabelSide</code></td><td>&quot;right&quot;</td><td>&quot;right&quot; | &quot;left&quot;.</td></tr>
+<tr><td><code>FontName</code></td><td></td><td>&quot;Helvetica&quot;</td></tr>
+<tr><td><code>FontSize</code></td><td></td><td>9</td></tr>
+<tr><td><code>ZLevel</code></td><td>0</td><td>Base z. The band sits 0.1 below it.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Line      (1,1) Line Band      (1,1) Patch or empty Label     (1,1) Text or empty NumGaps   (1,1) double  Breaks the gap rule found. Offset    (1,1) double  As applied. All       (1,:)</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>One claim, and it is exact: the drawn ordinate equals Obs plus Offset at every sample. A stacked plot whose offsets were not exactly what it reported would be unreadable, because the reader subtracts them by eye.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:series:NoTime</code></dt><dd>the track carries no Time</dd>
+<dt><code>geo:series:NoObs</code></dt><dd>the track carries no Obs</dd>
+<dt><code>geo:series:UncertaintySize</code></dt><dd>Uncertainty is neither scalar nor one value per sample</dd></dl>
+<h2>Example</h2>
+<pre class="example">T = geo.track(lon, lat, Time = t, Obs = ewh, Units = <span class="str">&quot;cm&quot;</span>);
+geo.series(ax, T, Uncertainty = sigma, Color = [0.8 0.1 0.1]);</pre>
+<h2>Limitations</h2>
+<p>Time is drawn as whatever numeric value it holds - a datenum, a posixtime, a year. Formatting the axis is GEO.TIMESERIES' job, because only a front knows how many series share the axis.</p>
+
+<h2>See also</h2>
+<p><a href="geo_timeseries.html"><code>geo.timeseries</code></a>, <a href="geo_track.html"><code>geo.track</code></a>, <a href="geo_splitTracks.html"><code>geo.splitTracks</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: b467c59bedb4b73d668d6061e5df87dc050034369c58c0a54342ab91896bdb30 -->

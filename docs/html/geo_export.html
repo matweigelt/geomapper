@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.export - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.export</h1>
+<p class="h1line">Write figures to files at an exact physical size.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.EXPORT(FIG, FILE)
+     H = GEO.EXPORT(FIG, FILE, Name, Value)
+     H = GEO.EXPORT(FIGS, FILES, Name, Value)
+     H = GEO.EXPORT(BUILDERS, FILES, UseParallel = &quot;auto&quot;)
+</pre>
+<h2>Description</h2>
+<p>The export tail, and it exists as its own function for one reason: a figure that is going into a journal has a width in CENTIMETRES, and neither of MATLAB's two export routes delivers one by itself.</p>
+<p>WHY THIS IS NOT A CALL TO EXPORTGRAPHICS. v1's whole export path was one line - EXPORTGRAPHICS(fig, path, 'Resolution', dpi) - with the figure sized in SCREEN PIXELS. Two things follow, and both were measured rather than reasoned about:</p>
+<p>1. EXPORTGRAPHICS CROPS TO CONTENT. A figure set to 17 x 12 cm exported to PNG at 300 dpi came back 1486 x 711 pixels, which is 12.58 x 6.02 cm - 26% narrow, and narrow by an amount that depends on how much margin the axes happened to leave. The same call to PRINT gave 2008 x 1418 pixels: 17.00 x 12.01 cm. 2. A PIXEL IS NOT A LENGTH. v1's FigureSize is in pixels and its export takes a DPI, so the centimetres you receive are a function of the machine's ScreenPixelsPerInch. There was no way to ask v1 for 17.0 cm at all.</p>
+<p>So PRINT is the primary route here, driven by PaperPosition and PaperSize, which is what makes the size a contract instead of a side effect. Measured on the produced files: a 17.0 cm request yields a PDF page of 482 pt = 17.004 cm and a PNG of 2008 px at 300 dpi = 17.007 cm. The residual is one point and one pixel of rounding-up, in that order, and it is asserted rather than assumed.</p>
+<p>EXPORTGRAPHICS IS STILL USED where it is the better instrument: when Crop = true, and for .gif, which PRINT has no driver for (measured: MATLAB:print:InvalidDeviceOption). It is also the fallback if PRINT fails, and H.Method reports which route wrote each file - an export that silently changed instrument has silently changed size. The routing lives in GEO.INTERNAL.WRITEFIGUREFILE, one decision in one place.</p>
+<p>THE FIGURE IS RESTORED. PaperUnits, PaperPosition, PaperSize, PaperPositionMode, Units and Color are saved before the write and put back after it, through ONCLEANUP so that a failed write restores them too. An export is a read of the figure; a caller who exports and then keeps working must not find the figure changed.</p>
+<p>THE PARALLEL FORM TAKES BUILDERS, NOT HANDLES, and this is the design point worth reading. Graphics handles cannot cross a worker boundary - a figure exists in one MATLAB's graphics system and nowhere else. So the batch form accepts a CELL ARRAY OF FUNCTION HANDLES, each of which creates its own figure on the worker and returns it. Passing live handles with UseParallel = &quot;always&quot; is an error rather than a silent serialisation, because the failure it replaces is obscure.</p>
+<p>THIS IS AN L4 UTILITY AND NOT AN L4 FRONT: it draws nothing and orchestrates nothing, so it declares no L4 marker and is not held to the 200-line orchestration budget. Declaring one would have meant a false pass or a raised limit, and 4.6 forbids the second.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>figs</code></td><td></td><td>Either graphics figure handles, (1,:), or a cell array of function handles, (1,:), each returning one figure. The second form is the only one that can be run in parallel.</td></tr>
+<tr><td><code>files</code></td><td>(1,:) string</td><td>One path per figure. The extension chooses the format: .pdf .eps .svg .emf .png .jpg .tif .bmp go through PRINT, .gif through EXPORTGRAPHICS.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Width</code></td><td>17</td><td>Page width, in Units.</td></tr>
+<tr><td><code>Height</code></td><td>[]</td><td>Page height. Empty takes it from the figure's own aspect ratio.</td></tr>
+<tr><td><code>Units</code></td><td>&quot;centimeters&quot;</td><td>&quot;centimeters&quot; | &quot;inches&quot; | &quot;points&quot;.</td></tr>
+<tr><td><code>Resolution</code></td><td>300</td><td>DPI, for raster formats and for rasterised content inside a vector file.</td></tr>
+<tr><td><code>ContentType</code></td><td>&quot;auto&quot;</td><td>&quot;auto&quot; | &quot;vector&quot; | &quot;image&quot;. &quot;auto&quot; is vector for .pdf .eps .svg .emf and image for everything else. BackgroundColor []       Empty keeps the figure's own Color.</td></tr>
+<tr><td><code>Crop</code></td><td>false</td><td>True content-crops via EXPORTGRAPHICS, in which case Width and Height no longer describe the file and H.Cropped says so.</td></tr>
+<tr><td><code>UseParallel</code></td><td>&quot;never&quot;</td><td>&quot;never&quot; | &quot;auto&quot; | &quot;always&quot;. &quot;auto&quot; goes parallel only if builders were given, there is more than one, and Parallel Computing Toolbox is present; &quot;always&quot; raises if any of those is missing.</td></tr>
+<tr><td><code>CloseAfter</code></td><td>false</td><td>Close each figure once written. A figure made by a BUILDER is always closed, on a worker or not: this function created it, so this function disposes of it, and a batch of 200 would otherwise leak 200.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Files       (1,:) string   As written. Method      (1,:) string   &quot;print&quot; | &quot;exportgraphics&quot;, per file. Width       (1,1) double   As requested, in Units. Height      (1,:) double   Per file; differs when taken from each figure's aspect ratio. Units       (1,1) string Resolution  (1,1) double Cropped     (1,1) logical Parallel    (1,1) logical  Whether the batch actually ran on workers, which is not the same as what was asked for. NumWritten  (1,1) double</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>One claim, on the file the operating system wrote and not on the figure: a PDF asked for at W centimetres has a MediaBox width of W +/- 0.05 cm, and a PNG at R dpi has round(W/2.54*R) pixels to within one pixel. Both are read back out of the produced file.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:export:BadFigures</code></dt><dd>not figures and not builder handles</dd>
+<dt><code>geo:export:InvalidFigure</code></dt><dd>a figure handle that has been deleted</dd>
+<dt><code>geo:export:CountMismatch</code></dt><dd>numel(files) ~= numel(figs)</dd>
+<dt><code>geo:export:HandlesCannotCross</code></dt><dd>UseParallel=&quot;always&quot; with live handles</dd>
+<dt><code>geo:export:NoParallel</code></dt><dd>UseParallel=&quot;always&quot; without the pool</dd>
+<dt><code>geo:export:BuilderReturnedNothing</code></dt><dd>a builder gave back no figure</dd>
+<dt><code>geo:export:WorkerFailed</code></dt><dd>a builder failed on a worker</dd>
+<dt><code>geo:export:CannotWrite</code></dt><dd>the folder is missing, or both routes failed to write the file</dd></dl>
+<h2>Example</h2>
+<pre class="example"><span class="cmt">% One figure, exactly 17 cm wide for a two-column journal.</span>
+H = geo.export(fig, <span class="str">&quot;figure3.pdf&quot;</span>, Width = 17);
+<span class="cmt">% A batch, built on workers. Note the handles, not the figures.</span>
+builders = { @() makeMap(2003), @() makeMap(2004) };
+files    = [<span class="str">&quot;y2003.png&quot;</span> <span class="str">&quot;y2004.png&quot;</span>];
+geo.export(builders, files, Width = 9, UseParallel = <span class="str">&quot;auto&quot;</span>);</pre>
+<h2>Limitations</h2>
+<p>A BUILDER MUST BE SELF-CONTAINED, and this is the sharp edge of the parallel form. It runs on a worker, so it may not call a local function of the calling script, capture a variable from the base workspace, or read a file off the worker's path. Measured while writing this: a builder calling a local function of the test script failed with &quot;Unrecognized function or variable&quot;, which names the symbol and not the cause - hence geo:export:WorkerFailed, which names the cause.</p>
+<p>A vector PDF of a basemap embeds the whole surface as vector art and can be very large; ContentType = &quot;image&quot; rasterises the page at Resolution and is usually what a 2000 x 1000 grid wants. Reading the produced PDF's page box assumes the MediaBox is plain text in the file, which MATLAB's own writer produces; it is not true of PDFs in general.</p>
+
+<h2>See also</h2>
+<p><a href="geo_map.html"><code>geo.map</code></a>, <code>EXPORTGRAPHICS</code>, <code>PRINT</code></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: c9d6974405acb7f466c8708d80d43bdd8fee6f7861d9c71e5d29c887b82973b3 -->

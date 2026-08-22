@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.timeseries - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.timeseries</h1>
+<p class="h1line">Several stations' records, stacked and labelled.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.TIMESERIES(T)
+     H = GEO.TIMESERIES(T, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Draws an array of GEO.TRACK as a stack of time series: one GEO.SERIES per station, offset vertically so they do not overlap, each labelled at its own trace.</p>
+<p>IT DRAWS NOTHING ITSELF. Every mark on the figure is made by GEO.SERIES, including the reference lines - a horizontal line at a constant value over the time span IS a series, and treating it as one is why there is no second line-drawing path here. That is the whole reason GEO.SERIES exists: v1's geoImagescTimeSeries inlined its plotting, its gap detection and its band drawing, and the gap detection then disagreed with the one in the track plotter.</p>
+<p>THE OFFSET IS COMPUTED FROM THE DATA, ONCE. The default spacing is a robust measure of how much room a station needs - the median of the per-station 5-to-95 percentile ranges - so a single noisy station does not push every trace apart, and a single flat one does not let them collide. v1 defaulted to the maximum range, which is that first failure exactly.</p>
+<p>THE OFFSETS ARE REPORTED, and that matters more than it looks: a stacked plot is read by subtracting the offsets by eye, so a plot whose offsets were not exactly what it reported would be unreadable. H.Offsets is what was applied.</p>
+<p>ON THE Y LABEL AND THE AXES SETTINGS. This function writes axH.YLabel.String and the axis limits directly. That is CONFIGURATION of objects the axes already owns, not drawing: no graphics object is created, and the same is true of XLim. Calling ylabel() would create one, which is why ylabel is on the audit's banned list and this is not. The distinction is narrow enough to be worth stating rather than leaving to be inferred.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>T</code></td><td>(1,:) struct</td><td>An array of GEO.TRACK, each carrying Time and Obs. One track is a stack of one.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Offset</code></td><td>true</td><td>false draws every series on a common baseline; true stacks them; a numeric vector gives the offsets explicitly, one per series. OffsetSpacing []      The gap between stacked traces. Empty computes it from the data, as above.</td></tr>
+<tr><td><code>Labels</code></td><td>[]</td><td>One string per series. Empty uses each track's Source, and then &quot;1&quot;, &quot;2&quot;, ...</td></tr>
+<tr><td><code>Colors</code></td><td>[]</td><td>Nx3. Empty takes N colours from GEO.COLORMAPS' qualitative set.</td></tr>
+<tr><td><code>Uncertainty</code></td><td>{}</td><td>A cell array, one entry per series, each passed to GEO.SERIES as its Uncertainty. ReferenceLines []     Y values at which to draw a horizontal line, in each series' own offset frame. ReferenceColor [0.6 0.6 0.6]</td></tr>
+<tr><td><code>GapThreshold</code></td><td>&quot;auto&quot;</td><td>Passed through to GEO.SERIES, which passes it to GEO.SPLITTRACKS.</td></tr>
+<tr><td><code>GapFactor</code></td><td></td><td>5</td></tr>
+<tr><td><code>YLabel</code></td><td></td><td>&quot;&quot;</td></tr>
+<tr><td><code>Title</code></td><td>&quot;&quot;</td><td>Drawn by GEO.TITLE if the axes carries a map, and set as the axes title otherwise - a series plot has no plotted box to hang a map title on.</td></tr>
+<tr><td><code>LineWidth</code></td><td></td><td>1</td></tr>
+<tr><td><code>Marker</code></td><td></td><td>&quot;none&quot;</td></tr>
+<tr><td><code>FontName</code></td><td></td><td>&quot;Helvetica&quot;</td></tr>
+<tr><td><code>FontSize</code></td><td></td><td>9</td></tr>
+<tr><td><code>Parent</code></td><td>[]</td><td>An axes to draw into.</td></tr>
+<tr><td><code>Export</code></td><td>&quot;&quot;</td><td>A path, handed to GEO.EXPORT. ExportOptions struct()</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Figure   (1,1) matlab.ui.Figure Axes     (1,1) matlab.graphics.axis.Axes Series   (1,:) struct  One GEO.SERIES result per station. Reference (1,:) struct  One per reference line. Offsets  (1,:) double  As applied, in the order given. Spacing  (1,1) double  The spacing used, computed or given.</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>Exact, and asserted: the drawn ordinate of series k equals its Obs plus H.Offsets(k) at every sample, and the offsets are evenly spaced by H.Spacing when they were computed rather than given.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:timeseries:NoSeries</code></dt><dd>an empty array of tracks</dd>
+<dt><code>geo:timeseries:OffsetCount</code></dt><dd>explicit offsets, wrong number</dd>
+<dt><code>geo:timeseries:LabelCount</code></dt><dd>explicit labels, wrong number</dd></dl>
+<h2>Example</h2>
+<pre class="example">H = geo.timeseries([gps1 gps2 gps3], ...
+    Labels = [<span class="str">&quot;ONSA&quot;</span> <span class="str">&quot;MAR6&quot;</span> <span class="str">&quot;VIS0&quot;</span>], YLabel = <span class="str">&quot;EWH (cm)&quot;</span>, ...
+    ReferenceLines = 0, Export = <span class="str">&quot;stations.pdf&quot;</span>);</pre>
+<h2>Limitations</h2>
+<p>One axes. Series beside a map is GEO.PANEL's job. Time is drawn as whatever numeric value the tracks carry; this does not convert datenums to dates, because it cannot know which convention a caller's numbers follow.</p>
+
+<h2>See also</h2>
+<p><a href="geo_series.html"><code>geo.series</code></a>, <a href="geo_track.html"><code>geo.track</code></a>, <a href="geo_splitTracks.html"><code>geo.splitTracks</code></a>, <a href="geo_panel.html"><code>geo.panel</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 53982e53410a6c7db02064097fcd03588fd0ff69fc122e36b048dadc594942fc -->

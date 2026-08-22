@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.scalebar - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.scalebar</h1>
+<p class="h1line">A bar whose length is the distance it claims.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.SCALEBAR(AX)
+     H = GEO.SCALEBAR(AX, CRS)
+     H = GEO.SCALEBAR(AX, CRS, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Draws an alternating scale bar at z = 6, and reports how much the map's scale varies over the extent it is drawn on.</p>
+<p>v1's BAR DID NOT MEASURE WHAT IT SAID, and this is the defect this function exists to not have. v1 drew a bar of FIXED WIDTH - 90 points, always - then computed the ground distance those 90 points happened to span and printed the nearest entry of a hard-coded ladder next to it. The bar was never resized to match. A bar spanning 3 km was labelled &quot;2 km&quot; and one spanning 750 km was labelled &quot;500 km&quot;: errors approaching 50%, on the one element of a map whose entire purpose is to be measured against. Here the nice ground distance is chosen FIRST and the bar is then drawn exactly that long. That is the only correct order, and the difference is asserted rather than described.</p>
+<p>IT IS CALIBRATED ALONG ITS OWN DIRECTION. v1 measured kilometres per projected unit along a MERIDIAN and applied the answer to a HORIZONTAL bar, which is right only where the projection is conformal and the parallel scale equals the meridian scale. Here the calibration steps east-west in projected space, unprojects both ends and asks GEO.GREATCIRCLE how far apart they are - so it measures the thing the bar actually spans.</p>
+<p>IT DRAWS AND REPORTS; IT DOES NOT REFUSE (D-006). Scale varies over any map that is not conformal and small, so a bar is always somewhat a lie about somewhere. The variation is MEASURED over the extent, recorded in the returned struct, and warned about above the trigger. It is not grounds for refusing to draw: at the 1.05 trigger a refusing gate would refuse on 6 of 14 projections for a 10x10 degree regional map and 12 of 14 at continental scale (measured, debt V8), and a library that will not let you do the thing you came to do is not protecting you.</p>
+<p>THE BAR LIVES IN DATA UNITS, so it stays honest when the axes are zoomed or the figure resized - its ground length does not change because the screen did. v1 drew it into a separate axes measured in points and had to rebuild it on every resize to stay approximately right; there is nothing here for a resize to invalidate.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>axH</code></td><td>(1,1) matlab.graphics.axis.Axes</td><td>An axes with a basemap.</td></tr>
+<tr><td><code>crs</code></td><td>(1,1) struct</td><td>A GEO.CRS or a name. Defaults to the basemap's.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Units</code></td><td>&quot;km&quot;</td><td>&quot;km&quot; | &quot;mi&quot;.</td></tr>
+<tr><td><code>Length</code></td><td>NaN</td><td>Ground length to draw, in Units. NaN picks a 1-2-5 value nearest in LOG space to TargetFraction of the map width. v1 picked nearest in linear space, which biases to the smaller neighbour across every decade. TargetFraction 0.25     Fraction of the map width to aim for.</td></tr>
+<tr><td><code>Segments</code></td><td>4</td><td>Alternating blocks.</td></tr>
+<tr><td><code>Location</code></td><td></td><td>&quot;southwest&quot; Any of the eight compass points.</td></tr>
+<tr><td><code>Colors</code></td><td></td><td>[0 0 0; 1 1 1]</td></tr>
+<tr><td><code>Thickness</code></td><td>0.012</td><td>Bar height, as a fraction of the map diagonal - the same unit GEO.FRAME uses.</td></tr>
+<tr><td><code>FontName</code></td><td></td><td>&quot;Helvetica&quot;</td></tr>
+<tr><td><code>FontSize</code></td><td></td><td>9</td></tr>
+<tr><td><code>WarnAbove</code></td><td>1.05</td><td>Scale-variation ratio that triggers the warning. From Stage 0's measured table (V8), not from judgement.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Patches       (1,:) Patch Labels        (1,:) Text LengthGround  (1,1) double  As drawn, in Units. LengthData    (1,1) double  As drawn, in projected units. KmPerDataUnit (1,1) double  The calibration. ScaleVariation (1,1) double  max/min of the linear scale over the extent. 1 means none. ScaleSampled  (1,1) double  How many points that came from. ValidAt       (1,2) double  [lon lat] the bar is exact at - its own position, not the map's centre. Printed maps say &quot;scale accurate at 40N&quot; for this reason. All           (1,:)</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>The bar's length in projected units is the chosen ground distance divided by the measured kilometres per projected unit AT THE BAR'S OWN POSITION, so it is exact where it is drawn and wrong elsewhere by the scale variation reported in ScaleVariation. That is the honest statement: a scale bar on a non-conformal map has no single correct length, and this one says how wrong it is instead of implying it is not. Calibration is spherical, via GEO.GREATCIRCLE, and therefore differs from a WGS84 geodesic by up to about 0.5%.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:scalebar:NoBasemap</code></dt><dd>no CRS and no basemap to take one</dd>
+<dt><code>geo:scalebar:DegenerateScale</code></dt><dd>the calibration step projects to zero length, so no scale exists WARNINGS</dd>
+<dt><code>geo:scalebar:ScaleVaries</code></dt><dd>the scale varies over the extent by more than WarnAbove; the message names the measured percentage</dd></dl>
+<h2>Example</h2>
+<pre class="example">G = geo.readGrid(<span class="str">&quot;data/etopo_10min_surface.mat&quot;</span>);
+[~, ax] = geo.basemap(G, geo.crs(<span class="str">&quot;equirectangular&quot;</span>));
+H = geo.scalebar(ax);
+H.LengthGround, H.ScaleVariation</pre>
+<h2>Limitations</h2>
+<p>One bar, horizontal, in projected space. A bar that followed a parallel would be more nearly correct on a conic projection and is not offered, because a curved scale bar is not a convention anyone reads.</p>
+
+<h2>See also</h2>
+<p><a href="geo_basemap.html"><code>geo.basemap</code></a>, <a href="geo_scaleFactors.html"><code>geo.scaleFactors</code></a>, <a href="geo_greatCircle.html"><code>geo.greatCircle</code></a>, <a href="geo_northarrow.html"><code>geo.northarrow</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 431e4f7cd07da99bb0771fbca6f5285ea211544664db10c196579f9abf9c58c9 -->

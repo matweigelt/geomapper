@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.readGrid - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.readGrid</h1>
+<p class="h1line">Read a raster, or a window of one, into a validated GEO.GRID.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     G = GEO.READGRID(SOURCE)
+     G = GEO.READGRID(SOURCE, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Extracts the topography-reading locals v1 buried inside its 3413-line plotting function and gives them a name, a contract and tests. NetCDF, MATLAB .mat, and raw arrays are supported.</p>
+<p>VARIABLE AUTO-DETECTION NAMES WHAT IT TRIED. A NetCDF file whose data variable is not one of the usual names fails with a message LISTING the candidates it looked for and the variables the file actually holds. v1's equivalent failed with &quot;variable not found&quot;, which tells a user nothing they can act on.</p>
+<p>REGION AND STRIDE READ LESS, THEY DO NOT TRIM AFTERWARDS - and on NetCDF that is the whole point. A global one-arc-minute relief model is 21600x10800; MATLAB's NCREAD returns double, so the whole field is 1.74 GB in memory and the half-arc-minute version is 6.95 GB. A regional map needs a few thousand cells of it. REGION is turned into NCREAD start/count bounds, so the bytes for the rest are never read, decompressed or allocated.</p>
+<p>STRIDE IS SUBSAMPLING, NOT AVERAGING, and for topography that matters: taking every Nth cell of a relief model keeps whichever peaks and trenches happen to land on the sampled indices and discards their neighbours, so a hillshade computed from a strided grid is noisier than one computed from an averaged grid of the same size. Use it for an overview, not for a measurement. GEO.REGRID is the function that averages.</p>
+<p>STRIDE IS ALSO SLOW ON A COMPRESSED FILE, and this was measured rather than assumed. ETOPO 2022 stores z in deflated 2700x1350 chunks; a strided read still decompresses every chunk it touches, so it moves 0.242 Mcell/s against 44.5 Mcell/s for a contiguous window on the same file - 184 times slower per cell delivered. A decimated global overview is therefore something to compute once and put in GEO.CACHE, not something to re-read.</p>
+<p>A REGION MAY CROSS THE ANTIMERIDIAN, expressed the way GEO.REGION requires it: [170 190 -10 10], not [170 -170 -10 10]. The two index blocks either side of the seam are read separately and joined, and the returned longitude axis continues past 180 rather than wrapping, because GEO.GRID requires a strictly monotone axis and a seam in the middle of one is not something a downstream consumer should have to rediscover.</p>
+<p>ORIENTATION IS READ, NOT GUESSED, when the file says. A NetCDF variable declares its dimensions by name, so whether z is stored (lon,lat) or (lat,lon) is a fact in the file - ETOPO 2022 stores it (lon,lat) - and it is used both to orient the result and to put start/count in the right order. Only when that metadata is absent, and for .mat, does the size-comparison fallback run; that fallback cannot resolve a square grid and says so rather than guessing.</p>
+<p>THE GEOTIFF AND WORLDFILE PATHS ARE DEFERRED, and fail loudly with their own identifier rather than being absent. They need a binary TIFF tag parser, which is a substantial piece of work and belongs in its own round rather than rushed in beside three other readers (§6.6). The contract test for the identifier ships now, so the round that adds them converts a failing test rather than inventing the behaviour. When it arrives it must not assume the .tif and the .nc of the same ETOPO tile agree on row order: they do not. NCO flipped latitude to ascending when it wrote the NetCDF, while the GeoTransform carried along inside the file still describes a north-up raster with a negative step.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>source</code></td><td></td><td>A filename (.nc, .nc4, .cdf, .mat) or a GEO.GRID. A grid is returned unchanged, unless Region or Stride is given, in which case the selection is applied to it in memory - the same two arguments mean the same thing whether the source is still on disk or already read. Topo is carried through the same indices as Z.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Variable</code></td><td>(1,1) string</td><td>[&quot;&quot;]  NetCDF variable name; auto-detected when empty.</td></tr>
+<tr><td><code>Region</code></td><td>[]</td><td>A GEO.REGION, or anything GEO.REGION accepts, e.g. [lonMin lonMax latMin latMax]. Only the covered cells are read. The result is guaranteed to COVER the region and may exceed it by up to one cell on each edge; cells are never split or interpolated. A region narrower than one cell returns the cells around it, not nothing.</td></tr>
+<tr><td><code>Stride</code></td><td>(1,2) double</td><td>[1 1] [lonStride latStride], or one scalar for both. Positive integers. Applied inside the region when both are given.</td></tr>
+<tr><td><code>Lon</code></td><td>(1,:) double</td><td>[]    Override the file's longitude axis. Rejected together with Region.</td></tr>
+<tr><td><code>Lat</code></td><td>(:,1) double</td><td>[]    Override the file's latitude axis. Rejected together with Region.</td></tr>
+<tr><td><code>Units</code></td><td>(1,1) string</td><td>[&quot;&quot;]  Recorded in the grid.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>G</code></td><td>(1,1) struct</td><td>A GEO.GRID, carrying Source and Units.</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>No arithmetic beyond reading: values arrive as stored, and the only transformations are orientation, which GEO.GRID canonicalises, and the longitude offset applied to the far side of an antimeridian window, which is an exact multiple of 360 and therefore exact in binary floating point below 2^43 degrees. Any scale_factor and add_offset attributes are applied by MATLAB's own NCREAD, not re-implemented here. A subset is bit-identical to the same cells of a full read; that is a metamorphic test, not a hope.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:readGrid:FileNotFound</code></dt><dd>no such file</dd>
+<dt><code>geo:readGrid:NotReadable</code></dt><dd>the file is there and NCINFO refused it. The underlying error is attached as a CAUSE, so a corrupt file, an unsupported filter and a permissions failure stay distinguishable (A-4)</dd>
+<dt><code>geo:readGrid:UnknownFormat</code></dt><dd>extension not recognised</dd>
+<dt><code>geo:readGrid:VariableNotFound</code></dt><dd>no candidate matched; the message lists what was tried and what the file holds</dd>
+<dt><code>geo:readGrid:NoAxes</code></dt><dd>the file has data but no recognisable coordinate vectors Selection:</dd>
+<dt><code>geo:readGrid:RegionOutsideFile</code></dt><dd>the region selects no cell; the message gives both coverages</dd>
+<dt><code>geo:readGrid:AxisOverrideWithRegion</code></dt><dd>Lon or Lat was given together with Region, which would renumber the axis of a window and mean nothing Deferred capability:</dd>
+<dt><code>geo:readGrid:ImageInputNotYetAvailable</code></dt><dd>a GeoTIFF or an image with a worldfile A bad Region specification is rejected by GEO.REGION, which raises its own identifiers rather than duplicated ones here. That includes the antimeridian box written the wrong way round.</dd></dl>
+<h2>Example</h2>
+<pre class="example">G = geo.readGrid(<span class="str">&quot;ewh_trend.nc&quot;</span>, Units = <span class="str">&quot;cm/yr&quot;</span>);
+<span class="cmt">% Europe out of a global relief model, without reading the globe</span>
+E = geo.readGrid(<span class="str">&quot;ETOPO_2022_v1_60s_N90W180_surface.nc&quot;</span>, ...
+                 Region = [-25 45 30 72], Units = <span class="str">&quot;m&quot;</span>);
+<span class="cmt">% A global overview, subsampled 20:1</span>
+O = geo.readGrid(<span class="str">&quot;ETOPO_2022_v1_60s_N90W180_surface.nc&quot;</span>, Stride = 20);</pre>
+<h2>Limitations</h2>
+<p>Rectilinear grids only, matching GEO.GRID. A NetCDF holding a curvilinear mesh has two-dimensional coordinate arrays and is rejected by GEO.GRID's axis validation rather than flattened.</p>
+<p>ON .mat, REGION AND STRIDE SAVE MEMORY BUT NOT READING. A .mat is loaded whole by LOAD, so the subset is taken afterwards. The saving is in what is kept, not in what is read, and this is said here rather than left for a user to discover on a file too big to load. The same applies to a NetCDF variable whose dimensions are unnamed.</p>
+
+<h2>See also</h2>
+<p><a href="geo_grid.html"><code>geo.grid</code></a>, <a href="geo_region.html"><code>geo.region</code></a>, <a href="geo_readCoastline.html"><code>geo.readCoastline</code></a>, <a href="geo_regrid.html"><code>geo.regrid</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 6f8ceb9cc03b2276ad1786fd340c401df298623be3ac53ee5d6ee174c732d99b -->

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.basemap - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.basemap</h1>
+<p class="h1line">Draw a projected raster: one surface, no lights.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     [figH, axH, H] = GEO.BASEMAP(G, CRS)
+     [figH, axH, H] = GEO.BASEMAP(G, CRS, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>The one raster engine. v1 had three near-copies of it inside a 3413-line function and its two clones (defect F8); every element in Stage D composes with this one instead.</p>
+<p>THE SHADING IS COMPUTED, NOT LIT, and this is the largest single departure from v1. v1 drew a genuine three-dimensional surface whose ZData was exaggerated topography, then called `light`, `material` and `shading interp` and let OpenGL shade it. The result depended on the renderer, the graphics driver and the view, which is defect F9: two machines produced different figures from the same data and neither was reproducible in a test. Here GEO.HILLSHADE computes an intensity array, GEO.COLORMAPS composites it into truecolor, and the surface is flat at z = 0 with `FaceColor` flat. The output is a deterministic array of numbers, which is why the shading can be asserted at all. D-009, and the static audit rejects `light`, `material` and `shading` anywhere in +geo.</p>
+<p>ONE SURFACE, DRAWN FLAT AT z = 0. Everything else in the toolbox stacks above it on the documented z-ladder: contours and polygons at 2, graticule 3, coastline 4, overlays 5, frame 6. With `view(2)` that ladder is what decides occlusion, so an element's z is part of its contract rather than a drawing-order accident.</p>
+<p>NOTHING HERE CLIPS. Every out-of-domain point is already NaN when GEO.PROJECT returns it, because CRS.Domain declares the limit and GEO.PROJECT reads it. v1 carried a private `localVisibleRadiusDeg` table that had to be kept in step with a second copy inside its frame function, and the two drifted - defect F12. There is one table now and it is in GEO.CRS.</p>
+<p>NaN IS TRANSPARENT, NOT COLOURED. Missing cells get `FaceAlpha` flat with zero alpha and the axes background shows through, so NaNColor is the axes colour. This was unsafe in v1 because `shading interp` interpolated colour across the boundary of a transparent cell; with flat faces it is exact - a cell is either drawn or it is not.</p>
+<p>IDEMPOTENT. A second call on the same axes REPLACES the surface rather than drawing a second one over it. The previous handle comes from the layout registry, not from a tag search: §2.7 bans `findobj`, because a tag search finds whatever else carries that tag. Asserted by a constant handle count, not described.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>G</code></td><td>(1,1) struct</td><td>A GEO.GRID. A bare matrix is rejected by GEO.GRID rather than guessed at.</td></tr>
+<tr><td><code>crs</code></td><td>(1,1) struct</td><td>A GEO.CRS, or a projection name.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Colormap</code></td><td>(:,3) double</td><td>[]      Explicit RGB; overrides the name when non-empty.</td></tr>
+<tr><td><code>ColormapName</code></td><td>(1,1) string</td><td>&quot;viridis&quot;</td></tr>
+<tr><td><code>CLim</code></td><td>(1,2) double</td><td>[NaN NaN]  Explicit colour limits.</td></tr>
+<tr><td><code>CLimMode</code></td><td>(1,1) string</td><td>&quot;auto&quot;  &quot;auto&quot; | &quot;percentile&quot;.</td></tr>
+<tr><td><code>CLimPercentile</code></td><td>(1,2) double</td><td>[2 98]</td></tr>
+<tr><td><code>DiscreteLevels</code></td><td>(1,1) double</td><td>NaN     Quantise into N blocks.</td></tr>
+<tr><td><code>Divergent</code></td><td></td><td>(1,1) logical false   Symmetric limits about zero, via GEO.SYMMETRICLIMITS. NEW in v2: v1 had no such option, only a diverging colormap name, so a signed anomaly field got asymmetric limits and a false zero.</td></tr>
+<tr><td><code>Hillshade</code></td><td>(1,1) string</td><td>&quot;single&quot;  &quot;single&quot; | &quot;multi&quot; | &quot;off&quot;.</td></tr>
+<tr><td><code>Azimuth</code></td><td>(1,1) double</td><td>315     Light direction, deg cw of N.</td></tr>
+<tr><td><code>Elevation</code></td><td>(1,1) double</td><td>45      Light height above horizon.</td></tr>
+<tr><td><code>Ambient</code></td><td>(1,1) double</td><td>0.35    Shade floor.</td></tr>
+<tr><td><code>NaNColor</code></td><td>(1,3) double</td><td>[1 1 1] Axes background.</td></tr>
+<tr><td><code>Mask</code></td><td>logical</td><td>[]      True where MaskColor applies.</td></tr>
+<tr><td><code>MaskMethod</code></td><td>(1,1) string</td><td>&quot;explicit&quot;  &quot;explicit&quot; | &quot;threshold&quot; | &quot;polygon&quot;.</td></tr>
+<tr><td><code>MaskThreshold</code></td><td>(1,1) double</td><td>NaN     Mask where Z &lt; this.</td></tr>
+<tr><td><code>MaskPolygon</code></td><td>(:,2) double</td><td>[]      Lon/lat outline. MaskPolygonSide (1,1) string  &quot;outside&quot;  Which side is masked.</td></tr>
+<tr><td><code>MaskColor</code></td><td>(1,3) double</td><td>[0.7 0.7 0.7]</td></tr>
+<tr><td><code>Parent</code></td><td>[]</td><td>Axes to draw into; a new figure otherwise.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>figH</code></td><td></td><td>(1,1) matlab.ui.Figure</td></tr>
+<tr><td><code>axH</code></td><td></td><td>(1,1) matlab.graphics.axis.Axes</td></tr>
+<tr><td><code>H</code></td><td>(1,1) struct</td><td>Named handles and the numbers behind them: Surface      the one Surface object CLim         (1,2) double  as used, after every rule Colormap     (:,3) double  as used, after discretising Shade        (M,N) double  the intensity array, or [] DataLimits   (1,1) struct  XLim/YLim of the projected data BEFORE any element widened them. The frame sets rather than unions from these - see LIMITATIONS. LonLimit     (1,2) double  Geographic extent actually LatLimit     (1,2) double  drawn, AFTER the longitude roll. back to the first, so the extent is a full turn even though LonLimit spans 360 minus one step (PV-138). GEO.GRATICULE and GEO.FRAME read these rather than asking the axes, because the axes knows only projected units by then. HasUnder     (1,1) logical  Data lies below CLim(1), and HasOver      (1,1) logical  above CLim(2). GEO.COLORBAR draws an end cap only where one of these is true, because a cap MEANS the data continues. Crs          (1,1) struct</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>No numerical claim of its own beyond arithmetic already asserted elsewhere: the projection is Stage B's and is certified against PROJ, the shading is Stage B's and is certified against `gdaldem hillshade`, and the colour mapping is Stage B's. What this function adds is composition, and the property asserted for it is exact: with Hillshade = &quot;off&quot; the CData equals GEO.COLORMAPS(&quot;truecolor&quot;, ...) called without Shade, bit for bit.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:basemap:MaskSizeMismatch</code></dt><dd>Mask is not the size of Z</dd>
+<dt><code>geo:basemap:MaskMethodMismatch</code></dt><dd>the MaskMethod given needs an input that was not supplied</dd>
+<dt><code>geo:basemap:NothingToDraw</code></dt><dd>every cell projected to NaN, so the extent lies wholly outside the projection's domain A bare matrix, a non-monotone axis or a transposed Z is rejected by GEO.GRID, and an unknown projection by GEO.CRS; neither is re-checked here. WARNINGS</dd>
+<dt><code>geo:basemap:MaskCoversEverything</code></dt><dd>the mask is true everywhere, so the map is one flat colour</dd>
+<dt><code>geo:basemap:MaskCoversNothing</code></dt><dd>the mask is false everywhere, so it had no effect at all</dd></dl>
+<h2>Example</h2>
+<pre class="example">G = geo.readGrid(<span class="str">&quot;data/etopo_10min_surface.mat&quot;</span>, Units = <span class="str">&quot;m&quot;</span>);
+[f, ax, H] = geo.basemap(G, geo.crs(<span class="str">&quot;robinson&quot;</span>), ...
+                         ColormapName = <span class="str">&quot;cividis&quot;</span>);
+H.CLim</pre>
+<h2>Limitations</h2>
+<p>THE AXIS LIMITS THIS FUNCTION SETS ARE THE DATA LIMITS, and later elements may widen them - a frame is drawn outside the map. They are therefore recorded in H.DataLimits and every element that redraws on resize must recompute from THOSE rather than from the current limits. v1 unioned the current limits on every redraw, so shrinking a window widened the limits, which lowered the points-per-data-unit, which widened them again: the map ratcheted smaller inside its own axes over repeated resizes.</p>
+<p>One grid per call. A mosaic of several is Stage E's job.</p>
+
+<h2>See also</h2>
+<p><a href="geo_grid.html"><code>geo.grid</code></a>, <a href="geo_crs.html"><code>geo.crs</code></a>, <a href="geo_hillshade.html"><code>geo.hillshade</code></a>, <a href="geo_colormaps.html"><code>geo.colormaps</code></a>, <a href="geo_frame.html"><code>geo.frame</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 00f34381b21aac60f8282e62530602382ad1324dd7bd46f57060a1e33f610bdc -->

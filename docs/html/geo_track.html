@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.track - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.track</h1>
+<p class="h1line">Validated along-track series, NaN gaps preserved.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     T = GEO.TRACK(LON, LAT)
+     T = GEO.TRACK(LON, LAT, Name, Value)
+     T = GEO.TRACK(T)                      % idempotent: passes through
+</pre>
+<h2>Description</h2>
+<p>The value struct an along-track observation series travels in, replacing v1's loose (t, lon, lat, obs) quadruple.</p>
+<p>NaN IS A GAP AND IS PRESERVED, NOT REMOVED. A track with a data outage has a hole in it, and the hole is information: it is what stops a line being drawn straight across the missing hours. v1 stripped NaNs in some paths and kept them in others, so whether a gap appeared depended on which plotting function you called. Here they always survive, and every downstream consumer treats them the same way.</p>
+<p>ORIENTATION IS PRESERVED. Unlike GEO.GRID, whose Z fixes a canonical shape, a track is just a sequence: a caller who holds columns gets columns back. The shape is a contract test, not a comment.</p>
+<p>TIME IS OPTIONAL AND, IF PRESENT, MUST BE NON-DECREASING. Not strictly increasing: repeated timestamps are common in merged products and are not an error, whereas a step backwards means two passes have been concatenated without being separated, which GEO.SPLITTRACKS exists to do.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>lon</code></td><td></td><td>(:,1) or (1,:) double  Degrees East. NaN allowed as a gap. Or a geo.track struct, for the idempotent form.</td></tr>
+<tr><td><code>lat</code></td><td></td><td>same size as lon       Degrees North. NaN allowed as a gap.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Time</code></td><td></td><td>same size as lon  []  Datetime, duration or numeric. Non-decreasing where finite.</td></tr>
+<tr><td><code>Obs</code></td><td></td><td>same size as lon  []  The observed quantity.</td></tr>
+<tr><td><code>Source</code></td><td>(1,1) string</td><td>&quot;&quot;  Where the data came from.</td></tr>
+<tr><td><code>Units</code></td><td>(1,1) string</td><td>&quot;&quot;  Units of Obs.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>T</code></td><td>(1,1) struct</td><td>Fields: Identity  (1,1) string   Always &quot;geo.track&quot;. Lon       same shape as given Lat       same shape as given Time      as given, or empty Obs       as given, or empty NumPoints (1,1) double   numel(Lon), gaps included. NumGaps   (1,1) double   Count of NaN runs in Lon. Source    (1,1) string Units     (1,1) string</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>No numerical claim. NumGaps counts RUNS, not NaN elements: a six-hour outage sampled at one minute is one gap, not 360, and a count that said 360 would be useless for exactly the question it is asked - how many times did this track break.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:track:SizeMismatch</code></dt><dd>lat, Time or Obs is not the same size as lon</dd>
+<dt><code>geo:track:NotAVector</code></dt><dd>an input is not a vector Time validity:</dd>
+<dt><code>geo:track:TimeDecreasing</code></dt><dd>Time steps backwards Identity:</dd>
+<dt><code>geo:track:NotATrack</code></dt><dd>the idempotent form was given a struct that is not a geo.track</dd></dl>
+<h2>Example</h2>
+<pre class="example">T = geo.track([10 11 NaN 13], [50 51 NaN 53], ...
+              Obs = [1 2 NaN 4], Units = <span class="str">&quot;m&quot;</span>);
+T.NumGaps    <span class="cmt">% 1</span></pre>
+<h2>Limitations</h2>
+<p>One track per struct. A file holding many passes is split into several by GEO.SPLITTRACKS, which is where the notion of &quot;how far apart is too far&quot; lives; this constructor makes no such judgement and will happily hold a series that ought to be several.</p>
+
+<h2>See also</h2>
+<p><a href="geo_splitTracks.html"><code>geo.splitTracks</code></a>, <a href="geo_points.html"><code>geo.points</code></a>, <a href="geo_grid.html"><code>geo.grid</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: ca87856c9ffec7ec199f9c8d4e037c87976431ae492b6d4aeb5fc9628c700efa -->

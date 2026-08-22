@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.project - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.project</h1>
+<p class="h1line">Forward projection, sixteen ways, NaN outside the domain.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     [X, Y] = GEO.PROJECT(LON, LAT, CRS)
+</pre>
+<h2>Description</h2>
+<p>Ported from v1's geoProject with four mandatory repairs and one addition. Output is in EARTH RADII: multiply by CRS.Radius for km.</p>
+<p>F2, ROBINSON. The longitude difference is wrapped BEFORE the table is read. v1 passed a raw LON - lon0, so longitude 359 with lon0 = 0 landed at x = +5.29 instead of -0.0148 - measured on the installed v1, roughly two map widths out. Every other branch wrapped; the one that did not was the one nobody tested at the seam.</p>
+<p>F3, MERCATOR. Latitudes outside CRS.Domain.LatLimit return NaN. v1 clamped to +/-85 and drew the data at the wrong place: measured, y(87) and y(85) were bit-identical, so data 222 km apart was rendered on the same parallel. NaN is the toolbox-wide out-of-domain contract and Mercator is not exempt from it.</p>
+<p>F12, DOMAINS. Every clip reads CRS.Domain. There is no bare cosc literal anywhere in this file, and the static audit enforces that. Because Domain distinguishes the cosmetic clip from the mathematical singularity (D-017), a reader can now tell which limits are physics and which are taste - which was F12's actual complaint.</p>
+<p>CONICS use CRS.ConeConstant. v1 recomputed n inside each conic branch, so a change had to be made twice and was made once.</p>
+<p>HAMMER is added as the sixteenth: the Aitoff construction with the equal-area modification. It shares no code with Winkel Tripel despite the family resemblance, because Aitoff-with-sqrt-2 and Aitoff-averaged-with-equirectangular are different projections and merging them would save four lines at the price of a subtle bug.</p>
+<p>PORTED FAITHFULLY because the review found them correct: polar stereographic in Snyder's 21-8/21-9 form with its hemisphere- dependent Y sign, the shared conic scaffolding and its tangent-case limit, Mollweide's Newton scheme, Winkel Tripel's phi1 = acos(2/pi) and its sinc guard near alpha = 0, and NaN-as-gap throughout.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>lon</code></td><td>double</td><td>Degrees East. A ROW vector paired with a COLUMN lat is auto-meshgridded, so a whole grid needs no NDGRID at the call site.</td></tr>
+<tr><td><code>lat</code></td><td>double</td><td>Degrees North.</td></tr>
+<tr><td><code>crs</code></td><td>(1,1) struct</td><td>From GEO.CRS.</td></tr></table>
+
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>x</code></td><td>double</td><td>Earth radii. NaN outside the projection's domain.</td></tr>
+<tr><td><code>y</code></td><td>double</td><td>Earth radii. Same size as x.</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>Oracle O4 (pyproj / PROJ 9.5.1) over dense in-domain samples, via the mirror. Measured: 15 of 16 projections agree to &lt;= 6e-13 in projected units; Robinson agrees only to 8.9e-4 because PROJ uses a different interpolant for the same table, which is recorded as mirror limit L5 and is corroboration rather than a tolerance. Robinson is instead asserted against its own table NODES, exactly.</p>
+<p>Published point values, oracle O1 (Snyder 1987): Mercator y(35 deg) 0.6528366 LCC 33/45 at (35N, 75W) x 0.2966785, y 0.2462112 And the value the handover got wrong, oracle O4 (finding PV-002): Polar stereographic rho(70), SP 71 0.3430474163 NOT 0.6116372, which matches no evaluation of any formula in either the spherical or the ellipsoidal model.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:project:SizeMismatch</code></dt><dd>lon and lat are neither the same size nor a row/column pair to meshgrid</dd></dl>
+<h2>Example</h2>
+<pre class="example">crs = geo.crs(<span class="str">&quot;mollweide&quot;</span>);
+[x, y] = geo.project(-180:180, (-90:90).', crs);   <span class="cmt">% auto-meshgrid</span></pre>
+<h2>Limitations</h2>
+<p>Spherical (D-001). Output is in Earth radii and carries no false easting, false northing or unit scaling: this is a visualisation projection, not a coordinate reference system for survey work.</p>
+
+<h2>See also</h2>
+<p><a href="geo_unproject.html"><code>geo.unproject</code></a>, <a href="geo_scaleFactors.html"><code>geo.scaleFactors</code></a>, <a href="geo_crs.html"><code>geo.crs</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 849090e7ba77006f6d364a6e926cbf4974ab17be2dbce6f8fd6e62962628fe84 -->

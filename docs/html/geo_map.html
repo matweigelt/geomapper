@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.map - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.map</h1>
+<p class="h1line">A finished map in one call.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.MAP(G)
+     H = GEO.MAP(G, CRS)
+     H = GEO.MAP(LON, LAT, Z, CRS = ...)
+     H = GEO.MAP(..., Name, Value)
+</pre>
+<h2>Description</h2>
+<p>The one-call front. It draws the whole z-ladder in the documented order and returns every handle it made.</p>
+<p>IT IS ORCHESTRATION AND NOTHING ELSE, and that is enforced rather than promised. This file declares L4-FRONT on the line above, and the audit's ORCHESTRATIONPURITY check then holds it to zero drawing primitives - no surf, patch, line, text, scatter, plot, colorbar, annotation, title - and at most 200 executable lines. It replaces v1's geoImagesc, which was 3413 lines and had grown that way one inlined primitive at a time (F8). A rule enforced by review erodes; this one is decided by a gate that runs before every push, and it has already bitten once: GEO.MAP needs a title, there was no element for one, and rather than inline a TEXT call the missing capability became GEO.TITLE.</p>
+<p>THE ORDER IS THE CONTRACT. basemap, contours, polygons, stipple, graticule, coastline, region outline, track, points, frame, colorbar, title, scale bar, north arrow, inset, export. Anything drawn later sits on top, and the z values the elements use encode the same ladder independently, so the two agree by construction rather than by care.</p>
+<p>EVERY ELEMENT IS ON, OFF, OR CONFIGURED, through one option each. FALSE omits the element; TRUE draws it with its own defaults; a STRUCT draws it and is forwarded as name-value pairs to the element that owns them. So Graticule = false, Graticule = true and Graticule = struct(Color = [0 0 0], StepLon = 30) are the three things a caller ever wants, and GEO.MAP does not restate a hundred and twenty option names that the elements already define - which is also how it stays inside its line budget. v1's flat spellings (GraticuleColor, CoastlineWidth, ...) are handled by the compatibility layer, separately, so that this file carries no option table.</p>
+<p>THE PROJECTION OPTIONS ARE GONE, deliberately. v1 took Projection, CenterLongitude, CenterLatitude, Hemisphere, StandardParallel and StandardParallel2 as six loose front options that had to agree with each other; v2 takes one GEO.CRS, which validates them together and can be reused by every overlay so a track lands in the same coordinate system as the map beneath it. Passing Projection raises geo:map:ProjectionOption, which names the replacement rather than reporting an unrecognised argument.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>G</code></td><td></td><td>A GEO.GRID, or anything GEO.GRID accepts. In the raw-triplet form the three positional arguments are LON, LAT and Z, and the projection then comes from CRS = ... - three positional arguments is D-003's limit and the projection is the one that gives way, because it has a name.</td></tr>
+<tr><td><code>crs</code></td><td></td><td>A GEO.CRS or a projection name. Defaults to equirectangular.</td></tr>
+<tr><td><code>Z</code></td><td></td><td>Present only in the raw-triplet form; see above.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Basemap</code></td><td>true</td><td>GEO.BASEMAP. Cannot be false; there is no map without one.</td></tr>
+<tr><td><code>Contours</code></td><td>false</td><td>GEO.OVERLAYCONTOURS</td></tr>
+<tr><td><code>Polygons</code></td><td>false</td><td>GEO.OVERLAYPOLYGONS. Struct must carry P.</td></tr>
+<tr><td><code>Stipple</code></td><td>false</td><td>GEO.STIPPLE. Struct must carry G.</td></tr>
+<tr><td><code>Graticule</code></td><td>true</td><td>GEO.GRATICULE</td></tr>
+<tr><td><code>Coastline</code></td><td>true</td><td>GEO.COASTLINE</td></tr>
+<tr><td><code>Rivers</code></td><td>false</td><td>GEO.COASTLINE with Kind = &quot;river&quot;</td></tr>
+<tr><td><code>Region</code></td><td>false</td><td>GEO.COASTLINE with Kind = &quot;outline&quot;, drawing a GEO.REGION's own vertices. v1's AreaOfInterest. The struct's R field is the region, and takes anything GEO.REGION takes.</td></tr>
+<tr><td><code>Track</code></td><td>false</td><td>GEO.OVERLAYTRACK. Struct must carry T.</td></tr>
+<tr><td><code>Points</code></td><td>false</td><td>GEO.OVERLAYPOINTS. Struct must carry P.</td></tr>
+<tr><td><code>Frame</code></td><td>true</td><td>GEO.FRAME</td></tr>
+<tr><td><code>Colorbar</code></td><td>true</td><td>GEO.COLORBAR</td></tr>
+<tr><td><code>Title</code></td><td>&quot;&quot;</td><td>GEO.TITLE. A string draws it; a struct configures it and must carry Text.</td></tr>
+<tr><td><code>ScaleBar</code></td><td>false</td><td>GEO.SCALEBAR</td></tr>
+<tr><td><code>NorthArrow</code></td><td>false</td><td>GEO.NORTHARROW</td></tr>
+<tr><td><code>Inset</code></td><td>false</td><td>GEO.INSET</td></tr>
+<tr><td><code>Export</code></td><td>&quot;&quot;</td><td>A path. GEO.EXPORT, which owns the page size. And four of its own:</td></tr>
+<tr><td><code>FontName</code></td><td>&quot;Helvetica&quot;</td><td>Given to every element that draws text,</td></tr>
+<tr><td><code>FontSize</code></td><td>9</td><td>unless that element's own struct says otherwise. One typeface per figure was v1's Style preset and is now the default behaviour rather than a bundle.</td></tr>
+<tr><td><code>Parent</code></td><td>[]</td><td>An axes to draw into. ExportOptions struct()   Forwarded to GEO.EXPORT.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Figure   (1,1) matlab.ui.Figure Axes     (1,1) matlab.graphics.axis.Axes CRS      (1,1) struct  The GEO.CRS actually used. Basemap  (1,1) struct  and one field per element drawn, named for its option, holding that element's own return value. An element that was off is absent, so ISFIELD answers what the map contains. Order    (1,:) string  The elements drawn, in the order drawn.</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>No numerical claim of its own, and that is the point of a front: every number on the figure is an element's, asserted where the element is. What IS asserted here is composition - that the same map built element by element and built in one call give identical CData, identical colour limits and the same z-ladder.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:map:ProjectionOption</code></dt><dd>the v1 Projection option; use a geo.crs</dd>
+<dt><code>geo:map:NoBasemap</code></dt><dd>Basemap = false</dd>
+<dt><code>geo:map:MissingField</code></dt><dd>an element's struct lacks its data field</dd></dl>
+<h2>Example</h2>
+<pre class="example">H = geo.map(G, geo.crs(<span class="str">&quot;mollweide&quot;</span>), ...
+    Title = <span class="str">&quot;Mass trend 2003-2016&quot;</span>, ...
+    Colorbar = struct(Label = <span class="str">&quot;cm/yr&quot;</span>, Style = <span class="str">&quot;gmt&quot;</span>), ...
+    ScaleBar = true, Export = <span class="str">&quot;figure3.pdf&quot;</span>);</pre>
+<h2>Limitations</h2>
+<p>One grid, one axes. Several maps side by side are GEO.PANEL's job. An element drawn here cannot be given a z of its own; the ladder is fixed, which is what makes two maps comparable.</p>
+
+<h2>See also</h2>
+<p><a href="geo_basemap.html"><code>geo.basemap</code></a>, <a href="geo_title.html"><code>geo.title</code></a>, <a href="geo_export.html"><code>geo.export</code></a>, <a href="geo_panel.html"><code>geo.panel</code></a>, <a href="geo_crs.html"><code>geo.crs</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 89b1ce5e472955d8a9671ca1a9ffe592aea0415b4512936e41e55d691f5136d7 -->

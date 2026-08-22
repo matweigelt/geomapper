@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.scaleFactors - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.scaleFactors</h1>
+<p class="h1line">Point distortion: h, k, area scale, max angular error.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     S = GEO.SCALEFACTORS(LON, LAT, CRS)
+</pre>
+<h2>Description</h2>
+<p>Tissot's indicatrix, numerically. Powers the distortion diagnostics, GEO.SCALEBAR's reported scale variation (D-006), and the equal-area and conformality checks that certify GEO.PROJECT.</p>
+<p>ONE CODE PATH FOR ALL SIXTEEN, by central differences on GEO.PROJECT, rather than sixteen analytic derivations. The choice is deliberate and the trade is stated: analytic derivatives would be exact but would be sixteen more things to get wrong, each needing its own oracle, and each silently wrong if the projection it differentiates is ever changed without it. Differencing the actual forward projection cannot drift from it - it IS it. Measured accuracy about 1e-8, which is four decades better than any claim this toolbox makes with it.</p>
+<p>THE METRIC CORRECTION IS THE WHOLE POINT. On a sphere a degree of longitude subtends cos(lat) times the distance a degree of latitude does, so the longitudinal derivative is divided by cos(lat). Without that division h and k are not scale factors at all; they are coordinate derivatives, and every equal-area check built on them would pass for the wrong reason.</p>
+<p>h IS THE MERIDIAN SCALE and k THE PARALLEL SCALE, in Snyder's notation, which is the opposite of what half the literature uses.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>lon</code></td><td>double</td><td>Degrees East. Row/column pairs auto-meshgrid.</td></tr>
+<tr><td><code>lat</code></td><td>double</td><td>Degrees North.</td></tr>
+<tr><td><code>crs</code></td><td>(1,1) struct</td><td>From GEO.CRS.</td></tr></table>
+
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>s</code></td><td>(1,1) struct</td><td>Fields, each the size of the broadcast inputs: h          double  Scale along the meridian. k          double  Scale along the parallel. AreaScale  double  Areal magnification, h*k*sin(theta'). OmegaDeg   double  Maximum angular deformation, degrees.</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>Central differences at a step of 1e-6 degrees. Oracle O3, analytic invariants, measured in the mirror and asserted in TestB1_projection: Mercator k = sec(lat) 5.1e-9 Equal-area AreaScale = 1 &lt;= 2.4e-8 Conformal h = k &lt;= 9.4e-8 LCC k = 1 on both standard parallels 2.5e-9 All four sit about a decade inside the handover's 1e-6 tolerances.</p>
+<p>TARGET-ONLY MEASUREMENT, recorded here as the rule requires: the step of 1e-6 degrees was chosen by measuring the error at 1e-4, 1e-5, 1e-6, 1e-7 and 1e-8 on Mercator, where the truth is sec(lat) in closed form. Larger steps carry truncation error; smaller ones lose to cancellation in the subtraction. To re-derive it, run that ladder again - do not assume this number transfers to a different projection family or a different machine's arithmetic.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:scaleFactors:SizeMismatch</code></dt><dd>lon and lat are neither the same size nor a row/column pair</dd></dl>
+<h2>Example</h2>
+<pre class="example">s = geo.scaleFactors(0, [0 30 60].', geo.crs(<span class="str">&quot;mercator&quot;</span>));
+s.k ./ secd([0 30 60].')     <span class="cmt">% 1, 1, 1</span></pre>
+<h2>Limitations</h2>
+<p>RETURNS NaN ON A DOMAIN BOUNDARY, and this is a design consequence rather than a bug: a central difference at the edge steps outside the domain, GEO.PROJECT returns NaN there, and NaN propagates. Seen at Mercator lat = +/-85 (mirror limit L7). GEO.SCALEBAR's validity gate therefore samples strictly INSIDE its extent and tolerates NaN corners; anything that samples the boundary must do the same.</p>
+
+<h2>See also</h2>
+<p><a href="geo_project.html"><code>geo.project</code></a>, <a href="geo_unproject.html"><code>geo.unproject</code></a>, <a href="geo_crs.html"><code>geo.crs</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: f82dbcc9705b89a24b50984c6c03edca898611d92c55d4906fb027f279a746b4 -->

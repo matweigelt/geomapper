@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.readCoastline - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.readCoastline</h1>
+<p class="h1line">One coastline reader, replacing v1's four.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     [XY, META] = GEO.READCOASTLINE(SOURCE)
+     [XY, META] = GEO.READCOASTLINE(SOURCE, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Reads a coastline, river network or region outline from a GSHHG binary, an ESRI shapefile, a text file or MATLAB's built-in data, and returns one NaN-separated Nx2 array. v1 had four functions with four different jump-splitting rules; this has one, and it delegates the split to GEO.SPLITANTIMERIDIAN so the toolbox keeps a single authority on where a path breaks.</p>
+<p>THREE CHANGES FROM v1, each with a reason:</p>
+<p>(a) CELL-ACCUMULATE, VERTCAT ONCE. v1 grew its output array inside the record loop, which is O(N^2). Full-resolution GSHHG is 96 MB and 180 000 polygons, so that is not a micro-optimisation (defect F13, and the audit now forbids the pattern inside +geo).</p>
+<p>(b) THE SPLIT IS GEO.SPLITANTIMERIDIAN'S. v1's readers each had their own jump code.</p>
+<p>(c) GSHHG LEVEL 5 AND 6 POLYGONS SPANNING NEARLY THE WHOLE CIRCLE ARE CLOSED VIA THE SOUTH POLE before splitting. Antarctica's ice front is stored as a line that runs around the continent without ever closing; drawn as given it leaves the pole open and the fill leaks (defect F17).</p>
+<p>PRESERVED FROM v1 DELIBERATELY: there is no ISFILE pre-check before FOPEN, because FOPEN searches the MATLAB path and ISFILE does not, so a pre-check would reject files that are perfectly reachable. v1 carried that comment and it was right.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>source</code></td><td></td><td>&quot;builtin&quot;, a filename (.b, .shp, .txt, .dat, .mat), or a validated Nx2 array which is returned unchanged.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Format</code></td><td>(1,1) string</td><td>[&quot;auto&quot;]  Override the extension sniff.</td></tr>
+<tr><td><code>Levels</code></td><td>(1,:) double</td><td>[1:6]     GSHHG levels: 1 land, 2 lake, 3 island-in-lake, 4 pond, 5 and 6 Antarctic ice front and grounding line.</td></tr>
+<tr><td><code>Split</code></td><td>(1,1) string</td><td>[&quot;interpolate&quot;]  Passed to GEO.SPLITANTIMERIDIAN.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>xy</code></td><td>(N,2) double</td><td>[lon lat], NaN-separated between parts.</td></tr>
+<tr><td><code>meta</code></td><td>(1,1) struct</td><td>Fields: Source, Format, NumParts, NumPoints, Levels, and PROVENANCE - &quot;verified&quot; once the reader has been checked against a real file of that format, &quot;unverified&quot; otherwise. The field travels with the data so a figure can say where its coastline came from and how much to trust it.</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>GSHHG stores microdegrees as int32, so coordinates are exact to 1e-6 degrees by construction - that is the format's own floor, not an approximation introduced here. Shapefile coordinates are IEEE doubles and round-trip EXACTLY; the reader is checked with ISEQUAL rather than a tolerance, because anything looser would hide an endianness error.</p>
+<p>ORACLES O5 AND O6 ARE FILLED. This reader is checked against a real Natural Earth shapefile and real GSHHG binaries at all five resolutions. Until that check existed the GSHHG path had never seen a real file in four years, and shipped with a CONFIDENCE NOTE saying so (handover debt V3).</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:readCoastline:FileNotFound</code></dt><dd>fopen could not open it</dd>
+<dt><code>geo:readCoastline:UnknownFormat</code></dt><dd>extension not recognised and no Format given</dd>
+<dt><code>geo:readCoastline:NoPolygons</code></dt><dd>no record could be read</dd>
+<dt><code>geo:readCoastline:NoMatchingLevels</code></dt><dd>records read, none matched</dd>
+<dt><code>geo:readCoastline:UnsupportedShape</code></dt><dd>shapefile geometry that is not a polyline or polygon</dd>
+<dt><code>geo:readCoastline:BuiltinMissing</code></dt><dd>the shipped coastline is absent from data/ WARNINGS</dd>
+<dt><code>geo:readCoastline:TruncatedFile</code></dt><dd>the file ends mid-record</dd></dl>
+<h2>Example</h2>
+<pre class="example">[xy, m] = geo.readCoastline(<span class="str">&quot;gshhs_i.b&quot;</span>, Levels = 1);
+m.Provenance      <span class="cmt">% &quot;verified&quot;</span></pre>
+<h2>Limitations</h2>
+<p>Reads geometry only. Shapefile attributes in the .dbf are not parsed, so a caller who needs to select by name must do that selection themselves and pass the resulting Nx2 array.</p>
+
+<h2>See also</h2>
+<p><a href="geo_splitAntimeridian.html"><code>geo.splitAntimeridian</code></a>, <a href="geo_readGrid.html"><code>geo.readGrid</code></a>, <a href="geo_region.html"><code>geo.region</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 70001ad7a09ec4300f576c85a7e3bc4b7793be76c43d32b26fcadd1aeea302a2 -->

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.graticule - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.graticule</h1>
+<p class="h1line">Meridians, parallels and their labels.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.GRATICULE(AX)
+     H = GEO.GRATICULE(AX, CRS)
+     H = GEO.GRATICULE(AX, CRS, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Draws the graticule on an axes that already carries a GEO.BASEMAP, at z = 3 on the documented ladder. With no CRS given it takes the one the basemap used, so the two cannot disagree.</p>
+<p>DENSIFICATION IS MEASURED, NOT ASSUMED, AND ADAPTIVE. v1 sampled every graticule line at exactly 200 points regardless of projection or extent, which is far too many for a 5-degree regional map and visibly too few for a meridian near the rim of an azimuthal projection, where the projected curvature is greatest. Here a line is bisected only where its PROJECTED segments exceed 1/200 of the map diagonal, so points land where the projection bends and nowhere else. The criterion is a property of the drawn result rather than of the input, and it is met by all sixteen projections at about 1 800 points for a whole graticule.</p>
+<p>A SEGMENT THAT WILL NOT SHRINK UNDER BISECTION IS A BRANCH CUT, and is broken with a NaN rather than drawn across. That is what stops a transverse Mercator meridian on the back of the cylinder - where the atan2 giving y flips by exactly 2*pi - from being drawn as a straight line across the whole map. See TRACELINE.</p>
+<p>NOTHING CLIPS HERE EITHER. GEO.PROJECT returns NaN outside CRS.Domain and MATLAB breaks a line at NaN, so the clip and the gap convention are the same mechanism. v1 re-derived the visible radius in three places and they drifted (F12).</p>
+<p>LABELS ARE PLACED ANALYTICALLY, AND THIS REPLACES v1's HEURISTICS. v1 estimated a label's direction from a finite-difference tangent, then corrected it with a chain of special cases: an &quot;edge bias&quot;, a search for the boundary point farthest from the projection origin, a frame-circle radius capped against a reference point computed by a spherical destination formula, and a 1.05 snap tolerance deciding whether a label belonged to the circle at all. Those interacted: the azimuthal label defects in the v1 review were not one bug but several, each of which had been repaired by adding another case. Here a label sits at the LAST FINITE PROJECTED POINT of the line it names - which is by construction where that line meets the edge of the map, for every projection, with no table and no search - and is pushed outward along the normal to the local boundary direction, obtained from a central difference of GEO.PROJECT along the edge.</p>
+<p>WHY GEO.UNPROJECT IS NOT IN THE PLACEMENT PATH. The handover suggested placing labels through it. It is used in the TESTS instead, to check that the anchor of the label reading &quot;60E&quot; really does unproject to longitude 60. A placement computed with GEO.UNPROJECT and then checked with GEO.UNPROJECT would be checked against itself; used this way the two directions are independent, which is the whole point of an inverse.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>axH</code></td><td>(1,1) matlab.graphics.axis.Axes</td><td>An axes with a basemap.</td></tr>
+<tr><td><code>crs</code></td><td>(1,1) struct</td><td>A GEO.CRS or a name. Defaults to the basemap's.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>StepLon</code></td><td>(1,1)         &quot;auto&quot;</td><td>Degrees, or &quot;auto&quot; for GEO.NICETICKS.</td></tr>
+<tr><td><code>StepLat</code></td><td>(1,1)</td><td>&quot;auto&quot;</td></tr>
+<tr><td><code>LonLimit</code></td><td>(1,2) double</td><td>[]      Extent; defaults to the basemap's.</td></tr>
+<tr><td><code>LatLimit</code></td><td>(1,2) double</td><td>[]</td></tr>
+<tr><td><code>Color</code></td><td>(1,3) double</td><td>[0.35 0.35 0.35]</td></tr>
+<tr><td><code>LineStyle</code></td><td>(1,1) string</td><td>&quot;--&quot;</td></tr>
+<tr><td><code>LineWidth</code></td><td>(1,1) double</td><td>0.5</td></tr>
+<tr><td><code>Labels</code></td><td></td><td>(1,1) logical true LonLabelEdge (1,1) string &quot;bottom&quot;  &quot;bottom&quot; | &quot;top&quot;. LatLabelEdge (1,1) string &quot;left&quot;    &quot;left&quot; | &quot;right&quot;.</td></tr>
+<tr><td><code>LabelGap</code></td><td>(1,1) double</td><td>0.034   Fraction of the map diagonal. Matches v1's default, which was FrameThickness 0.012 + 0.022.</td></tr>
+<tr><td><code>FontName</code></td><td>(1,1) string</td><td>&quot;Helvetica&quot;</td></tr>
+<tr><td><code>FontSize</code></td><td>(1,1) double</td><td>9</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Meridians  (1,:) Line   One object per meridian. Parallels  (1,:) Line Labels     (1,:) Text   Empty if Labels = false. LonTicks   (1,:) double The degrees actually drawn. LatTicks   (1,:) double MaxSegment (1,1) double Longest projected segment, as a fraction of the map diagonal. The densification criterion, measured on the result rather than promised. Segments broken as branch cuts are excluded, because a gap is not a segment.</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>Geometric, at TolGeom. On equirectangular the 0-degree meridian projects to x = 0 exactly and its label anchor with it; that is asserted at 1e-9 rather than at a drawing tolerance, because it is arithmetic and not appearance. MaxSegment is asserted at or below 1/200 of the diagonal for ALL SIXTEEN projections. An earlier version of this function excluded transverse Mercator from that claim; the exclusion was wrong and is recorded in RECORDS.md R-011 rather than quietly dropped.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:graticule:NoBasemap</code></dt><dd>no CRS was given and the axes carries no basemap to take one from</dd>
+<dt><code>geo:graticule:BadStep</code></dt><dd>a step that is not positive and finite</dd></dl>
+<h2>Example</h2>
+<pre class="example">G = geo.readGrid(<span class="str">&quot;data/etopo_10min_surface.mat&quot;</span>);
+[~, ax] = geo.basemap(G, geo.crs(<span class="str">&quot;mollweide&quot;</span>));
+H = geo.graticule(ax, StepLon = 30, StepLat = 15);
+H.MaxSegment</pre>
+<h2>Limitations</h2>
+<p>Labels go on one edge each, chosen by option, and are not moved out of each other's way - the layout manager's collision avoidance is for the corner annotations, not for a row of tick labels. On a projection whose meridians converge to a point, labels at that edge will crowd; put them on the equator instead by setting LatLimit, or turn them off and place your own.</p>
+
+<h2>See also</h2>
+<p><a href="geo_basemap.html"><code>geo.basemap</code></a>, <a href="geo_frame.html"><code>geo.frame</code></a>, <a href="geo_niceTicks.html"><code>geo.niceTicks</code></a>, <a href="geo_unproject.html"><code>geo.unproject</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 562ebf95c8c44ccc8dad68c5bd75d596c105107912b7a4773ed3bd13ac309d9e -->

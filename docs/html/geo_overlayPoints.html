@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.overlayPoints - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.overlayPoints</h1>
+<p class="h1line">Scattered locations, coloured and optionally sized.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.OVERLAYPOINTS(AX, P)
+     H = GEO.OVERLAYPOINTS(AX, P, CRS)
+     H = GEO.OVERLAYPOINTS(AX, P, CRS, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Draws a GEO.POINTS at z = 5. Colour comes from Obs and size from SizeData, which are two fields of the value struct precisely so that a caller can have both - v1 overloaded one vector for the two and a user who wanted size by magnitude and colour by sign could not have it.</p>
+<p>THE SIZE LEGEND DECODES THE MARKERS IT SITS BESIDE, which v1's did not. It drew its reference circles at radius sqrt(area/pi), the radius of a circle of that AREA - but MATLAB's scatter treats SizeData as the area of the marker's BOUNDING BOX, so its markers have radius sqrt(area)/2. The legend was therefore drawn a factor of sqrt(pi)/2 too small, about 11%, and a reader measuring a bubble against it read the wrong number. Here both use the same rule.</p>
+<p>A MISSING SIZE IS NOT THE SMALLEST SIZE. v1 mapped a NaN in SizeData to fraction zero, so a point with no measurement was drawn identical to the smallest real one. Here such points are drawn at the default MarkerSize and reported separately, because &quot;we did not measure this&quot; and &quot;this is the minimum&quot; are different statements.</p>
+<p>SCATTER3 CLEARS THE AXES, and in a composable toolbox that is a landmine. It is a high-level plotting call, so unless HOLD is on it resets the axes first - measured: a map carrying fifty objects came back with five, the basemap and every element drawn before it gone. v1 never met this because it drew everything inside one function in a fixed order; here any element may be called at any time, so the hold state is saved, forced on, and restored.</p>
+<p>THE LEGEND AVOIDS THE OTHER CORNER FURNITURE. It registers its footprint with the layout manager and is pushed clear of the scale bar, north arrow and inset. v1's said in its own comments that it had nothing to avoid, in a file whose scale bar and north arrow both default to on and whose automatic corners are two of the four the legend can occupy.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>axH</code></td><td>(1,1) matlab.graphics.axis.Axes</td><td>An axes with a basemap.</td></tr>
+<tr><td><code>P</code></td><td>(1,1) struct</td><td>A GEO.POINTS. Obs gives colour, SizeData gives size, Labels are drawn beside the markers.</td></tr>
+<tr><td><code>crs</code></td><td></td><td>A GEO.CRS or a name. Defaults to the basemap's.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Marker</code></td><td></td><td>&quot;o&quot;</td></tr>
+<tr><td><code>MarkerSize</code></td><td>36</td><td>Points squared, when there is no SizeData.</td></tr>
+<tr><td><code>SizeRange</code></td><td>[16 400]</td><td>[min max] marker area, points squared.</td></tr>
+<tr><td><code>SizeScale</code></td><td>&quot;area&quot;</td><td>&quot;area&quot; | &quot;radius&quot;. &quot;area&quot; makes the AREA affine in the value; &quot;radius&quot; makes the radius affine, so area goes as the square.</td></tr>
+<tr><td><code>Colormap</code></td><td>[]</td><td>Defaults to the basemap's.</td></tr>
+<tr><td><code>CLim</code></td><td>[]</td><td>Defaults to the basemap's.</td></tr>
+<tr><td><code>EdgeColor</code></td><td></td><td>[0 0 0]</td></tr>
+<tr><td><code>EdgeWidth</code></td><td>0.5</td><td>Zero is accepted and means no edge, which v1 documented and then passed to a property that rejects it.</td></tr>
+<tr><td><code>FaceAlpha</code></td><td></td><td>1</td></tr>
+<tr><td><code>Legend</code></td><td>true</td><td>Draw the size legend, if there is SizeData.</td></tr>
+<tr><td><code>LegendValues</code></td><td>[]</td><td>Reference values; empty picks nice ones.</td></tr>
+<tr><td><code>LegendLabel</code></td><td></td><td>&quot;&quot;</td></tr>
+<tr><td><code>LegendLocation</code></td><td></td><td>&quot;southeast&quot;</td></tr>
+<tr><td><code>LabelColor</code></td><td></td><td>[0 0 0]</td></tr>
+<tr><td><code>FontName</code></td><td></td><td>&quot;Helvetica&quot;</td></tr>
+<tr><td><code>FontSize</code></td><td></td><td>9</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Markers      (1,1) Scatter Labels       (1,:) Text Legend       struct or []  Axes, Circles, Labels. NumDrawn     (1,1) double  Points with a finite position. NumNoSize    (1,1) double  Points whose SizeData was missing. CLim         (1,2) double All          (1,:)</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>One claim, and it is the one that makes the legend usable: a legend circle for value v has the same drawn radius as a marker whose SizeData is v. Asserted directly.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:overlayPoints:NoBasemap</code></dt><dd>no crs and no basemap</dd>
+<dt><code>geo:overlayPoints:NothingToDraw</code></dt><dd>no point has a finite position</dd></dl>
+<h2>Example</h2>
+<pre class="example">P = geo.points(lon, lat, Obs = trend, SizeData = uncertainty);
+H = geo.overlayPoints(ax, P, LegendLabel = <span class="str">&quot;sigma (cm)&quot;</span>);</pre>
+<h2>Limitations</h2>
+<p>One scatter object for every point, so per-point marker shapes are not possible. Labels are drawn where the point is and are not moved out of each other's way.</p>
+
+<h2>See also</h2>
+<p><a href="geo_points.html"><code>geo.points</code></a>, <a href="geo_overlayTrack.html"><code>geo.overlayTrack</code></a>, <code>GEO.INTERNAL.AVOIDRECTCOLLISIONS</code></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 2d1a65f829403f662dce12f36fa4eadcafd116605d8e97b4da4ae5c7073612bf -->

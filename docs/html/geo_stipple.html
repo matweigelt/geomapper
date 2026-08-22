@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.stipple - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.stipple</h1>
+<p class="h1line">Mark where a field is significant, deterministically.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.STIPPLE(AX, G)
+     H = GEO.STIPPLE(AX, G, CRS)
+     H = GEO.STIPPLE(AX, G, CRS, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>NEW IN v2. A trend map without a significance mask invites the reader to believe every pixel, and v1 had no way to draw one, so every published figure from it either overstated its result or carried the mask in a separate panel nobody put side by side.</p>
+<p>THE MASK TRAVELS AS A GEO.GRID, not as a bare logical array, so it carries its own coordinates and cannot be applied to the wrong field. Non-zero means significant. That is deliberately the same convention as MATLAB's own logical indexing rather than a named field, because a mask with a threshold already applied is one number per cell and pretending otherwise adds a step.</p>
+<p>THE SUBSAMPLING IS A REGULAR STRIDE AND NEVER RANDOM. A random thinning would give a different figure every time it ran, which cannot be regression-tested and cannot be reproduced by a reader with the same data. The stride is computed from Density and the number of significant cells, so the pattern is a deterministic function of the inputs alone.</p>
+<p>HATCHING IS ONE OBJECT. The diagonal lines are a single NaN-separated `line`, clipped to the mask cell by cell, rather than one object per stroke. Ten thousand strokes as ten thousand objects is what makes a figure take a minute to export.</p>
+<p>IT SITS AT z = 2, above the raster and below the graticule - the same level as GEO.OVERLAYPOLYGONS, because both are statements about the field rather than annotations over it.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>axH</code></td><td>(1,1) matlab.graphics.axis.Axes</td><td>An axes with a basemap.</td></tr>
+<tr><td><code>G</code></td><td>(1,1) struct</td><td>A GEO.GRID whose Z is the mask: non-zero and finite means significant. NaN is NOT significant - a cell with no test result has not passed one.</td></tr>
+<tr><td><code>crs</code></td><td></td><td>A GEO.CRS or a name. Defaults to the basemap's.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Style</code></td><td>&quot;dots&quot;</td><td>&quot;dots&quot; | &quot;hatch&quot;.</td></tr>
+<tr><td><code>Density</code></td><td>2000</td><td>Target number of marks. The stride is derived from this and the mask, so asking for more than there are significant cells simply marks them all.</td></tr>
+<tr><td><code>Color</code></td><td></td><td>[0 0 0] MarkerSize 2        Points, for &quot;dots&quot;.</td></tr>
+<tr><td><code>LineWidth</code></td><td>0.4</td><td>For &quot;hatch&quot;.</td></tr>
+<tr><td><code>Angle</code></td><td>45</td><td>Hatch direction, degrees anticlockwise from east, in PROJECTED space.</td></tr>
+<tr><td><code>Spacing</code></td><td>6</td><td>Hatch line spacing, in points.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Marks       Line object - the dots, or the hatch strokes. Style       (1,1) string NumMasked   (1,1) double  Significant cells in the mask. NumMarks    (1,1) double  Marks actually drawn. Stride      (1,1) double  The subsampling used, 1 = every cell. All         (1,:)</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>No numerical claim: the marks sit at cell centres, projected. The property that matters is determinism, and it is asserted rather than described - two calls on the same mask produce bit-identical coordinates.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:stipple:NoBasemap</code></dt><dd>no crs and no basemap to take one from</dd>
+<dt><code>geo:stipple:EmptyMask</code></dt><dd>the mask is significant nowhere, so there is nothing to draw and silently drawing nothing would look like a bug in the mask</dd></dl>
+<h2>Example</h2>
+<pre class="example">sig = geo.grid(G.Lon, G.Lat, pValues &lt; 0.05);
+H = geo.stipple(ax, sig, Density = 1500);
+H.Stride</pre>
+<h2>Limitations</h2>
+<p>Hatching is clipped to whole CELLS, not to the mask's outline, so its edge is the resolution of the mask. That is honest - the mask has no sub-cell information - but it means a coarse mask hatches a visibly blocky region, and a reader should be told the resolution rather than left to infer it from the hatching.</p>
+
+<h2>See also</h2>
+<p><a href="geo_basemap.html"><code>geo.basemap</code></a>, <a href="geo_overlayPolygons.html"><code>geo.overlayPolygons</code></a>, <a href="geo_grid.html"><code>geo.grid</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: ce7de33114f91456b615885dda4dff92c920f1c0e8d6591e90f824ac48fec9b6 -->

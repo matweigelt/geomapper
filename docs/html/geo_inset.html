@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.inset - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.inset</h1>
+<p class="h1line">A locator globe showing where the map is.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.INSET(AX)
+     H = GEO.INSET(AX, CRS)
+     H = GEO.INSET(AX, CRS, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>A small globe in a corner of the map, with the mapped extent drawn on it. Ported from v1's `localAddMapInset`, which was 190 lines inside a 3413-line function.</p>
+<p>IT IS REPOSITIONED ON RESIZE, NEVER REDRAWN, and that was v1's one genuinely good idea in this area. The locator lives in its own axes with its own `axis equal`, so its contents are fixed in its own coordinates and a resize moves one Position. Everything else in v1 that responded to a resize deleted and rebuilt every handle it owned; this did not, and that is why it is the only v1 element whose returned handle was still valid afterwards.</p>
+<p>THE OUTLINE IS COMPUTED FROM THE DECLARED DOMAIN, not from a hull. v1 sampled a 180x90 mesh, projected it, and ran `boundary(...,0.9)` over the surviving points, falling back to `convhull` on error - a shrink factor of 0.9 on a point cloud, chosen by eye, to recover a shape the projection already knows. Here an azimuthal projection's outline is the circle at CRS.Domain.MaxAngularDistanceDeg, computed exactly with GEO.GREATCIRCLE, and every other projection's is its projected lon/lat boundary. Two cases, both exact, no tuning constant.</p>
+<p>THE LOCATOR IS CENTRED ON THE MAPPED EXTENT, not on the main map's projection centre. v1 inherited lon0 and lat0, which for a regional map with a global-convention centre put the region at the edge of the locator or off it entirely. The point of a locator is to show where the extent is; centring it anywhere else is answering a different question.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>axH</code></td><td>(1,1) matlab.graphics.axis.Axes</td><td>An axes with a basemap.</td></tr>
+<tr><td><code>crs</code></td><td></td><td>The locator's own projection - a GEO.CRS or a name. Defaults to an orthographic centred on the mapped extent.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Size</code></td><td>0.3</td><td>Footprint, as a fraction of the map's short side.</td></tr>
+<tr><td><code>Location</code></td><td>&quot;southeast&quot;</td><td>Any of the four inside corners.</td></tr>
+<tr><td><code>Ocean</code></td><td>[0.85 0.92 0.97]</td><td>Globe fill.</td></tr>
+<tr><td><code>Land</code></td><td>[]</td><td>Fill for land; empty draws coastlines as lines.</td></tr>
+<tr><td><code>Coast</code></td><td></td><td>[0.3 0.3 0.3]</td></tr>
+<tr><td><code>Border</code></td><td></td><td>[0 0 0] BorderWidth 1 ExtentColor [0.85 0.1 0.1] ExtentWidth 1.5</td></tr>
+<tr><td><code>Source</code></td><td>&quot;builtin&quot;</td><td>Coastline, as GEO.COASTLINE takes it.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Axes    the locator's own axes Globe   (1,1) Patch  The outline. Coast   (1,1) Line Extent  (1,1) Line   The mapped rectangle. Crs     (1,1) struct The locator's projection. All     (1,:)</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>Geometric, at TolGeom. The one claim worth asserting is that the extent rectangle closes: its first and last projected vertices are the same point, so the outline cannot be drawn open by a rounding difference in the trace.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:inset:NoBasemap</code></dt><dd>the axes carries no basemap, so there is no extent to locate</dd>
+<dt><code>geo:inset:Degenerate</code></dt><dd>the locator projection maps the whole world to fewer than three points</dd></dl>
+<h2>Example</h2>
+<pre class="example">G = geo.readGrid(<span class="str">&quot;data/etopo_10min_surface.mat&quot;</span>);
+[~, ax] = geo.basemap(G, geo.crs(<span class="str">&quot;equirectangular&quot;</span>));
+H = geo.inset(ax);</pre>
+<h2>Limitations</h2>
+<p>The extent drawn is the lon/lat RECTANGLE of the mapped grid, not the projected outline of the map. On a strongly curved projection those differ; the rectangle is what a reader of a locator expects, and it is what v1 drew.</p>
+
+<h2>See also</h2>
+<p><a href="geo_basemap.html"><code>geo.basemap</code></a>, <a href="geo_coastline.html"><code>geo.coastline</code></a>, <code>GEO.INTERNAL.LAYOUT</code></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 31b266c39d1bee0de09946a49e0b0d497f2bc7dd039cd56d8c02504f07c31a12 -->

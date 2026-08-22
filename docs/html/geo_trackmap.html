@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.trackmap - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.trackmap</h1>
+<p class="h1line">A track over topography, with the extent worked out for you.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.TRACKMAP(T)
+     H = GEO.TRACKMAP(T, CRS)
+     H = GEO.TRACKMAP(T, CRS, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>The one-call front for along-track data. It decides where the map is, fetches a background, and hands the whole thing to GEO.MAP - which draws it. It adds an extent and a backdrop and nothing else.</p>
+<p>IT IS GEO.MAP PLUS TWO DECISIONS, and that is deliberate. v1's geoImagescTrack was a 75-option near-clone of geoImagesc; the two shared a defect list and had to be repaired twice, which is F8 seen from the side. Here every option this file does not own is forwarded to GEO.MAP untouched, so the option surface has one home and this file has no table of its own.</p>
+<p>THE EXTENT HAS A PRECEDENCE: explicit LonLimit/LatLimit beat Region, and Region beats the track's own bounding box padded by Pad. The pad applies only to the automatic box - limits and a Region are what the caller asked for, and enlarging those would mean the map does not show the extent its own arguments name.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>T</code></td><td></td><td>A GEO.TRACK, or anything GEO.TRACK accepts.</td></tr>
+<tr><td><code>crs</code></td><td></td><td>A GEO.CRS or a projection name. Empty gives equirectangular centred on the map, which is a neutral choice for a regional extent and is stated rather than assumed.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Pad</code></td><td>0.05</td><td>Margin around the track's bounding box, as a fraction of its span, applied through GEO.REGION's own Padding.</td></tr>
+<tr><td><code>Region</code></td><td>[]</td><td>A GEO.REGION or anything it accepts. Overrides the automatic box.</td></tr>
+<tr><td><code>LonLimit</code></td><td>[]</td><td>Explicit limits. Override everything.</td></tr>
+<tr><td><code>LatLimit</code></td><td></td><td>[]</td></tr>
+<tr><td><code>Background</code></td><td>true</td><td>true for the builtin topography, false for a flat backdrop, or a GEO.GRID of your own. BackgroundResolution 300  Target cells across the longer side. The resample never asks for more cells than the source window has. Everything else is GEO.MAP's - Graticule, Coastline, Colorbar, Frame, ScaleBar, NorthArrow, Inset, Title, Export and the rest - and is forwarded unchanged, including Track itself, so Track = struct(Style = &quot;bicolor&quot;) configures the overlay while this function supplies its data.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>GEO.MAP's, with two fields added: Region  (1,1) struct  The GEO.REGION the map covers. Grid    (1,1) struct  The background GEO.GRID drawn.</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>One claim, and it is asserted on the returned limits: the automatic extent CONTAINS every finite track point, and the margin on each side equals Pad times that side's span. A map that clipped the track it was built for would be worse than no map.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:mapBackdrop:NoFinitePoints</code></dt><dd>the track has no finite position (everything else is raised by GEO.MAP or by the elements)</dd></dl>
+<h2>Example</h2>
+<pre class="example">T = geo.track(lon, lat, Obs = residual, Units = <span class="str">&quot;cm&quot;</span>);
+H = geo.trackmap(T, Title = <span class="str">&quot;Ascending pass 042&quot;</span>, ...
+    Track = struct(Style = <span class="str">&quot;bicolor&quot;</span>), ScaleBar = true);</pre>
+<h2>Limitations</h2>
+<p>The automatic box is min-to-max in longitude, so a track crossing the antimeridian gets a box the wide way round the world. Give LonLimit = [170 190] for those; GEO.REGION documents the convention and it passes through unchanged.</p>
+
+<h2>See also</h2>
+<p><a href="geo_map.html"><code>geo.map</code></a>, <a href="geo_track.html"><code>geo.track</code></a>, <a href="geo_overlayTrack.html"><code>geo.overlayTrack</code></a>, <a href="geo_pointmap.html"><code>geo.pointmap</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: e8d5747f9f27c1001689d556699b7624d73ebee90421fc7232b0d9b777f6cf47 -->
