@@ -55,6 +55,58 @@ classdef TestD1_elements < GeoMapTestCase
     % ==================================================================
     methods (Test, TestTags = {'contract'})
 
+        function anImageBackdropDrawsWithoutAColourScale(tc)
+            % G.1b. The whole point of the separate kind: an image must
+            % not put a colour scale on the axes, because the field drawn
+            % on top of it owns that scale. If the backdrop set CLim, a
+            % colorbar beside the map would describe the picture instead
+            % of the data.
+            ax = axes('Parent', tc.figureFor());
+            before = clim(ax);
+            IG = tc.imageFixture();
+            [~, ~, H] = geo.basemap(IG, "equirectangular", Parent = ax);
+            tc.verifyTrue(H.IsImage);
+            tc.verifyEmpty(H.Colormap);
+            tc.verifyEqual(clim(ax), before, ...
+                "an image backdrop must leave the axes colour scale alone");
+            tc.verifySize(get(H.Surface, 'CData'), ...
+                [numel(IG.Lat) + 1, numel(IG.Lon) + 1, 3]);
+        end
+
+        function anImageRefusesAColourScaleItCannotHonour(tc)
+            % R4: refuse, never degrade silently. A caller who asks an
+            % image for a colormap has misunderstood something, and
+            % ignoring them would let the misunderstanding survive.
+            IG = tc.imageFixture();
+            ax = axes('Parent', tc.figureFor());
+            tc.verifyError(@() geo.basemap(IG, "equirectangular", ...
+                Parent = ax, CLim = [0 1]), 'geo:basemap:ImageHasNoColourScale');
+            tc.verifyError(@() geo.basemap(IG, "equirectangular", ...
+                Parent = ax, Colormap = parula(8)), ...
+                'geo:basemap:ImageHasNoColourScale');
+        end
+
+        function theSeamRollMovesThePictureNotJustTheAxis(tc)
+            % The claim the index-map carrier exists to make. Drawing the
+            % same image centred on 0 and on 180 must permute the CData
+            % by exactly the same columns as the longitudes - if the
+            % bands rolled differently from the axis, every pixel would
+            % still be a plausible colour and the map would be wrong.
+            IG = tc.imageFixture();
+            ax0 = axes('Parent', tc.figureFor());
+            [~, ~, H0] = geo.basemap(IG, geo.crs("equirectangular"), Parent = ax0);
+            ax1 = axes('Parent', tc.figureFor());
+            [~, ~, H1] = geo.basemap(IG, ...
+                geo.crs("equirectangular", CenterLongitude = 180), Parent = ax1);
+            C0 = get(H0.Surface, 'CData');
+            C1 = get(H1.Surface, 'CData');
+            n = numel(IG.Lon);
+            tc.verifyEqual(sort(reshape(C1(1:end-1, 1:n, 1), 1, [])), ...
+                sort(reshape(C0(1:end-1, 1:n, 1), 1, [])), ...
+                "bitwise: a roll is a permutation, so the multiset is fixed");
+        end
+
+
         function basemapRejectsABareMatrix(tc)
             % The grid contract belongs to geo.grid and is not re-checked
             % in the drawing path; this asserts that it still fires there.
@@ -884,6 +936,17 @@ classdef TestD1_elements < GeoMapTestCase
 
     % ==================================================================
     methods (Access = private)
+        function IG = imageFixture(~)
+            %IMAGEFIXTURE  A small cell-registered world raster.
+            %   Values keyed to indices so a roll or a flip shows up in
+            %   the numbers, not only in the size.
+            lon = -180 + 22.5 + (0:7) * 45;
+            lat = -90 + 22.5 + (0:3) * 45;
+            [I, J] = ndgrid(1:4, 1:8);
+            IG = geo.imageGrid(lon, lat, ...
+                uint8(cat(3, I * 20, J * 20, I + J)), Source = "fixture");
+        end
+
         function ax = axesFor(tc)
             %AXESFOR  Fresh axes in an invisible figure, closed on teardown.
             ax = axes('Parent', tc.figureFor());
