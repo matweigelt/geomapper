@@ -85,8 +85,8 @@ classdef TestStage03_audit < GeoMapTestCase
                 'and the list must not parse to nothing.');
             for f = declared
                 tc.verifyTrue(isfolder(fullfile(geoMapRoot(), f)), ...
-                    sprintf('%s is declared on the developer path and ' ...
-                            'does not exist', f));
+                    sprintf(['%s is declared on the developer path ' ...
+                             'and does not exist'], f));
             end
         end
 
