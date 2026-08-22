@@ -17,7 +17,19 @@ __pycache__/
 venv/
 
 # Build outputs
-html/
+#
+# docs/html IS TRACKED, and that is a consequence of D-020. While the
+# .mltbx shipped the built pages, ignoring them was right: they were an
+# archive artefact, rebuilt on every release. Distribution is git now, so
+# a clone IS the delivery - and an ignored manual means a user clones the
+# toolbox, runs `doc geoMap`, and info.xml points help_location at a
+# folder that does not exist (PV-146).
+#
+# The discipline that keeps a checked-in build honest already exists:
+# geoMapAudit's documentationSync hashes every help block against the
+# page built from it and fails the gate when they part. That check has
+# been running since Stage F.2; it is what caught the five stale pages
+# this round.
 *.mltbx
 test-results/
 
