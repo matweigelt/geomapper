@@ -40,7 +40,7 @@
 
 | V10 | The mass-closure claim has no genuinely conservative second toolkit behind it. Part 3's O7 named `gdalwarp -r average`, which is not conservative on a geographic grid. Present evidence is an analytic invariant and a metamorphic split/merge property — both real, both **narrower** than the register implied. | The register row was never re-read against the module that implements it. | `cdo remapcon` or ESMF in the mirror, package G.0. | **Medium** |
 | V11 | Every speed ratio in the 518-point run still carries the **PREDICTED** stamp. V5 discharged the machine *baseline*; the budgets were never rebaselined against it, so each is ~3× wider than the measurement now supports. | Predictions transferred from the mirror were never replaced once the measurements existed. | One round reading the recorded per-repeat bands and rewriting each budget from them. | Low — the budgets are not wrong, they merely detect less than they could. |
-| V12 | The oracle register (Part 3) has no instrument. Three of its twelve rows were wrong across a release. | Every gate reads code or the stage ledger; none reads Part 3. | Package G.0. | **Medium** |
+| ~~V12~~ | ~~The oracle register has no instrument~~ **DISCHARGED 22-Aug-2026 by G.0a.** `tools/oracle_sync.py` runs in CI and in `gates.sh`; it found four wrong rows on its first clean run (O2, O7, O8, O12) and its own self-test was rebuilt on an inline fixture after V15. | — | R-033. | — |
 
 **Standing rule.** A debt is discharged only when a number exists end to end (BEST_PRACTICE §F5). "The mirror now computes it" is not discharge; "the mirror computes it, MATLAB reproduces it, and both are in `RECORDS.md`" is.
 

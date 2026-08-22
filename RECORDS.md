@@ -2698,6 +2698,15 @@ findings from a dirty register — **the dirt was hiding the vacuum**. It
 surfaced the moment the register came clean. Repaired, and a *silence half*
 added: the gate must also be quiet on a repaired register.
 
+**V12 discharged by this package.** The oracle register now has an
+instrument, it runs in CI and in `gates.sh`, and it found four wrong rows on
+its first clean run. Recorded explicitly because the gate cannot infer it:
+`ledger_sync` compares a discharge note in this file against the debt row in
+the handover, so a debt that is satisfied in FACT but declared in NEITHER file
+is invisible to it. It reads two statements; it cannot notice that neither was
+made. That is the same shape as the stage-alphabet defect above and belongs
+beside it.
+
 **This is a question the other three gates have not been asked.** `mcheck`,
 `provenance_audit` and `ledger_sync` all inject a defect and check they fire;
 none, as far as this session checked, verifies it is silent on a repaired
