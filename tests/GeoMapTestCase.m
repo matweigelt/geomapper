@@ -239,6 +239,61 @@ classdef GeoMapTestCase < matlab.unittest.TestCase
             end
         end
 
+        function r = v1RootOrFilter(tc)
+            %V1ROOTORFILTER  Where the v1 tree is, SEARCHED rather than asserted.
+            %
+            %   PV-148. This held one absolute path on one developer's
+            %   machine - ...\maptoolbox_v1\maptoolbox - and the tree had
+            %   moved to ...\maptoolbox. Four points filtered for four
+            %   rounds on the strength of a stale string, and PV-129
+            %   recorded the cause as "the v1 tree is gone from disk". It
+            %   was not gone. Nobody looked, because the filter came with
+            %   a reason that sounded like an explanation: "normal on CI
+            %   and a breach of OB-7 anywhere else". A filter with a
+            %   plausible message is a filter nobody investigates.
+            %
+            %   Searched now, in order: GEOMAP_V1_ROOT if it is set, then
+            %   every sibling of the geoMap root and each sibling's own
+            %   maptoolbox subfolder. GEOPROJECT.M is the marker because
+            %   it is v1's and only v1's.
+            r = "";
+            cand = string.empty(1, 0);
+            env = string(getenv("GEOMAP_V1_ROOT"));
+            if strlength(env) > 0
+                cand(end+1) = env;
+            end
+            parent = string(fileparts(geoMapRoot()));
+            d = dir(parent);
+            d = d([d.isdir] & ~startsWith(string({d.name}), "."));
+            for k = 1:numel(d)
+                here = string(fullfile(parent, d(k).name));
+                cand(end+1) = here;                          %#ok<AGROW>
+                cand(end+1) = fullfile(here, "maptoolbox");   %#ok<AGROW>
+            end
+            for c = cand
+                if isfile(fullfile(c, "geoProject.m"))
+                    r = c;
+                    return
+                end
+            end
+            tc.filterBecause("geo:filter:v1TreeAbsent", sprintf( ...
+                ['v1 tree absent, so oracle O12 is unreachable. ' ...
+                 'Searched %d candidate folders under "%s" for ' ...
+                 'geoProject.m, and GEOMAP_V1_ROOT is %s. Normal on ' ...
+                 'CI and a breach of OB-7 anywhere else. Filtered, ' ...
+                 'not passed.'], numel(cand), parent, ...
+                 tc.envText(env)));
+        end
+
+        function s = envText(~, env)
+            %ENVTEXT  The environment override, or the word for its absence.
+            if strlength(env) > 0
+                s = env;
+            else
+                s = "unset";
+            end
+        end
+
         function filterBecause(tc, id, why)
             %FILTERBECAUSE  Filter this point, naming a REGISTERED reason.
             %   The only door out of a test that is not a pass and not a
