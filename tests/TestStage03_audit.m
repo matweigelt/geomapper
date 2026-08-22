@@ -49,13 +49,8 @@ classdef TestStage03_audit < GeoMapTestCase
         end
 
         function r = v1Root(tc)
-            r = "C:\Users\matth\Documents\MATLAB\maptoolbox_v1\maptoolbox";
-            if ~isfile(fullfile(r, "geoProject.m"))
-                tc.filterBecause("geo:filter:v1TreeAbsent", ...
-                    ['v1 tree absent, so oracle O12 is unreachable. ' ...
-                     'This is the normal state on CI and a breach of ' ...
-                     'OB-7 anywhere else. Filtered, not passed.']);
-            end
+            %V1ROOT  The v1 tree, through the one resolver (PV-148).
+            r = tc.v1RootOrFilter();
         end
     end
 

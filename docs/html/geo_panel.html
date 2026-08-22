@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.panel - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.panel</h1>
+<p class="h1line">Several maps and series in one figure, on one layout.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.PANEL(SPEC)
+     H = GEO.PANEL(SPEC, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Lays out a figure of tiles and fills each one by calling the front that owns it - GEO.MAP, GEO.TRACKMAP, GEO.POINTMAP or GEO.TIMESERIES. It draws nothing itself and knows nothing about maps; what it owns is the layout, the shared colour scale, the linking, and the one geometric correction below.</p>
+<p>THE HEIGHT CORRECTION, AND THE CONSTRAINT THAT FORCED IT. A map axes uses `axis equal`, so its data fills only a centred sub-rectangle of its tile; a series axes fills its whole tile. Two equal tiles therefore look like two different heights, which is the first thing a reader notices and the last thing they can explain.</p>
+<p>The obvious repair - move the series axes - IS NOT AVAILABLE. TILEDLAYOUT forbids setting Position, InnerPosition or OuterPosition on its children: the assignment warns and is IGNORED, so the code appears to work and the figure does not change. v1 found this and worked around it, and the workaround is carried forward here deliberately rather than rediscovered: set the series axes' PLOTBOXASPECTRATIO to [tileWidth, targetHeight, 1], which tiledlayout does allow. The plot box then takes the tile's full width and exactly that height, centred by the layout itself.</p>
+<p>DO NOT &quot;FIX&quot; THIS WITH POSITION. It will look like it works.</p>
+<p>THE TARGET HEIGHT IS THE MAP'S PLOTTED BOX, measured by GEO.INTERNAL.PLOTTEDBOX - the same function the colorbar, the inset, the frame and the title use. v1 carried its own copy of that computation here, one of the five copies the duplicate-local check exists to prevent (F6).</p>
+<p>A SHARED COLOUR SCALE IS THE DEFAULT WHEN THERE IS MORE THAN ONE MAP, because panels that are not comparable are worse than no panels: a reader assumes a shared scale unless told otherwise, and four maps with four silent colour limits invite exactly the wrong conclusion. The limits come from every map's data together.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>spec</code></td><td>(1,:) struct</td><td>One element per tile, with fields: Type     &quot;map&quot; | &quot;trackmap&quot; | &quot;pointmap&quot; | &quot;series&quot; Data     The grid, track, points or track array. CRS      Optional, for the three map types. Options  Optional cell of name-value pairs for that front. Built in one line: spec = struct('Type', {&quot;map&quot;,&quot;series&quot;}, ... 'Data', {G, T}, ... 'Options', {{'Title',&quot;a&quot;}, {'YLabel',&quot;cm&quot;}});</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Layout</code></td><td>[NaN NaN]</td><td>[rows cols]. NaN fills a near-square grid.</td></tr>
+<tr><td><code>TileSpacing</code></td><td></td><td>&quot;compact&quot;</td></tr>
+<tr><td><code>Padding</code></td><td></td><td>&quot;compact&quot;</td></tr>
+<tr><td><code>SharedCLim</code></td><td>[]</td><td>Empty means true when more than one tile is a map. A vector sets the limits.</td></tr>
+<tr><td><code>Colorbar</code></td><td>&quot;last&quot;</td><td>&quot;last&quot; | &quot;each&quot; | &quot;none&quot;. With a shared scale one bar describes every map, and &quot;last&quot; is that bar.</td></tr>
+<tr><td><code>LinkX</code></td><td>true</td><td>Link the x limits of the series tiles. EqualHeights true       The correction above.</td></tr>
+<tr><td><code>Title</code></td><td>&quot;&quot;</td><td>Written to the layout's own Title.</td></tr>
+<tr><td><code>FontName</code></td><td></td><td>&quot;Helvetica&quot;</td></tr>
+<tr><td><code>FontSize</code></td><td></td><td>9</td></tr>
+<tr><td><code>Export</code></td><td></td><td>&quot;&quot; ExportOptions struct()</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Figure  (1,1) matlab.ui.Figure Layout  (1,1) matlab.graphics.layout.TiledChartLayout Axes    (1,:) matlab.graphics.axis.Axes  One per tile. Tiles   (1,:) cell  Each front's own return value. IsMap   (1,:) logical CLim    (1,2) double  The shared scale, or NaN when not shared.</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>One claim, and it is v1's own criterion carried forward deliberately: the plotted heights of the map tiles agree within 2%. That is a VISUAL-EQUALITY threshold, not a numerical one - it is the point at which a reader stops seeing two panels as the same size - and it is stated as such rather than tightened to look rigorous.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:panel:NoTiles</code></dt><dd>an empty spec</dd>
+<dt><code>geo:panel:UnknownType</code></dt><dd>a Type that is not one of the four</dd>
+<dt><code>geo:panel:LayoutTooSmall</code></dt><dd>a Layout with fewer cells than tiles</dd></dl>
+<h2>Example</h2>
+<pre class="example">spec = struct(<span class="str">'Type'</span>, {<span class="str">&quot;map&quot;</span>,<span class="str">&quot;map&quot;</span>,<span class="str">&quot;series&quot;</span>}, ...
+              <span class="str">'Data'</span>, {G2003, G2016, stations});
+H = geo.panel(spec, Layout = [1 3], Title = <span class="str">&quot;Mass change&quot;</span>, ...
+              Export = <span class="str">&quot;figure4.pdf&quot;</span>);</pre>
+<h2>Limitations</h2>
+<p>NO PANEL LABELS - (a), (b), (c) - and they are left out rather than improvised. A corner annotation is not a title and there is no L3 element that draws one, so the Stage E rule says flag it. Put the letter in each tile's own Title meanwhile.</p>
+<p>The height correction matches a series to the map SHARING ITS ROW, found by nearest tile centre. A layout where that is ambiguous gets no correction rather than a guessed one.</p>
+
+<h2>See also</h2>
+<p><a href="geo_map.html"><code>geo.map</code></a>, <a href="geo_trackmap.html"><code>geo.trackmap</code></a>, <a href="geo_pointmap.html"><code>geo.pointmap</code></a>, <a href="geo_timeseries.html"><code>geo.timeseries</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: d2a2d3cb74cec1c5a4f0ab76126d18237b818a8c3201f0a8799e0cd660d15f88 -->

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.splitTracks - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.splitTracks</h1>
+<p class="h1line">Split one continuous series into separate passes.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     T = GEO.SPLITTRACKS(TRACK)
+     [T, TRACKID] = GEO.SPLITTRACKS(TRACK, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Ported from v1's geoSplitTracks, onto the GEO.TRACK struct. Takes one long series - a month of along-track observations, a station record, a set of concatenated passes - and inserts NaN breaks wherever it decides one pass ended and the next began.</p>
+<p>THE AUTO THRESHOLD IS THE MEDIAN OF THE STRICTLY POSITIVE TIME STEPS, times TimeGapFactor. Both halves matter. The median rather than the mean, because one long outage would drag a mean up until nothing else counted as a gap. STRICTLY POSITIVE because merged products repeat timestamps, and a median of zero would make every step a gap and every sample its own track - v1's guard, ported verbatim because it is correct and was hard won.</p>
+<p>WHERE NOTHING CAN BE MEASURED, NOTHING IS SPLIT. If every step is zero or there are no steps at all, the threshold becomes Inf rather than a guess. A function that invents a threshold when it cannot measure one produces confident nonsense.</p>
+<p>REGION REMOVAL FORCES A BREAK. Samples dropped for falling outside Region leave a real hole wherever they were, even if the two surviving neighbours happen to be close in time - two separate visits to the same place must not be joined into one pass just because the gap between them was removed. v1 got this right and it is one of Appendix B's named regression anchors.</p>
+<p>TRACKID IS REPORTED AT THE ORIGINAL LENGTH, before any filtering, with NaN for every sample that was dropped. A caller can therefore line it up against the data they passed in, which they cannot do with an index into a compacted array.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>track</code></td><td>(1,1) struct</td><td>A GEO.TRACK. The loose form is not accepted: build the struct, so validation happens once.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>GroupID</code></td><td>(:,1)         []</td><td>Explicit grouping; when given, gap detection is skipped entirely.</td></tr>
+<tr><td><code>TimeGapThreshold</code></td><td>(1,1) string</td><td>&quot;auto&quot;   &quot;auto&quot;, or a numeric string in Time's units.</td></tr>
+<tr><td><code>TimeGapFactor</code></td><td>(1,1) double</td><td>[5]      Multiplier for &quot;auto&quot;. SpatialJumpThreshold (1,1) double  [NaN]    km along the great circle. NaN disables.</td></tr>
+<tr><td><code>MaxTrackDuration</code></td><td>(1,1) double</td><td>[NaN]    Force a break every so much elapsed time.</td></tr>
+<tr><td><code>MaxTrackPoints</code></td><td>(1,1) double</td><td>[NaN]    Force a break every so many samples.</td></tr>
+<tr><td><code>MinTrackPoints</code></td><td>(1,1) double</td><td>[2]      Shorter tracks dropped.</td></tr>
+<tr><td><code>Region</code></td><td>(1,1)         []</td><td>Anything GEO.REGION accepts. Samples outside are dropped.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>T</code></td><td>(1,1) struct</td><td>A GEO.TRACK, NaN-separated between passes.</td></tr>
+<tr><td><code>trackID</code></td><td>(1,:) double</td><td>One entry per ORIGINAL sample: the 1-based pass number, or NaN if the sample was dropped. Numbering is contiguous, so a dropped short track leaves no hole in it.</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>SpatialJumpThreshold is measured with GEO.GREATCIRCLE, so it is a real distance in km on the authalic sphere rather than v1's hypot(diff(lon), diff(lat)) in degrees - which counted a degree of longitude at 70 degrees north as worth the same as one at the equator, and so needed a different threshold per latitude band. The spherical figure is within -0.268% of a WGS84 geodesic (see GEO.GREATCIRCLE's ACCURACY block). This is a DELIBERATE CHANGE from v1 and changes the meaning of the option's units; recorded as such rather than slipped in.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:splitTracks:NoTime</code></dt><dd>a time-based split was asked for on a track with no Time</dd>
+<dt><code>geo:splitTracks:GroupIDSizeMismatch</code></dt><dd>GroupID is not the track's length</dd>
+<dt><code>geo:splitTracks:InvalidThreshold</code></dt><dd>TimeGapThreshold is neither &quot;auto&quot; nor numeric Outcome:</dd>
+<dt><code>geo:splitTracks:NoTracksSurvived</code></dt><dd>every pass was shorter than MinTrackPoints</dd>
+<dt><code>geo:splitTracks:TooFewInRegion</code></dt><dd>fewer than two samples remain after applying Region WARNINGS</dd>
+<dt><code>geo:splitTracks:TracksDropped</code></dt><dd>some passes were shorter than MinTrackPoints and removed</dd></dl>
+<h2>Example</h2>
+<pre class="example">T0 = geo.track(lon, lat, Time = t, Obs = ewh);
+[T, id] = geo.splitTracks(T0, TimeGapFactor = 5, MinTrackPoints = 10);</pre>
+<h2>Limitations</h2>
+<p>Gap detection is one-dimensional in time and one-dimensional in space, applied independently. A pass that doubles back on itself slowly is not detected as two passes by either test, and no threshold on this function can find it - that needs a heading change, which is a different question from the one asked here.</p>
+
+<h2>See also</h2>
+<p><a href="geo_track.html"><code>geo.track</code></a>, <a href="geo_region.html"><code>geo.region</code></a>, <a href="geo_greatCircle.html"><code>geo.greatCircle</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 5dd52cd55f85c7eb095c33f08db16b0080ae9573b63ff2ae3733c4e3bbc1381e -->

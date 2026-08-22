@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.hillshade - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.hillshade</h1>
+<p class="h1line">Analytic Horn hillshade with the spherical metric.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     SHADE = GEO.HILLSHADE(LON, LAT, TOPO)
+     SHADE = GEO.HILLSHADE(LON, LAT, TOPO, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Replaces v1's OpenGL lighting (decision D-009, defect F9). v1 lit its surface with LIGHT plus SHADING INTERP plus FaceAlpha, which made the rendered image depend on the renderer, the display and the export path; the same figure exported two ways did not match. Computing the shade analytically makes it data, so it is deterministic, testable against an outside authority, and identical on screen and in a PDF.</p>
+<p>THE METRIC IS THE CORRECTNESS POINT. East-west spacing on a sphere is R*cos(lat)*dlon and therefore varies PER ROW; north-south spacing R*dlat does not. A gradient that ignores that under-shades high latitudes, smoothly enough to look plausible. The test that catches it is the ratio of the measured slope of the SAME east-west ramp at latitude 0 and latitude 60, which must be exactly 1/cos(60) = 2. Measured in the mirror at 1.9999878; no oracle supplies this, so it is checked analytically (mirror limit L10).</p>
+<p>CERTIFIED AGAINST ORACLE O8. The mirror's implementation of this same kernel reproduces `gdaldem hillshade`'s uint8 output EXACTLY - 0 DN over 18 094 interior pixels - with slope agreeing to 4.2e-5 degrees and aspect to 8.2e-4 degrees, on two independent GDAL routes and two GDAL versions. What O8 cannot certify is the cos(lat) metric above, because GDAL has no per-row spacing.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>lon</code></td><td>(1,:) double</td><td>Degrees East, ascending, uniform.</td></tr>
+<tr><td><code>lat</code></td><td>(:,1) double</td><td>Degrees North, ascending or descending, uniform.</td></tr>
+<tr><td><code>topo</code></td><td>(M,N) double</td><td>Elevation in metres. M = numel(lat).</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Azimuth</code></td><td>(1,1) double</td><td>[315]     Light direction, deg cw from N.</td></tr>
+<tr><td><code>Elevation</code></td><td>(1,1) double</td><td>[45]      Light height above the horizon.</td></tr>
+<tr><td><code>Ambient</code></td><td>(1,1) double</td><td>[0.35]    Floor, so shadows are not black.</td></tr>
+<tr><td><code>ZFactor</code></td><td>(1,1)         [&quot;auto&quot;]</td><td>Vertical exaggeration, or &quot;auto&quot;.</td></tr>
+<tr><td><code>Multi</code></td><td></td><td>(1,1) logical [false]   Blend four USGS azimuths.</td></tr>
+<tr><td><code>Radius</code></td><td>(1,1) double</td><td>[6371.0072] km.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>shade</code></td><td>(M,N) double</td><td>In [Ambient, 1]. NaN topography gives 1, i.e. fully lit, so a gap does not draw as a shadow.</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>Flat terrain gives exactly Ambient + (1-Ambient)*sin(Elevation); measured 1.1e-16 in the mirror, analytic. The metric ratio above is asserted at 1e-5 relative.</p>
+<p>ZFACTOR=&quot;AUTO&quot; CARRIES ITS SPAN (§2.11). It scales the relief so the median non-zero slope is about 30 degrees, computed from THIS grid's own gradient distribution. The rule is therefore data-derived: a grid of a different resolution or a different region gets a different factor, by design, and two grids shaded side by side will not share one unless ZFactor is given explicitly.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:hillshade:SizeMismatch</code></dt><dd>size(topo) is not [numel(lat) numel(lon)]</dd></dl>
+<h2>Example</h2>
+<pre class="example">s = geo.hillshade(G.Lon, G.Lat, G.Topo, Multi = true);</pre>
+<h2>Limitations</h2>
+<p>Horn's 3x3 operator, so it sees only immediate neighbours: a feature one cell wide is smoothed away, and the shade of a coarse grid is not the shade of a fine one downsampled. Edges use replicate padding, which flattens the outermost row and column slightly.</p>
+
+<h2>See also</h2>
+<p><a href="geo_colormaps.html"><code>geo.colormaps</code></a>, <a href="geo_basemap.html"><code>geo.basemap</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 55308de0a4b9aac741b8d7df6ee914f38e6bb4cc166ed9f2675ba490614158a4 -->

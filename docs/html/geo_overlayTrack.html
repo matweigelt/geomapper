@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.overlayTrack - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.overlayTrack</h1>
+<p class="h1line">An along-track series, as a wiggle or a coloured line.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.OVERLAYTRACK(AX, T)
+     H = GEO.OVERLAYTRACK(AX, T, CRS)
+     H = GEO.OVERLAYTRACK(AX, T, CRS, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Draws a GEO.TRACK over a basemap at z = 5. Four styles, which are v1's four: a filled wiggle graded along its length, the same wiggle split by sign into two flat colours, a coloured line with no deviation, and markers.</p>
+<p>THE SCALE IS COMPUTED ONCE FOR THE WHOLE TRACK, NOT PER RUN, and this is the defect that matters most here. v1 computed the &quot;auto&quot; amplitude scale inside its per-run drawing function, from that run's own maximum. A track broken by a single missing sample therefore drew two ribbons at two different scales, with nothing on the figure to say so - and a wiggle is a QUANTITATIVE display whose whole content is the amplitude. Two segments of one orbit could not be compared by eye, which is the only way anybody reads them.</p>
+<p>RUNS ARE BROKEN THREE WAYS AND ALL THREE ARE NEEDED. NaN in the coordinates or the observation is a gap in the data. A jump in longitude is the antimeridian. And a segment that will not shrink under bisection is a branch cut - which v1 did not test for on tracks at all, though it did on coastlines, so a track crossing a projection's seam drew a ribbon straight across the map.</p>
+<p>SCATTER3 CLEARS THE AXES, and in a composable toolbox that is a landmine. It is a high-level plotting call, so unless HOLD is on it resets the axes first - measured: a map carrying fifty objects came back with five, the basemap and every element drawn before it gone. v1 never met this because it drew everything inside one function in a fixed order; here any element may be called at any time, so the hold state is saved, forced on, and restored.</p>
+<p>THE NORMAL IS TAKEN IN PROJECTED SPACE, from centred differences of the projected coordinates, so the wiggle stands perpendicular to the track AS DRAWN. A normal computed in lon/lat and then projected would lean, by an amount that varies across the map.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>axH</code></td><td>(1,1) matlab.graphics.axis.Axes</td><td>An axes with a basemap.</td></tr>
+<tr><td><code>T</code></td><td>(1,1) struct</td><td>A GEO.TRACK. Its Obs field is what is drawn; without one there is nothing to make a wiggle from and only &quot;line&quot; and &quot;markers&quot; are possible.</td></tr>
+<tr><td><code>crs</code></td><td></td><td>A GEO.CRS or a name. Defaults to the basemap's.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Style</code></td><td>&quot;gradient&quot;</td><td>&quot;gradient&quot; | &quot;bicolor&quot; | &quot;line&quot; | &quot;markers&quot;.</td></tr>
+<tr><td><code>Scale</code></td><td>&quot;auto&quot;</td><td>Map units per observation unit, or &quot;auto&quot; to make the largest |Obs| reach ScaleFraction of the map diagonal.</td></tr>
+<tr><td><code>ScaleFraction</code></td><td></td><td>0.06</td></tr>
+<tr><td><code>Colormap</code></td><td>[]</td><td>Defaults to the basemap's.</td></tr>
+<tr><td><code>CLim</code></td><td>[]</td><td>Defaults to the basemap's.</td></tr>
+<tr><td><code>BicolorColors</code></td><td>[0 0.35 0.7; 0.75 0.1 0.1]</td><td>Negative, positive.</td></tr>
+<tr><td><code>Baseline</code></td><td>true</td><td>Draw the undeviated path underneath.</td></tr>
+<tr><td><code>BaselineColor</code></td><td></td><td>[0.2 0.2 0.2]</td></tr>
+<tr><td><code>LineWidth</code></td><td></td><td>1.2</td></tr>
+<tr><td><code>MarkerSize</code></td><td>24</td><td>Points squared, for &quot;markers&quot;.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Objects     (1,:)         One per run, plus baselines. Style       (1,1) string Scale       (1,1) double  Map units per observation unit, as used - ONE number for the whole track, whatever it was broken into. NumRuns     (1,1) double NumCuts     (1,1) double  Branch cuts broken. ExtentCuts  (1,1) double  Cuts made where the track LEAVES the frame. Distinct from NumCuts, which counts antimeridian jumps: one name carrying two meanings is the aliasing one-name-per-thing forbids. A track that leaves the frame and returns is two runs afterwards, and that is the cut working. CLim        (1,2) double All         (1,:)</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>The amplitude of the wiggle at a sample is exactly Obs * Scale in projected units, measured along the unit normal. That is asserted rather than described, and it is the property that makes the display quantitative.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:overlayTrack:NoBasemap</code></dt><dd>no crs and no basemap</dd>
+<dt><code>geo:overlayTrack:NoObs</code></dt><dd>a wiggle style without Obs</dd>
+<dt><code>geo:overlayTrack:BadScale</code></dt><dd>Scale is neither &quot;auto&quot; nor a positive finite number</dd></dl>
+<h2>Example</h2>
+<pre class="example">T = geo.track(lon, lat, Obs = residual, Units = <span class="str">&quot;cm&quot;</span>);
+H = geo.overlayTrack(ax, T, Style = <span class="str">&quot;bicolor&quot;</span>);
+H.Scale</pre>
+<h2>Limitations</h2>
+<p>The wiggle is drawn in projected space, so on a strongly distorting projection a constant observation makes a ribbon of varying width on the ground. That is the honest behaviour for a display measured against a scale bar in map units, and it is why the returned Scale is in map units per observation unit rather than in kilometres.</p>
+
+<h2>See also</h2>
+<p><a href="geo_track.html"><code>geo.track</code></a>, <a href="geo_splitTracks.html"><code>geo.splitTracks</code></a>, <a href="geo_overlayPoints.html"><code>geo.overlayPoints</code></a>, <a href="geo_basemap.html"><code>geo.basemap</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: cd74b15aad29cc2001994db9a7e2ef6c8c1002607149d0131ee7e237a920db74 -->

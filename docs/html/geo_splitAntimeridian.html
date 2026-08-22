@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.splitAntimeridian - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.splitAntimeridian</h1>
+<p class="h1line">Break paths at the antimeridian, at the edge.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     [LON2, LAT2] = GEO.SPLITANTIMERIDIAN(LON, LAT)
+     [LON2, LAT2, P1, P2, ...] = GEO.SPLITANTIMERIDIAN(LON, LAT, P1, P2, ...)
+     [...] = GEO.SPLITANTIMERIDIAN(..., Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Inserts a NaN wherever a path crosses the antimeridian, so a line drawn through the result does not streak back across the whole map. In the default &quot;interpolate&quot; mode it additionally inserts the two crossing points, at exactly -180 and +180, so a coastline meets the map edge instead of stopping one sample short of it.</p>
+<p>THIS IS THE ONLY SPLIT IN THE TOOLBOX. v1 had five: two named functions and three ad-hoc copies inside the plotters, which is five places for a seam defect to live and one place for it to be fixed.</p>
+<p>THE CROSSING PARAMETER USES THE WRAPPED LONGITUDE DIFFERENCE, and that is the whole correctness point. A step from 179 to -179 is two degrees east, not 358 degrees west. Measured (mirror `stage_a.check_crossing_interpolation`, finding PV-041): on that segment with latitudes 10 and 20, the wrapped delta puts the crossing at latitude 15.0 - the midpoint, obviously right - and the naive delta puts it at 9.97, which is barely off the start point and looks entirely plausible on a plot. A wrong answer that draws nicely is the failure mode this project exists to catch.</p>
+<p>EXISTING NaNs ARE EXISTING BREAKS. A path already broken is not split across the break, and no second NaN is inserted beside the first: a double break is indistinguishable from a one-sample gap to everything downstream.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>lon</code></td><td></td><td>(:,1) or (1,:) double  Degrees East. NaN allowed as a gap.</td></tr>
+<tr><td><code>lat</code></td><td></td><td>same size as lon       Degrees North. P1..  same size as lon       Any number of payload vectors, split identically. Interpolated in &quot;interpolate&quot; mode, so pass values that are meaningful to interpolate.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>JumpThreshold</code></td><td>(1,1) double</td><td>[180]  Degrees. A step whose wrapped magnitude exceeds this is a crossing. Kept as an option because a coarsely sampled track can step legitimately far.</td></tr>
+<tr><td><code>Mode</code></td><td>(1,1) string</td><td>[&quot;interpolate&quot;]  &quot;interpolate&quot; inserts the two edge points before the NaN; &quot;break&quot; inserts only NaN.</td></tr></table>
+
+<h2>Accuracy</h2>
+<div class="accuracy"><p>Inserted crossing points sit at exactly -180 and +180 (bitwise, by assignment rather than arithmetic) and their latitude is exact to 1e-12. The tight tolerance is not ambition: linear interpolation of a two-point segment has NO truncation error, so anything looser would be concealing a defect rather than allowing for one. Oracle O3, analytic.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:splitAntimeridian:SizeMismatch</code></dt><dd>a payload vector is not the same length as lon</dd>
+<dt><code>geo:splitAntimeridian:NotAVector</code></dt><dd>an input is not a vector</dd></dl>
+<h2>Example</h2>
+<pre class="example">[lo, la] = geo.splitAntimeridian([170 179 -179 -170], [0 5 10 15]);
+<span class="cmt">% lo = 170  179  180  NaN  -180  -179  -170</span></pre>
+<h2>Limitations</h2>
+<p>A segment that crosses the antimeridian AND spans more than JumpThreshold for an unrelated reason cannot be told apart from a crossing; both are split. Sampling finely enough that a genuine step stays under the threshold is the caller's job, and the threshold is an option so that job is possible.</p>
+
+<h2>See also</h2>
+<p><a href="geo_wrapLongitude.html"><code>geo.wrapLongitude</code></a>, <a href="geo_splitTracks.html"><code>geo.splitTracks</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: f49a021748730c76f252349d9e6a7300a780961015a9f0dbdde5196a7ffdee6e -->

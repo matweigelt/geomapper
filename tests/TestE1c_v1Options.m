@@ -46,13 +46,16 @@ classdef TestE1c_v1Options < GeoMapTestCase
 
         function names = v1Declares(tc)
             %V1DECLARES  geoImagesc's own option list, from its source.
-            f = fullfile("C:\Users\matth\Documents\MATLAB\maptoolbox_v1", ...
-                "maptoolbox", "geoImagesc.m");
+            %   The tree is SEARCHED, not asserted (PV-148): this file
+            %   held a second copy of one developer's absolute path, and
+            %   when the tree moved both copies went stale together.
+            %   Two paths for one fact is the aliasing this project keeps
+            %   paying for; there is one resolver now.
+            f = fullfile(tc.v1RootOrFilter(), "geoImagesc.m");
             if ~isfile(f)
                 tc.filterBecause("geo:filter:v1TreeAbsent", ...
-                    ['v1 tree absent, so oracle O12 is unreachable. ' ...
-                     'Normal on CI and a breach of OB-7 anywhere ' ...
-                     'else. Filtered.']);
+                    ['v1 tree found but geoImagesc.m is not in it. ' ...
+                     'Filtered, not passed.']);
             end
             names = unique(string(regexp(fileread(f), ...
                 '(?m)^\s*options\.([A-Za-z]\w*)', 'tokens')));

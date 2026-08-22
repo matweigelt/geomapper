@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.crs - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.crs</h1>
+<p class="h1line">Validated projection spec with a queryable domain.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     C = GEO.CRS(NAME)
+     C = GEO.CRS(NAME, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Builds the one struct that carries all projection state. Every later layer reads it and nothing re-derives it: forward projection, inverse projection, scale factors, domain clipping and the graticule all take their parameters from here.</p>
+<p>WHY A STRUCT AND NOT A CLASSDEF (decision D-002). Save and load are trivial, arrays of them are idiomatic, and there are no copy-semantics surprises for numerical users. The trade is that nothing stops a caller assigning a field by hand; GEO.INTERNAL.MUSTBECRS exists so that every consumer at least checks it was built here. Revisit if these structs ever acquire behaviour rather than just fields.</p>
+<p>WHY THE CONE CONSTANT IS COMPUTED HERE. v1 recomputed it inside each conic branch of the projection, so a change had to be made twice and was made once. It is computed exactly once, in this function.</p>
+<p>THE DOMAIN, AND WHY IT HAS TWO NUMBERS RATHER THAN ONE. Defect F12 was not that v1 clipped - it is that v1's literals (cosc &lt; -0.9, cosc &lt; 0.1, cosc &lt; -0.9994) served simultaneously as a mathematical guard and a cosmetic clip, and nothing said which was which. Declaring the same rounded numbers in a tidier struct would have reproduced that defect with better manners. So DOMAIN carries both:</p>
+<p>MaxAngularDistanceDeg what geo.project actually clips at SingularityDeg where the mathematics genuinely fails ClipIsCosmetic true when the two differ</p>
+<p>Measured (mirror `stage_a.check_declared_domains`, finding PV-038): of the four clipped projections only ORTHOGRAPHIC has a clip that is the singularity. Gnomonic is clipped 6 degrees inside a divergence at 90; stereographic 26 degrees inside a singularity at 180; and azimuthal equidistant has no forward singularity at all - its 178 is a conditioning guard for the inverse, where the antipode maps to a whole circle.</p>
+<p>The clip VALUES are v1's, deliberately: keeping them means a v2 figure covers the same extent as the v1 figure it replaces, and no existing plot silently changes. They are inherited cosmetic choices, recorded as such rather than presented as derivations. v1's literals in degrees are 154.158, 84.261, 178.015 and 90.000; the declared values round each one INWARD.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>name</code></td><td>(1,1) string</td><td>One of the sixteen supported projections: equirectangular, mercator, transversemercator, robinson, mollweide, hammer, winkeltripel, sinusoidal, lambert, stereographic, orthographic, azimuthalequidistant, gnomonic, polarstereographic, lambertconformal, albers.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>CenterLongitude</code></td><td>(1,1) double</td><td>[0]         Degrees East.</td></tr>
+<tr><td><code>CenterLatitude</code></td><td>(1,1) double</td><td>[NaN]       Degrees North; NaN resolves per class.</td></tr>
+<tr><td><code>Hemisphere</code></td><td>(1,1) string</td><td>[&quot;north&quot;]   &quot;north&quot; | &quot;south&quot;; polar stereographic only.</td></tr>
+<tr><td><code>StandardParallel</code></td><td>(1,1) double</td><td>[NaN]       Degrees; conics and polar stereographic.</td></tr>
+<tr><td><code>StandardParallel2</code></td><td>(1,1) double</td><td>[NaN]       Degrees; conics. NaN means the tangent case.</td></tr>
+<tr><td><code>Radius</code></td><td>(1,1) double</td><td>[6371.0072] km, authalic (D-001).</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>c</code></td><td>(1,1) struct</td><td>Fields: Identity          (1,1) string   Always &quot;geo.crs&quot;. Name              (1,1) string   As validated. CenterLongitude   (1,1) double   Degrees East. CenterLatitude    (1,1) double   Degrees North, resolved. Hemisphere        (1,1) string   &quot;north&quot; | &quot;south&quot;. StandardParallel  (1,1) double   Degrees, NaN if unused. StandardParallel2 (1,1) double   Degrees, NaN if unused. Radius            (1,1) double   km. ConeConstant      (1,1) double   NaN unless conic. Class             (1,1) string   &quot;cylindrical&quot; | &quot;pseudocylindrical&quot; | &quot;azimuthal&quot; | &quot;conic&quot;. IsWholeWorld      (1,1) logical  True if the whole sphere maps to a bounded image. Domain            (1,1) struct   Fields: MaxAngularDistanceDeg   (1,1) double  Clip; NaN unlimited. MaxAngularDistanceFrom  (1,1) string  &quot;centre&quot; | &quot;centralMeridian&quot; | &quot;none&quot;. SingularityDeg          (1,1) double  NaN if none. ClipIsCosmetic          (1,1) logical LatLimit                (1,2) double  Degrees, inclusive.</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>Cone constants, oracle O4 (pyproj/PROJ) and O3 (analytic), values from mirror/geomap_mirror/out/reference_values.json: LCC 33/45 n = 0.6304776973 (spherical). NOT 0.6304962, which is the ELLIPSOIDAL Clarke-1866 value for a model geoMap does not use - finding PV-011, and the purest example in this project of a real number from the wrong world. Albers 29.5/45.5 recorded in the same file. Degeneracy is EXACT, not approximate (mirror, finding PV-039): p1 = -p2 gives n identically 0 for both conics, at every pair measured. LCC returns negative zero; -0 == 0 in MATLAB, so the guard below reads |n| and is insensitive to the sign.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:crs:UnknownProjection</code></dt><dd>name is not one of the sixteen Conic parameters:</dd>
+<dt><code>geo:crs:MissingParallel</code></dt><dd>a conic without StandardParallel</dd>
+<dt><code>geo:crs:DegenerateConic</code></dt><dd>|cone constant| &lt; 1e-12, i.e. the cone has opened into a plane Domain parameters:</dd>
+<dt><code>geo:crs:BadStandardParallel</code></dt><dd>a standard parallel outside (-90, 90), where cos or tan is singular</dd>
+<dt><code>geo:crs:PolarParallelSign</code></dt><dd>polar stereographic standard parallel in the wrong hemisphere</dd></dl>
+<h2>Example</h2>
+<pre class="example">c = geo.crs(<span class="str">&quot;mollweide&quot;</span>, CenterLongitude = 0);
+c = geo.crs(<span class="str">&quot;lambertconformal&quot;</span>, CenterLongitude = -96, ...
+            CenterLatitude = 23, StandardParallel = 33, ...
+            StandardParallel2 = 45);
+c.Domain.ClipIsCosmetic</pre>
+<h2>Limitations</h2>
+<p>Spherical only (D-001), authalic radius. Geometric error against a WGS84 ellipsoid is at most about 0.3%, measured at -0.268% on the Paris-New York great circle - invisible at figure scale and quite unsuitable for survey work. This is a visualisation tool.</p>
+
+<h2>See also</h2>
+<p><a href="geo_wrapLongitude.html"><code>geo.wrapLongitude</code></a>, <a href="geo_splitAntimeridian.html"><code>geo.splitAntimeridian</code></a>, <code>GEO.INTERNAL.MUSTBECRS</code></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: f0880e46ab7a97947ff5e163b397c8ecb2caed673135d082a8ca033b0ce90e88 -->

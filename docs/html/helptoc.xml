@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<toc version="2.0">
+<tocitem target="index.html">geoMap
+  <tocitem target="projections.html">Choosing a projection</tocitem>
+  <tocitem target="grace_workflow.html">A GRACE workflow</tocitem>
+  <tocitem target="index.html">L1 — value structs, validated once
+    <tocitem target="geo_crs.html">geo.crs</tocitem>
+    <tocitem target="geo_grid.html">geo.grid</tocitem>
+    <tocitem target="geo_track.html">geo.track</tocitem>
+    <tocitem target="geo_points.html">geo.points</tocitem>
+    <tocitem target="geo_region.html">geo.region</tocitem>
+  </tocitem>
+  <tocitem target="index.html">L2 — numerics, no graphics
+    <tocitem target="geo_project.html">geo.project</tocitem>
+    <tocitem target="geo_unproject.html">geo.unproject</tocitem>
+    <tocitem target="geo_scaleFactors.html">geo.scaleFactors</tocitem>
+    <tocitem target="geo_greatCircle.html">geo.greatCircle</tocitem>
+    <tocitem target="geo_splitAntimeridian.html">geo.splitAntimeridian</tocitem>
+    <tocitem target="geo_splitTracks.html">geo.splitTracks</tocitem>
+    <tocitem target="geo_wrapLongitude.html">geo.wrapLongitude</tocitem>
+    <tocitem target="geo_regrid.html">geo.regrid</tocitem>
+    <tocitem target="geo_hillshade.html">geo.hillshade</tocitem>
+    <tocitem target="geo_quantile.html">geo.quantile</tocitem>
+    <tocitem target="geo_symmetricLimits.html">geo.symmetricLimits</tocitem>
+    <tocitem target="geo_niceTicks.html">geo.niceTicks</tocitem>
+    <tocitem target="geo_colormaps.html">geo.colormaps</tocitem>
+  </tocitem>
+  <tocitem target="index.html">L2 — reading
+    <tocitem target="geo_readGrid.html">geo.readGrid</tocitem>
+    <tocitem target="geo_readCoastline.html">geo.readCoastline</tocitem>
+    <tocitem target="geo_cache.html">geo.cache</tocitem>
+  </tocitem>
+  <tocitem target="index.html">L3 — elements, one thing drawn into an axes
+    <tocitem target="geo_basemap.html">geo.basemap</tocitem>
+    <tocitem target="geo_graticule.html">geo.graticule</tocitem>
+    <tocitem target="geo_frame.html">geo.frame</tocitem>
+    <tocitem target="geo_coastline.html">geo.coastline</tocitem>
+    <tocitem target="geo_scalebar.html">geo.scalebar</tocitem>
+    <tocitem target="geo_northarrow.html">geo.northarrow</tocitem>
+    <tocitem target="geo_colorbar.html">geo.colorbar</tocitem>
+    <tocitem target="geo_inset.html">geo.inset</tocitem>
+    <tocitem target="geo_title.html">geo.title</tocitem>
+    <tocitem target="geo_overlayPolygons.html">geo.overlayPolygons</tocitem>
+    <tocitem target="geo_stipple.html">geo.stipple</tocitem>
+    <tocitem target="geo_overlayContours.html">geo.overlayContours</tocitem>
+    <tocitem target="geo_overlayTrack.html">geo.overlayTrack</tocitem>
+    <tocitem target="geo_overlayPoints.html">geo.overlayPoints</tocitem>
+    <tocitem target="geo_series.html">geo.series</tocitem>
+  </tocitem>
+  <tocitem target="index.html">L4 — fronts, orchestration only
+    <tocitem target="geo_map.html">geo.map</tocitem>
+    <tocitem target="geo_trackmap.html">geo.trackmap</tocitem>
+    <tocitem target="geo_pointmap.html">geo.pointmap</tocitem>
+    <tocitem target="geo_timeseries.html">geo.timeseries</tocitem>
+    <tocitem target="geo_panel.html">geo.panel</tocitem>
+    <tocitem target="geo_export.html">geo.export</tocitem>
+  </tocitem>
+  <tocitem target="index.html">Compatibility
+    <tocitem target="geo_v1_imagesc.html">geo.v1.imagesc</tocitem>
+  </tocitem>
+</tocitem>
+</toc>

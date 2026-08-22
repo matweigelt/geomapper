@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.colorbar - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.colorbar</h1>
+<p class="h1line">One colour scale, in four styles.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.COLORBAR(AX)
+     H = GEO.COLORBAR(AX, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Replaces FOUR near-identical implementations in v1: the native path, `geoGmtColorbar`, two byte-identical copies of `localAddHalfColorbar` in different files, and `localAddDualScaleColorbar`. They shared the plotted-box computation verbatim, the redraw-callback skeleton verbatim, the colour-strip loop, the box outline, the tick loop and the centred label - and differed in about a dozen constants, several of which were three different estimates of the same text line height.</p>
+<p>THE STRIP IS ONE SURFACE, NOT 256 PATCHES. v1 drew one `patch` per colour, capped at 256, plus two objects per tick: a continuous GMT bar came to about 283 handles. Here the strip is a single truecolor `surface`, every tick mark is one NaN-separated `line`, and a five-tick bar is eleven objects. v1's comment says `image` was rejected because its two-element XData denotes pixel CENTRES and leaves a half-pixel overhang; that is true of `image` and not of a `surface`, whose XData are the cell EDGES, so the ambiguity that motivated the patch loop does not arise.</p>
+<p>THE RETURNED HANDLES DO NOT GO STALE, which all three of v1's custom bars did. They captured the handles created by the first draw and then deleted and recreated them on every resize, so `H.Colorbar` was entirely invalid handles after the user touched the window once. Here the live handles live in the layout registry and the struct is refreshed with them.</p>
+<p>AN END CAP MEANS &quot;THE DATA CONTINUES&quot;, which is what the GMT convention it was copied from means and what v1 did not do. v1 drew both triangles whenever Arrows was on and only varied their COLOUR by whether data actually exceeded the limits - so a bar with no out-of-range data still grew two arrowheads announcing that there was some. With Arrows = &quot;auto&quot; a cap appears on an end only where data really lies beyond it.</p>
+<p>THE LAYOUT IS DERIVED FROM THE CONTENT, not from a flat constant. v1's half colorbar reserved 34 points below the bar and drew the tick numbers and the axis label into overlapping bands - about 14 points of overlap whenever a label was set - while leaving 15 points of dead space above the bar that nothing was ever drawn in. Its dual-scale sibling had already been rewritten to measure, and that is the version kept.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>axH</code></td><td>(1,1) matlab.graphics.axis.Axes</td><td>An axes with a basemap.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Style</code></td><td>&quot;gmt&quot;</td><td>&quot;gmt&quot; | &quot;native&quot; | &quot;half&quot; | &quot;dual&quot;.</td></tr>
+<tr><td><code>Location</code></td><td>&quot;southoutside&quot;</td><td>Also north/east/westoutside.</td></tr>
+<tr><td><code>Label</code></td><td></td><td>&quot;&quot;</td></tr>
+<tr><td><code>LabelSide</code></td><td>&quot;far&quot;</td><td>&quot;far&quot; | &quot;near&quot; - which side of the bar the label sits on. NOT &quot;left&quot;/&quot;right&quot;: on a vertical bar those named the wrong axis in v1 and meant bottom and top.</td></tr>
+<tr><td><code>Arrows</code></td><td>&quot;auto&quot;</td><td>&quot;auto&quot; | &quot;on&quot; | &quot;off&quot;. See DESCRIPTION.</td></tr>
+<tr><td><code>Subticks</code></td><td>&quot;auto&quot;</td><td>Count per interval, or &quot;auto&quot; (3 continuous, 0 discrete).</td></tr>
+<tr><td><code>Length</code></td><td>0.6</td><td>Bar length, as a fraction of the map's side.</td></tr>
+<tr><td><code>Thickness</code></td><td>12</td><td>Bar thickness, in points.</td></tr>
+<tr><td><code>CLim</code></td><td>[]</td><td>Defaults to the basemap's.</td></tr>
+<tr><td><code>Colormap</code></td><td>[]</td><td>Defaults to the basemap's. DiscreteLevels NaN   Draw N blocks with separators.</td></tr>
+<tr><td><code>SecondCLim</code></td><td>[]</td><td>&quot;dual&quot; only: the second field's limits. SecondLabel &quot;&quot;       &quot;dual&quot; only.</td></tr>
+<tr><td><code>FontName</code></td><td></td><td>&quot;Helvetica&quot;</td></tr>
+<tr><td><code>FontSize</code></td><td></td><td>9</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Axes      the colorbar's own axes, or the native ColorBar Strip     (1,1) Surface, or empty for &quot;native&quot; Ticks     (1,1) Line, NaN-separated; empty for &quot;native&quot; Labels    (1,:) Text Caps      (1,:) Patch  0, 1 or 2 of them CLim      (1,2) double Style     (1,1) string All       (1,:)</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>One geometric claim, and it is asserted: the position along the bar of the tick for value v is (v - CLim(1))/diff(CLim) exactly, in the bar's own coordinates. Everything else here is layout, which has no correct answer to be accurate about.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:colorbar:NoBasemap</code></dt><dd>the axes carries no basemap, and no CLim and Colormap were given either</dd>
+<dt><code>geo:colorbar:NoSecondCLim</code></dt><dd>Style = &quot;dual&quot; without SecondCLim</dd>
+<dt><code>geo:colorbar:BadLocation</code></dt><dd>a location that is not one of the four</dd></dl>
+<h2>Example</h2>
+<pre class="example">G = geo.readGrid(<span class="str">&quot;data/etopo_10min_surface.mat&quot;</span>, Units = <span class="str">&quot;m&quot;</span>);
+[~, ax] = geo.basemap(G, geo.crs(<span class="str">&quot;robinson&quot;</span>));
+H = geo.colorbar(ax, Label = <span class="str">&quot;elevation (m)&quot;</span>);</pre>
+<h2>Limitations</h2>
+<p>The four &quot;inside&quot; locations v1's validator accepted are not accepted here. v1 took them and then ignored them - its reposition callback returned early unless the name ended in &quot;outside&quot; - so they were a documented option that did nothing. Rejecting them is the smaller lie.</p>
+
+<h2>See also</h2>
+<p><a href="geo_basemap.html"><code>geo.basemap</code></a>, <a href="geo_colormaps.html"><code>geo.colormaps</code></a>, <code>GEO.INTERNAL.LAYOUT</code></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: b0142e9a628ce6ca599fd0fad2865cb677363bb0e689c26f431f338125d3975f -->

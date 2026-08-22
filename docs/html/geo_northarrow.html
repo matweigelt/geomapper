@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.northarrow - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.northarrow</h1>
+<p class="h1line">A north arrow pointing where north actually is.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.NORTHARROW(AX)
+     H = GEO.NORTHARROW(AX, CRS)
+     H = GEO.NORTHARROW(AX, CRS, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>The two-tone arrowhead, at z = 6, rotated to the projected direction of north.</p>
+<p>TWO POSITIONAL ARGUMENTS, NOT FIFTEEN. v1's `geoNorthArrow` took fifteen positional arguments - axes, location, thickness, two colours, font name, font size, six projection parameters and two anchor forms - so a caller who got one wrong had no way of finding out which. That is defect F7, and the static audit now refuses more than three positional arguments on any public function in +geo.</p>
+<p>NORTH IS MEASURED AT THE ARROW, NOT AT THE MAP'S REFERENCE POINT, and this is a correction rather than a port. v1 computed the bearing once, at the projection's reference point, and used it wherever the arrow happened to sit. On a conic or azimuthal projection the direction of north depends on WHERE you are: on a Lambert conformal conic with standard parallels 33 and 45, north at the western edge and north at the eastern edge differ by tens of degrees. An arrow in the corner drawn with the centre's bearing points somewhere that is not north. Here the anchor is unprojected, a short step north is taken from THERE, and the bearing comes from the projected difference.</p>
+<p>IT DOES NOT RESIZE WITH THE FIGURE, DELIBERATELY. v1 froze the arrow's size in points at construction, so a figure created small and then maximised kept a tiny arrow - a bug rather than a decision. Here the arrow is a fraction of the MAP, in data units, so it scales with the thing it annotates and a resize needs no callback at all. Its size relative to the map is what a reader judges, not its size in points.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>axH</code></td><td>(1,1) matlab.graphics.axis.Axes</td><td>An axes with a basemap.</td></tr>
+<tr><td><code>crs</code></td><td>(1,1) struct</td><td>A GEO.CRS or a name. Defaults to the basemap's.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Location</code></td><td>&quot;northeast&quot;</td><td>Any of the eight compass points.</td></tr>
+<tr><td><code>Size</code></td><td>0.08</td><td>Height, as a fraction of the map diagonal.</td></tr>
+<tr><td><code>Colors</code></td><td>[1 1 1; 0 0 0]</td><td>Left half, right half. Row 2 is also the outline and the label.</td></tr>
+<tr><td><code>LineWidth</code></td><td></td><td>1</td></tr>
+<tr><td><code>Label</code></td><td>&quot;N&quot;</td><td>Set to &quot;&quot; to omit it.</td></tr>
+<tr><td><code>FontName</code></td><td></td><td>&quot;Helvetica&quot;</td></tr>
+<tr><td><code>FontSize</code></td><td></td><td>11</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Patches    (1,2) Patch   Left and right halves. Outline    (1,1) Line Label      Text or empty BearingDeg (1,1) double  Clockwise from up, as drawn. Anchor     (1,2) double  Projected [x y] it was placed at. All        (1,:)</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>The bearing is a central difference of GEO.PROJECT over a 0.05 degree step in latitude at the anchor, so it inherits that function's accuracy and is exact to about 1e-8 degrees of angle - four decades finer than anything a reader can see. Where the anchor does not unproject, the arrow is drawn pointing up and BearingDeg is 0; that is stated in the returned struct rather than hidden.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:northarrow:NoBasemap</code></dt><dd>no CRS and no basemap to take one from</dd></dl>
+<h2>Example</h2>
+<pre class="example">G = geo.readGrid(<span class="str">&quot;data/etopo_10min_surface.mat&quot;</span>);
+[~, ax] = geo.basemap(G, geo.crs(<span class="str">&quot;lambertconformal&quot;</span>, ...
+                      StandardParallel = 33, StandardParallel2 = 45));
+H = geo.northarrow(ax, Location = <span class="str">&quot;northwest&quot;</span>);
+H.BearingDeg</pre>
+<h2>Limitations</h2>
+<p>One glyph. v1 had one too; a library of compass roses is a decoration this toolbox does not owe anybody, and the returned handles are there for a caller who wants to restyle it.</p>
+
+<h2>See also</h2>
+<p><a href="geo_basemap.html"><code>geo.basemap</code></a>, <a href="geo_scalebar.html"><code>geo.scalebar</code></a>, <code>GEO.INTERNAL.AVOIDRECTCOLLISIONS</code></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: c0ead8d03e1691c68f2cbd5c74872b06e8e1ca2ce91739781d2b1785d0ca55c4 -->

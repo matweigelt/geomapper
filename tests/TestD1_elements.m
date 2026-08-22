@@ -132,6 +132,49 @@ classdef TestD1_elements < GeoMapTestCase
             tc.verifyEqual(unique(F.Patches(1).ZData), 6);
         end
 
+        function theFrameSurroundsTheMapRatherThanHalfOfIt(tc)
+            % PV-145. Registration made a global extent run -180 .. 180,
+            % and geo.project's half-open default folds +180 onto -180 -
+            % so the boundary's EASTERN side landed on its western one
+            % and the frame was drawn on the west only. Measured before
+            % the repair: mollweide frame x -2.9108 .. -0.0000 against a
+            % surface spanning -2.8282 .. 2.8282.
+            %
+            % The observable is SYMMETRY plus CONTAINMENT, not a value:
+            % a frame that surrounds the map extends slightly beyond the
+            % surface on both sides, by its own band thickness. Either
+            % half collapsing breaks both, and no single coordinate
+            % would have caught it.
+            lon = -180:20:180;
+            lat = (-90:15:90)';
+            G = geo.grid(lon, lat, sind(3 * repmat(lon, numel(lat), 1)) .* ...
+                cosd(2 * repmat(lat, 1, numel(lon))));
+            for name = ["mollweide" "hammer" "robinson" "sinusoidal" ...
+                        "equirectangular" "winkeltripel"]
+                f = tc.figureFor();
+                ax = axes(f); %#ok<LAXES>
+                [~, ~, B] = geo.basemap(G, name, Parent = ax, ...
+                    Hillshade = "off");
+                F = geo.frame(ax);
+                tc.assertNotEmpty(F.Patches, ...
+                    sprintf('%s: no frame was drawn at all', name));
+                fx = [];
+                for k = 1:numel(F.Patches)
+                    fx = [fx, F.Patches(k).XData(:).']; %#ok<AGROW>
+                end
+                sx = B.Surface.XData(:);
+                span = max(fx) - min(fx);
+                tc.verifyLessThan(abs(min(fx) + max(fx)), 0.02 * span, ...
+                    sprintf(['%s: the frame is not symmetric about the ' ...
+                             'central meridian, so one side collapsed ' ...
+                             'onto the other'], name));
+                tc.verifyLessThanOrEqual(min(fx), min(sx), ...
+                    sprintf('%s: the frame must reach the west rim', name));
+                tc.verifyGreaterThanOrEqual(max(fx), max(sx), ...
+                    sprintf('%s: the frame must reach the east rim', name));
+            end
+        end
+
         function aGlobalGridReportsAFullTurn(tc)
             % PV-138, re-derived at PV-140. geo.wrapLongitude's window
             % is half-open, so a grid

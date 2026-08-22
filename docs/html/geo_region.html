@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.region - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.region</h1>
+<p class="h1line">Resolve an area of interest into a padded box and outline.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     R = GEO.REGION(SPEC)
+     R = GEO.REGION(SPEC, Padding = P)
+     R = GEO.REGION(R)                     % idempotent: passes through
+</pre>
+<h2>Description</h2>
+<p>Ported from v1's geoAreaOfInterest. Accepts a named preset, an explicit bounding box, a polygon outline, or empty, and resolves all of them to one struct so that every consumer - GEO.SPLITTRACKS, Stage D's coastline outline, Stage E's extent logic - reads the same two fields instead of re-deriving a box.</p>
+<p>THE PRESETS ARE CONVENTIONAL APPROXIMATE BOXES, NOT BOUNDARIES, and v1's caveat is carried over deliberately rather than quietly dropped. &quot;Europe&quot; here is a rectangle somebody found convenient; it is not a political or physical border, and anyone who needs one should pass an explicit box or a polygon. A preset that pretends to authority it does not have is worse than no preset.</p>
+<p>CONTAINERS.MAP IS GONE, replaced by a plain struct array. It is discouraged in R2026a, and DICTIONARY was rejected as its replacement too: thirteen fixed rows that are written once and read by name need no hashing, and a struct array is the simplest thing that works. Handover §7.3 deliverable 6 asked for exactly this.</p>
+<p>FILE INPUT WORKS FROM STAGE C. It routes to GEO.READCOASTLINE and then through the SAME padding path a hand-passed outline takes, so the two cannot drift apart. Between Stage A and Stage C this raised a named &quot;not yet available&quot; error with a contract test already written against it, so closing the hook converted a failing test into a passing one rather than inventing the behaviour.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>spec</code></td><td></td><td>one of: (1,1) string   a preset name, case- and space-insensitive (1,4) double   [lonMin lonMax latMin latMax] (N,2) double   [lon lat] outline, NaN-separated parts allowed []             no region; limits are NaN and the caller falls back to its own extent logic (1,1) struct   a geo.region, for the idempotent form</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Padding</code></td><td>(1,1) double</td><td>[0.05]  APPLIES TO AN OUTLINE ONLY - an Nx2 spec or a coordinate file. A 1x4 box and a preset name are STATED EXTENTS and are used as given; the returned Padding is then 0, because it reports what was applied and not what was asked for. Fraction of the outline's own span added on each side. Applied to OUTLINE and FILE specs only: a box the caller wrote out is taken as meant, and a preset is already approximate.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>R</code></td><td>(1,1) struct</td><td>Fields: Identity  (1,1) string   Always &quot;geo.region&quot;. Name      (1,1) string   Preset name, or &quot;&quot; for the others. LonLim    (1,2) double   [min max], NaN NaN for an empty spec. LatLim    (1,2) double   [min max], clamped to [-90, 90]. IsBox     (1,1) logical  True when the spec was a 1x4 box or a preset name. Outline says what to DRAW; IsBox says what to TEST against, and a rectangle is tested with four comparisons rather than a point-in-polygon. Outline   (N,2) double   The polygon if one was given, else 0x2 empty. Presets and boxes have no outline, and an empty one is how a consumer knows to draw a rectangle. Padding   (1,1) double   As applied. IsEmpty   (1,1) logical  True for the no-region case.</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>No numerical claim and no oracle: the presets are conventions, not measurements. The padding arithmetic is exact by construction, and the latitude clamp is asserted at the pole rather than assumed.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:region:UnknownPreset</code></dt><dd>a name that is neither a preset nor a filename with an extension</dd>
+<dt><code>geo:region:InvalidBoundingBox</code></dt><dd>a 1x4 with max &lt;= min</dd>
+<dt><code>geo:region:InvalidSpec</code></dt><dd>none of the accepted forms</dd>
+<dt><code>geo:region:EmptyOutline</code></dt><dd>an outline with no finite points A filename is now read by GEO.READCOASTLINE, so it raises that function's identifiers rather than one of its own. Between Stage A and Stage C this path raised a &quot;file input not yet available&quot; identifier of its own - a deferred capability with a date rather than a limitation. The date arrived and that identifier is gone entirely, which is what retiring a name means: it is not spelled out here, because naming it in a help block is how a dead identifier comes back to life as documentation. Identity:</dd>
+<dt><code>geo:region:NotARegion</code></dt><dd>the idempotent form was given a struct that is not a geo.region</dd></dl>
+<h2>Example</h2>
+<pre class="example">R = geo.region(<span class="str">&quot;Europe&quot;</span>);
+R = geo.region([-25 45 34 72]);
+R = geo.region(basinOutline, Padding = 0.1);</pre>
+<h2>Limitations</h2>
+<p>Boxes do not wrap the antimeridian: [170 -170 -10 10] is rejected as an inverted box rather than read as a 20-degree strip across the seam. Pass [170 190 -10 10] instead. Making the wrap implicit would mean guessing which of two readings a caller meant, and guessing wrong silently draws half the world.</p>
+
+<h2>See also</h2>
+<p><a href="geo_splitTracks.html"><code>geo.splitTracks</code></a>, <a href="geo_grid.html"><code>geo.grid</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: e1e9f5574b5173775253f9ce5b48078411e09799b710262c9e96054aa9ce1054 -->

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.colormaps - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.colormaps</h1>
+<p class="h1line">Presets, discretisation, and truecolor mapping in one place.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     NAMES = GEO.COLORMAPS(&quot;names&quot;)
+     CMAP  = GEO.COLORMAPS(&quot;get&quot;, NAME)
+     CMAP  = GEO.COLORMAPS(&quot;get&quot;, NAME, N)
+     CMAP  = GEO.COLORMAPS(&quot;discretize&quot;, CMAP, NLEVELS)
+     RGB   = GEO.COLORMAPS(&quot;truecolor&quot;, Z, CMAP, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Merges v1's geoColormapPreset, geoDiscretizeColormap and geoMapToTruecolor. They were three functions with one subject, and the truecolor one could not see the discretisation the caller had applied, so under/over colours landed on the wrong side of a level boundary.</p>
+<p>WHICH PRESETS EXIST. All six of v1's survive. parula, jet, turbo and gray are DELEGATED to base MATLAB, so this toolbox neither copies nor maintains them. viridis, magma and cividis are included as tables in data/cvd_colormaps.txt.</p>
+<p>THE THREE TABLES ARE CC0 AND ARE HERE ON PURPOSE. B.3 first dropped them, reasoning that reproducing third-party tables is copying. That was half right: copying WITHOUT PERMISSION would be, but all three are CC0 1.0 public-domain dedications and carry no legal restriction whatever. Attribution is in LICENSE because their authors ask for credit, not because anything compels it.</p>
+<p>The stronger reason to include them is that a generated substitute would be a lie. These ramps encode a MEASURED perceptual property - monotone perceived lightness, and readability under the common forms of colour vision deficiency, with cividis optimised for it against a simulation model in a peer-reviewed paper. This project has no instrument that measures perception, so a ramp built here by construction could not honestly be called CVD-safe. Asserting a perceptual claim with no oracle behind it is precisely what every other part of this toolbox refuses to do.</p>
+<p>FOR COLOUR-VISION-DEFICIENCY-SAFE WORK: use &quot;cividis&quot; for sequential data - it is the one designed for it - or &quot;viridis&quot;, which is also CVD-safe and greyscale-safe. Of the diverging choices, &quot;divergent&quot; is blue-to-red, which stays legible under red-green deficiency; a red-to-green diverging ramp would not, and none is offered. &quot;jet&quot; and &quot;turbo&quot; are NEITHER perceptually uniform nor CVD-safe and are kept only so v1 figures reproduce.</p>
+<p>THE DIVERGING RAMP IS ORIGINAL, generated here, not a reproduction of anybody's table. It runs blue-white-red through a lightness-monotone path on each half, so the two limbs read as equally strong and zero sits at the lightest point - which is the property a signed anomaly field needs and which a hue-only ramp does not have.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>cmd</code></td><td>(1,1) string</td><td>&quot;names&quot; | &quot;get&quot; | &quot;discretize&quot; | &quot;truecolor&quot;.</td></tr>
+<tr><td><code>a</code></td><td></td><td>&quot;get&quot;: the preset name. &quot;discretize&quot;: an Nx3 colormap. &quot;truecolor&quot;: the data array Z.</td></tr>
+<tr><td><code>b</code></td><td></td><td>&quot;get&quot;: N, the number of rows [256]. &quot;discretize&quot;: the number of levels. &quot;truecolor&quot;: an Nx3 colormap or a preset name.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>CLim</code></td><td>(1,2) double</td><td>[auto]  Data limits mapped to the ends.</td></tr>
+<tr><td><code>UnderColor</code></td><td>(1,3) double</td><td>[]      Colour below CLim(1).</td></tr>
+<tr><td><code>OverColor</code></td><td>(1,3) double</td><td>[]      Colour above CLim(2).</td></tr>
+<tr><td><code>Mask</code></td><td>logical</td><td>[]      True where MaskColor applies.</td></tr>
+<tr><td><code>MaskColor</code></td><td>(1,3) double</td><td>[0.7 0.7 0.7]</td></tr>
+<tr><td><code>NaNColor</code></td><td>(1,3) double</td><td>[1 1 1]</td></tr>
+<tr><td><code>Shade</code></td><td>double</td><td>[]      Multiplicative shade in [0,1], same size as Z. From GEO.HILLSHADE.</td></tr></table>
+
+<h2>Accuracy</h2>
+<div class="accuracy"><p>SHADE COMPOSITION IS EXACTLY rgb .* Shade, broadcast over the third dimension, and it is asserted exactly rather than to a tolerance: with Shade = 0.5 every channel is exactly halved. There is no gamma, no blend curve and no clamping in the composition, because any of those would make the shade unrecoverable from the output. What stops shadows going black is the Ambient floor INSIDE GEO.HILLSHADE, which is where that decision belongs.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:colormaps:UnknownPreset</code></dt><dd>no such preset name</dd>
+<dt><code>geo:colormaps:NotAColormap</code></dt><dd>a colormap argument is not Nx3 in [0, 1]</dd>
+<dt><code>geo:colormaps:ShadeMismatch</code></dt><dd>Shade is not the same size as Z</dd></dl>
+<h2>Example</h2>
+<pre class="example">cmap = geo.colormaps(<span class="str">&quot;get&quot;</span>, <span class="str">&quot;divergent&quot;</span>, 256);
+rgb  = geo.colormaps(<span class="str">&quot;truecolor&quot;</span>, Z, cmap, ...
+                     CLim = geo.symmetricLimits(Z), Shade = s);</pre>
+<h2>Limitations</h2>
+<p>The diverging ramp is designed by construction, not by a measured perceptual model: it is lightness-monotone on each limb, which is the property that matters here, but it has not been checked against a CIE appearance model and is not claimed to be perceptually uniform.</p>
+
+<h2>See also</h2>
+<p><a href="geo_hillshade.html"><code>geo.hillshade</code></a>, <a href="geo_symmetricLimits.html"><code>geo.symmetricLimits</code></a>, <a href="geo_quantile.html"><code>geo.quantile</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: cb8f0b5e944953e6515f63fc7fc1be78a6a87c8161cdf6213a6c9fb6977327fa -->

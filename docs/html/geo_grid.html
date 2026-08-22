@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.grid - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.grid</h1>
+<p class="h1line">Validated lon/lat grid, checked once so nothing re-checks it.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     G = GEO.GRID(LON, LAT, Z)
+     G = GEO.GRID(LON, LAT, Z, Name, Value)
+     G = GEO.GRID(G)                       % idempotent: passes through
+</pre>
+<h2>Description</h2>
+<p>The value struct every raster in the toolbox travels in. It replaces v1's loose (lon, lat, Z[, topo]) quadruple, which every plotting function re-validated in its own way and two of them got wrong in different directions.</p>
+<p>VALIDATED ONCE. Downstream functions trust what this struct guarantees and say so in their own help; none of them re-checks monotonicity or size. That is the point of building it.</p>
+<p>IDEMPOTENT. GEO.GRID(G) on a grid returns it unchanged, so a function can accept &quot;a grid or the loose triple&quot; by calling this on whatever it was handed. Without that, every front would need its own is-it-already-a-grid branch, and they would drift.</p>
+<p>ISGLOBALLON IS MEASURED, NEVER INFERRED. It is true when the longitude span reaches within 1.5 steps of a full circle - a test on the coordinate vector itself, not on a filename, a flag or a convention. The 1.5 allows for the one missing cell of a grid stored 0:359 as well as the exact-repeat form 0:360, and rejects a grid that stops at 350. A regional grid that happens to be called &quot;global.nc&quot; is not global, and a global grid whose creator forgot to say so is.</p>
+<p>ORIENTATION IS CANONICALISED, deliberately, and this is the one place in the toolbox where an input's shape is not preserved. LON becomes a row and LAT a column, so that Z(i,j) corresponds to Lat(i), Lon(j) and implicit expansion against either axis works without a transpose. Tracks and point sets preserve orientation; a grid has a canonical one because its Z fixes it.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>lon</code></td><td>(1,:) double</td><td>Degrees East, strictly monotone, no NaN. Or a geo.grid struct, for the idempotent form.</td></tr>
+<tr><td><code>lat</code></td><td>(:,1) double</td><td>Degrees North, strictly monotone, no NaN. DESCENDING IS ACCEPTED - many products store north-up - and is preserved rather than flipped, because flipping silently would make Z(1,:) mean different things for different callers.</td></tr>
+<tr><td><code>Z</code></td><td>(M,N) double</td><td>Field values, M = numel(lat), N = numel(lon). NaN allowed and means &quot;no data&quot; (gap convention).</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Topo</code></td><td>(M,N) double</td><td>[]   Elevation on the same grid, for hillshade. Source (1,1) string  &quot;&quot;   Where the data came from. Travels with it.</td></tr>
+<tr><td><code>Units</code></td><td>(1,1) string</td><td>&quot;&quot;   Units of Z, e.g. &quot;cm w.e.&quot;.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>G</code></td><td>(1,1) struct</td><td>Fields: Identity      (1,1) string   Always &quot;geo.grid&quot;. Lon           (1,:) double   Row, as given. Lat           (:,1) double   Column, as given. Z             (M,N) double Topo          (M,N) double   Empty if not supplied. LonStep       (1,1) double   Median step, signed. LatStep       (1,1) double   Median step, signed. IsGlobalLon   (1,1) logical  Measured, see DESCRIPTION. Source        (1,1) string Units         (1,1) string</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>No numerical claim of its own: this function validates and records, it does not compute. LonStep and LatStep are medians of the differences rather than (last-first)/(n-1), so a grid with one duplicated or slightly irregular coordinate still reports the step its neighbours agree on rather than a smeared average.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:grid:SizeMismatch</code></dt><dd>size(Z) is not [numel(lat) numel(lon)]</dd>
+<dt><code>geo:grid:TopoSizeMismatch</code></dt><dd>Topo is not the same size as Z</dd>
+<dt><code>geo:grid:NotAVector</code></dt><dd>lon or lat is not a vector Coordinate validity:</dd>
+<dt><code>geo:grid:NonMonotonic</code></dt><dd>a coordinate vector is not strictly monotone</dd>
+<dt><code>geo:grid:NaNCoordinate</code></dt><dd>NaN or Inf in a coordinate vector. Angular axes:</dd>
+<dt><code>geo:grid:AxisNotAngular</code></dt><dd>a latitude outside [-90 90], or a longitude span of more than one turn. Usually a projected grid read as a geographic one (A-3). Registration:</dd>
+<dt><code>geo:grid:RegistrationAmbiguous</code></dt><dd>longitude and latitude infer different registrations. One grid cannot be both; pass Registration explicitly to say which is meant. NaN is the gap convention for DATA; a gap in an axis is not a gap, it is an unanswerable question about where the neighbouring cells are</dd>
+<dt><code>geo:grid:TooFewPoints</code></dt><dd>fewer than two points on an axis</dd></dl>
+<h2>Example</h2>
+<pre class="example">G = geo.grid(-179.5:179.5, (-89.5:89.5)', rand(180, 360), ...
+             Units = <span class="str">&quot;cm/yr&quot;</span>, Source = <span class="str">&quot;JPL RL06 mascon&quot;</span>);
+G.IsGlobalLon    <span class="cmt">% true, measured from the vector</span></pre>
+<h2>Limitations</h2>
+<p>Rectilinear grids only: one longitude vector and one latitude vector. Curvilinear and unstructured meshes are out of scope for v2 and are not silently accepted - the size check rejects them.</p>
+
+<h2>See also</h2>
+<p><a href="geo_track.html"><code>geo.track</code></a>, <a href="geo_points.html"><code>geo.points</code></a>, <a href="geo_crs.html"><code>geo.crs</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 234b406d834c4ae66aafd4a736bf6abd43d3fe8d8d699af68377b55ac4fd03e6 -->

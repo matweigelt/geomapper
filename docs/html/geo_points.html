@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.points - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.points</h1>
+<p class="h1line">Validated scattered point set, with optional size and labels.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     P = GEO.POINTS(LON, LAT)
+     P = GEO.POINTS(LON, LAT, Name, Value)
+     P = GEO.POINTS(P)                     % idempotent: passes through
+</pre>
+<h2>Description</h2>
+<p>The value struct a scattered set of locations travels in - stations, epicentres, mascon centres - replacing v1's loose (lon, lat, obs) triple.</p>
+<p>WHY THIS IS NOT A TRACK WITH THE TIME REMOVED. A track is ordered and its NaNs mean gaps in a path; a point set is unordered and its NaNs mean a point with no location, which is a different thing and is dropped rather than drawn around. Sharing one struct for both would make the NaN convention ambiguous, and the two would substitute for each other silently - which is why each carries its own Identity.</p>
+<p>SIZEDATA AND OBS ARE SEPARATE ON PURPOSE. v1 overloaded one vector for both colour and marker size, so a caller who wanted size by magnitude and colour by sign could not have both. They are two questions about a point and they get two fields.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>lon</code></td><td></td><td>(:,1) or (1,:) double  Degrees East. Or a geo.points struct, for the idempotent form.</td></tr>
+<tr><td><code>lat</code></td><td></td><td>same size as lon       Degrees North.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Obs</code></td><td></td><td>same size as lon  []  Value at each point, for colour.</td></tr>
+<tr><td><code>SizeData</code></td><td></td><td>same size as lon  []  Value at each point, for marker size. Must be non-negative where finite: a negative area is not a small marker, it is a mistake.</td></tr>
+<tr><td><code>Labels</code></td><td></td><td>same size as lon  []  String array, one per point.</td></tr>
+<tr><td><code>Source</code></td><td>(1,1) string</td><td>&quot;&quot;  Where the data came from.</td></tr>
+<tr><td><code>Units</code></td><td>(1,1) string</td><td>&quot;&quot;  Units of Obs.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>P</code></td><td>(1,1) struct</td><td>Fields: Identity   (1,1) string   Always &quot;geo.points&quot;. Lon        same shape as given Lat        same shape as given Obs        as given, or empty SizeData   as given, or empty Labels     as given, or empty NumPoints  (1,1) double   numel(Lon), including unlocated ones. NumLocated (1,1) double   Points with finite lon AND lat. Source     (1,1) string Units      (1,1) string</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>No numerical claim. NumLocated requires BOTH coordinates finite, because a point with a longitude and no latitude cannot be drawn and counting it as located would make the two numbers agree while the map showed fewer markers than either.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:points:SizeMismatch</code></dt><dd>an optional vector is not the same size as lon</dd>
+<dt><code>geo:points:NotAVector</code></dt><dd>an input is not a vector Value validity:</dd>
+<dt><code>geo:points:NegativeSize</code></dt><dd>SizeData has a negative entry Identity:</dd>
+<dt><code>geo:points:NotAPoints</code></dt><dd>the idempotent form was given a struct that is not a geo.points</dd></dl>
+<h2>Example</h2>
+<pre class="example">P = geo.points([10 20 30], [50 51 52], ...
+               Obs = [-2 0 3], SizeData = [1 4 9], ...
+               Labels = [<span class="str">&quot;Bonn&quot;</span> <span class="str">&quot;Kiel&quot;</span> <span class="str">&quot;Jena&quot;</span>]);
+P.NumLocated    <span class="cmt">% 3</span></pre>
+<h2>Limitations</h2>
+<p>No de-duplication and no spatial index. Two points at the same location are two points, because deciding they are one is a modelling choice this constructor has no business making.</p>
+
+<h2>See also</h2>
+<p><a href="geo_track.html"><code>geo.track</code></a>, <a href="geo_grid.html"><code>geo.grid</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 812fe8d87f0be7a84407b7facc1e193990a95416f4b924f7730b60dc1a32e1e7 -->

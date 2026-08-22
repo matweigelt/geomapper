@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.coastline - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.coastline</h1>
+<p class="h1line">Shorelines, rivers or an outline, cut at the frame.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.COASTLINE(AX)
+     H = GEO.COASTLINE(AX, CRS)
+     H = GEO.COASTLINE(AX, CRS, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Draws vector geography over a basemap at z = 4 on the documented ladder - above the raster and the graticule, below the overlays and the frame.</p>
+<p>ONE PATH, NOT THREE. v1 had `geoCoastlineFromGSHHG`, `geoCoastlineFromShapefile`, `geoCoastlineFromNetCDF` and `geoCoastlineFromText`, and then three near-identical DRAWING paths on top of them - one for coastlines, one for rivers, one for the area-of-interest outline - differing only in colour, width and which reader they called. Reading is GEO.READCOASTLINE's job now, and Kind selects a set of defaults rather than a separate code path. Three copies of a drawing loop is where F6 came from.</p>
+<p>THE CLIP IS THE PROJECTION'S. v1 carried `localVisibleRadiusDeg`, a private table of per-projection visible radii, and kept a second copy of it inside its frame function; the two drifted, which is defect F12. Here GEO.PROJECT returns NaN outside CRS.Domain and MATLAB breaks a line at NaN, so the clip, the gap convention and the data's own part separators are all the same mechanism.</p>
+<p>BRANCH CUTS ARE BROKEN, NOT DRAWN. A coastline crossing the antimeridian on a cylindrical projection produces a segment that spans the whole map. GEO.INTERNAL.PROJECTPOLYLINE identifies it - a segment that will not shrink under bisection is a cut, not a curve - and breaks it. NOTHING IS DENSIFIED: a coastline's vertices are survey data, and inventing points between two of them invents shoreline.</p>
+<p>PROVENANCE TRAVELS AND IS PER FORMAT. GEO.READCOASTLINE reports whether the reader that produced these points has been checked against a real file of that kind, and that word is carried into the handle struct rather than dropped at the drawing boundary. A text coastline still reads &quot;unverified&quot;, because no canonical real file of that kind exists to check against.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>axH</code></td><td>(1,1) matlab.graphics.axis.Axes</td><td>An axes with a basemap.</td></tr>
+<tr><td><code>crs</code></td><td>(1,1) struct</td><td>A GEO.CRS or a name. Defaults to the basemap's.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Source</code></td><td>&quot;builtin&quot;</td><td>Anything GEO.READCOASTLINE accepts: a filename, an Nx2 array, or &quot;builtin&quot;.</td></tr>
+<tr><td><code>Kind</code></td><td>&quot;coastline&quot;</td><td>&quot;coastline&quot; | &quot;river&quot; | &quot;outline&quot;. Selects the default colour and width, and the GSHHG levels asked for. Nothing else.</td></tr>
+<tr><td><code>Levels</code></td><td>[]</td><td>GSHHG levels; defaults per Kind.</td></tr>
+<tr><td><code>Color</code></td><td>[]</td><td>Overrides the Kind default.</td></tr>
+<tr><td><code>LineWidth</code></td><td>NaN</td><td>Overrides the Kind default.</td></tr>
+<tr><td><code>LineStyle</code></td><td></td><td>&quot;-&quot; Resolution &quot;c&quot;        GSHHG resolution letter, when Source is a GSHHG directory rather than a file.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Line        (1,1) Line    One object; parts are NaN-separated. Provenance  (1,1) string  From GEO.READCOASTLINE. NumParts    (1,1) double  Parts after clipping and cutting. NumCuts     (1,1) double  Branch cuts broken - antimeridian and projection jumps, NOT the extent. See ExtentCuts. ExtentKept  (1,1) double  Vertices inside the extent and the domain, before cuts were inserted. ClippedToExtent (1,1) logical  False when the boundary ring could not be closed inside the projection's domain, in which case nothing was cut and the whole shoreline is drawn. ExtentCuts  (1,1) double  Segments cut AT the frame. Rises from zero the moment the extent is smaller than the world, and each cut adds a part. MaxSegment  (1,1) double  Longest drawn segment, projected. All         (1,:)         Everything, for deletion.</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>No numerical claim of its own. The coordinates are exactly what GEO.READCOASTLINE returned - asserted exact for shapefiles and to the microdegree floor for GSHHG in Stage C - passed through GEO.PROJECT, which is certified against PROJ. This function adds no arithmetic beyond the projection and the cut detection.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:coastline:NoBasemap</code></dt><dd>no CRS was given and the axes carries no basemap to take one from Reader errors keep GEO.READCOASTLINE's own identifiers rather than being re-raised here, because a user reads the name of the thing that could not be opened.</dd></dl>
+<h2>Example</h2>
+<pre class="example">G = geo.readGrid(<span class="str">&quot;data/etopo_10min_surface.mat&quot;</span>);
+[~, ax] = geo.basemap(G, geo.crs(<span class="str">&quot;robinson&quot;</span>));
+H = geo.coastline(ax);
+H.Provenance</pre>
+<h2>Limitations</h2>
+<p>Lines only. Filled land is GEO.OVERLAYPOLYGONS' job, and a filled coastline needs closed rings, which the clip does not guarantee - a polygon cut by the projection's domain is no longer a polygon.</p>
+
+<h2>See also</h2>
+<p><a href="geo_readCoastline.html"><code>geo.readCoastline</code></a>, <a href="geo_basemap.html"><code>geo.basemap</code></a>, <code>GEO.INTERNAL.PROJECTPOLYLINE</code></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: ef1d9843f669821d03aa3f89056643c0d6f5bada6bd7f51cedf6f34c43384e94 -->

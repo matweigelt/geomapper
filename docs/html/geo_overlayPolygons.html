@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.overlayPolygons - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.overlayPolygons</h1>
+<p class="h1line">A value per polygon: mascons, basins, tiles.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.OVERLAYPOLYGONS(AX, P)
+     H = GEO.OVERLAYPOLYGONS(AX, P, CRS)
+     H = GEO.OVERLAYPOLYGONS(AX, P, CRS, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>NEW IN v2, AND THE REASON IT EXISTS IS THAT A REGULAR GRID CANNOT REPRESENT A MASCON FIELD AT ALL. A mascon solution is a value per irregular cell; a drainage basin field is a value per basin. Both are piecewise constant over shapes that are not rectangles, and resampling them onto a lon/lat grid to draw them - which is what v1 forced, having no other option - invents a boundary that the solution does not have and smooths across the discontinuity that is the whole point of the parameterisation. Here each polygon is one patch with one colour.</p>
+<p>ONE VALUE, POSSIBLY SEVERAL PATCHES. A polygon crossing the antimeridian is CLIPPED to each side of it, so both parts are closed polygons along the seam rather than one shape stretched across the map. Every part of one polygon gets that polygon's colour, and PolygonOf says which parts belong together, because they are one mascon and a reader who recolours &quot;the third polygon&quot; must not recolour half of it.</p>
+<p>THE COLOUR MEANS THE SAME THING AS THE BASEMAP'S. CLim and Colormap default to the basemap's, so a mascon layer over a hillshaded background shares one scale and one GEO.COLORBAR describes both. A second scale on one figure is a figure that has to be read twice.</p>
+<p>IT SITS AT z = 2, under the graticule and the coastline. A mascon field is data about the surface, not an annotation on top of it, and a coastline drawn underneath it would be invisible exactly where a reader needs it to judge the boundary.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>axH</code></td><td>(1,1) matlab.graphics.axis.Axes</td><td>An axes with a basemap.</td></tr>
+<tr><td><code>P</code></td><td></td><td>Polygons, in either of two forms: - a cell array of Nx2 [lon lat] outlines, one per polygon; - one Nx2 array with NaN rows separating the polygons. The cell form is preferred and is what a mascon file gives.</td></tr>
+<tr><td><code>crs</code></td><td></td><td>A GEO.CRS or a name. Defaults to the basemap's.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Values</code></td><td>[]</td><td>One per polygon. Empty draws outlines only.</td></tr>
+<tr><td><code>CLim</code></td><td>[]</td><td>Defaults to the basemap's.</td></tr>
+<tr><td><code>Colormap</code></td><td>[]</td><td>Defaults to the basemap's.</td></tr>
+<tr><td><code>FaceAlpha</code></td><td></td><td>1</td></tr>
+<tr><td><code>EdgeColor</code></td><td>&quot;none&quot;</td><td>Or an RGB row.</td></tr>
+<tr><td><code>LineWidth</code></td><td></td><td>0.5</td></tr>
+<tr><td><code>NaNColor</code></td><td>[]</td><td>Colour for a polygon whose value is NaN. Empty leaves it unfilled, which is the honest default: a mascon with no solution is not a mascon with a value of zero.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Patches    (1,:) Patch   One or more per polygon. PolygonOf  (1,:) double  Which polygon each patch belongs to. Values     (1,:) double  As given. CLim       (1,2) double NumSplit   (1,1) double  Polygons that crossed the seam. All        (1,:)</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>No numerical claim beyond the projection's. The colour of a polygon is GEO.COLORMAPS' truecolor mapping of its value, identical to the one the basemap uses, and that identity is asserted rather than assumed: a polygon and a raster cell of the same value come out the same colour, exactly.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:overlayPolygons:NoBasemap</code></dt><dd>no crs and no basemap</dd>
+<dt><code>geo:overlayPolygons:ValueCount</code></dt><dd>Values is not one per polygon</dd>
+<dt><code>geo:overlayPolygons:BadPolygons</code></dt><dd>P is neither a cell of Nx2 nor one Nx2 array</dd></dl>
+<h2>Example</h2>
+<pre class="example">M = {[-10 40; 0 40; 0 50; -10 50], [0 40; 10 40; 10 50; 0 50]};
+[~, ax] = geo.basemap(G, geo.crs(<span class="str">&quot;equirectangular&quot;</span>));
+H = geo.overlayPolygons(ax, M, Values = [-3.2 1.8]);</pre>
+<h2>Limitations</h2>
+<p>A polygon leaving the projection's domain is drawn from the vertices that remain, which for a shape straddling the horizon of an azimuthal projection is a different shape. Clipping a polygon to a curved domain boundary needs a polygon clipper this toolbox does not have; the alternative - dropping the polygon entirely - loses more than it saves, and this is stated rather than hidden.</p>
+
+<h2>See also</h2>
+<p><a href="geo_basemap.html"><code>geo.basemap</code></a>, <a href="geo_colormaps.html"><code>geo.colormaps</code></a>, <a href="geo_splitAntimeridian.html"><code>geo.splitAntimeridian</code></a>, <a href="geo_stipple.html"><code>geo.stipple</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: e8567807f5a335f5d2356062dfb9998e4a9c132b4ec0bdbf2fbdf281afaa403e -->

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.overlayContours - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.overlayContours</h1>
+<p class="h1line">Contour lines of a field, projected and broken.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     H = GEO.OVERLAYCONTOURS(AX, G)
+     H = GEO.OVERLAYCONTOURS(AX, G, CRS)
+     H = GEO.OVERLAYCONTOURS(AX, G, CRS, Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Contours are computed by MATLAB's own CONTOURC on the lon/lat grid, so the vertices come back in degrees, and are then projected like every other polyline in the toolbox. At z = 1: above the raster, below everything else, because a contour describes the field it is drawn on rather than annotating the map.</p>
+<p>THE JUMP HEURISTICS ARE GONE, and there were two of them. v1 broke a contour first on a longitude difference above 180 and then again on a projected-distance threshold of `min(0.5*diag, max(30*medSeg, 0.02*diag))` - three tuned constants and a median, described in its own comments as &quot;belt-and-suspenders&quot;. Both passes existed to catch the same class of error: a segment drawn straight across the map because its two ends are on opposite sides of a seam or a singularity. GEO.INTERNAL.PROJECTPOLYLINE catches it with no constants at all - a segment that will not shrink under bisection is a cut, not a curve - and catches cases neither heuristic did.</p>
+<p>NEGATIVE CONTOURS CAN BE DASHED, which v1 could not do and which anomaly maps need: on a field of change, the sign is the first thing a reader looks for, and a solid line at -2 and a solid line at +2 are indistinguishable without reading the labels.</p>
+<p>LABELSPACING IS NEW TOO. v1 labelled every contour at one point per line, so a long contour carried one number and a short one carried the same number twice as densely.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>axH</code></td><td>(1,1) matlab.graphics.axis.Axes</td><td>An axes with a basemap.</td></tr>
+<tr><td><code>G</code></td><td>(1,1) struct</td><td>A GEO.GRID.</td></tr>
+<tr><td><code>crs</code></td><td></td><td>A GEO.CRS or a name. Defaults to the basemap's.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Levels</code></td><td>[]</td><td>Explicit levels. Empty uses GEO.NICETICKS over the field's range, which gives round numbers rather than v1's linspace of eight.</td></tr>
+<tr><td><code>Color</code></td><td></td><td>[0 0 0]</td></tr>
+<tr><td><code>LineWidth</code></td><td></td><td>0.75</td></tr>
+<tr><td><code>DashNegative</code></td><td>true</td><td>Negative levels dashed. NEW in v2.</td></tr>
+<tr><td><code>Labels</code></td><td></td><td>false</td></tr>
+<tr><td><code>LabelSpacing</code></td><td>0.35</td><td>Distance between labels on one contour, as a fraction of the map diagonal. NEW in v2.</td></tr>
+<tr><td><code>FontName</code></td><td></td><td>&quot;Helvetica&quot;</td></tr>
+<tr><td><code>FontSize</code></td><td></td><td>8</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>H</code></td><td>(1,1) struct</td><td>Fields: Lines       (1,:) Line    One per level, NaN-separated within. Labels      (1,:) Text Levels      (1,:) double  As drawn. NumCuts     (1,1) double  Branch cuts broken across all levels. All         (1,:)</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>Contour vertices are CONTOURC's, on the grid as given, and are not re-interpolated: a contour is a statement about the data and smoothing it here would be a statement about nothing. The projection is GEO.PROJECT's.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:overlayContours:NoBasemap</code></dt><dd>no crs and no basemap</dd>
+<dt><code>geo:overlayContours:FlatField</code></dt><dd>the field has no range, so there is no contour to draw</dd></dl>
+<h2>Example</h2>
+<pre class="example">H = geo.overlayContours(ax, G, Levels = -5:1:5, Labels = true);</pre>
+<h2>Limitations</h2>
+<p>Labels are placed at points along the contour and are not rotated to it, and nothing moves them out of each other's way. A dense contour set with labels on will overlap; that is what LabelSpacing and turning them off are for.</p>
+
+<h2>See also</h2>
+<p><a href="geo_basemap.html"><code>geo.basemap</code></a>, <a href="geo_niceTicks.html"><code>geo.niceTicks</code></a>, <code>GEO.INTERNAL.PROJECTPOLYLINE</code></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 837f04059191353746edfee53e9ec32254a643d6a0dfa9a4b0350b816f71c403 -->
