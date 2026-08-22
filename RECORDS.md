@@ -2480,6 +2480,48 @@ The prediction was hit exactly, three ways. The count reconciled to 519
 against a suite size of 518 in the preceding red run, which is not a defect:
 an *errored* point is counted both Failed and Incomplete.
 
+### The second tier, and the disagreement is the argument for running both
+
+CI run **#220**, id `32579682725`, on commit `08f7333`, `ubuntu-latest`,
+R2026a hosted. All three jobs green: static gates, mirror + frozen
+acceptance, MATLAB suite.
+
+| | bridge (`win64`, 16 threads) | CI (`ubuntu-latest`) |
+|---|---|---|
+| passed + failed + incomplete | **518 + 0 + 0** | **502 + 0 + 16** |
+| suite size | 518 | 518 |
+| speed points run | 24 of 24 | 23 of 24 |
+| figure census | clean | **clean** |
+| green gate | PASS | PASS |
+
+**The two tiers differ by exactly 16 points, and every one is a registered
+reason:** `geo:filter:oracleDataAbsent` ×10, `geo:filter:v1TreeAbsent` ×4,
+`geo:filter:fullProductAbsent` ×1, `geo:filter:noParallelPool` ×1. The hosted
+runner has no oracle data files, no installed v1 tree and no Parallel
+Computing Toolbox; the bridge has all three. That number *is* the argument
+for running both tiers (`VALIDATION_GUIDE` Part 8) — neither tier alone sees
+what the other sees.
+
+**The census is clean on a headless runner too**, which the bridge alone
+could not have established: `FigureCensusPlugin` reads the graphics root, and
+a reasonable worry was that it would read something different under the
+action's display handling. It does not.
+
+### PV-150 measured, not merely argued
+
+This branch is the first test of the trigger change, and the measurement is
+clean because the branch was pushed four times **before** the pull request
+existed:
+
+| | old config | measured now |
+|---|---|---|
+| runs for 4 pushes + 1 PR open | 4 `push` + 1 `pull_request` = **5** | **1** |
+
+Four pushes to a branch with no pull request produced **zero** runs, which is
+exactly what `WORKFLOW_GUIDE` Part 5 warns reads like a queue that has not
+started — and is why the draft PR is opened at once rather than at the end.
+The one run that exists carries `event=pull_request`.
+
 ### Finding PV-149 — four figures survived every green run
 
 **Symptom, and where it came from.** Four figures were open on the target
