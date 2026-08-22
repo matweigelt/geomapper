@@ -591,6 +591,46 @@ classdef TestD1_elements < GeoMapTestCase
     end
 
     methods (Test, TestTags = {'robustness'})
+
+        function noTwoLabelsOverlapInAFinishedMap(tc)
+            % PV-152. The check that did not exist, on the call that
+            % showed why: a global field on Robinson with graticule,
+            % frame, colorbar and title. Measured before the repair:
+            % SIX colliding pairs, five of them the colorbar's numbers
+            % through the longitude label row and one the extreme
+            % parallel against the seam meridian.
+            tc.suppressWarning('geo:scalebar:ScaleVaries');
+            H = geo.map(tc.worldGrid(), geo.crs("robinson"), ...
+                Coastline = true, Graticule = true, Frame = true, ...
+                Colorbar = struct('Label', "value [m]"), ...
+                Title = "a finished map");
+            tc.keep(H);
+            tc.verifyNoTextOverlap(H.Figure, "robinson, full front");
+        end
+
+        function theCornerLabelIsDroppedAndSaidSo(tc)
+            % The other half of PV-152's repair, and the half a careless
+            % fix skips: the omission must be REPORTABLE. A label that
+            % vanished silently would read as a graticule that never had
+            % one, which is R4's forbidden fourth outcome.
+            ax = tc.mapAxes("robinson");
+            H = geo.graticule(ax, geo.crs("robinson"));
+            tc.verifyTrue(isfield(H, 'LabelsOmitted'));
+            tc.verifyEqual(numel(H.Labels) + numel(H.LabelsOmitted), ...
+                numel(H.LonTicks) + numel(H.LatTicks), ...
+                "every tick is either labelled or reported as omitted");
+        end
+
+        function equirectangularDropsNothing(tc)
+            % The silence half. Where the pole is a full line the corner
+            % is a real corner, nothing collides, and the collision pass
+            % must be a no-op - otherwise it is a pass that removes
+            % labels for its own sake rather than for the reader's.
+            ax = tc.mapAxes("equirectangular");
+            H = geo.graticule(ax, geo.crs("equirectangular"));
+            tc.verifyEmpty(H.LabelsOmitted);
+        end
+
         function anIncompleteRingDoesNotStopTheClip(tc)
             % RE-DERIVED, not deleted (PV-137). The premise was that a
             % boundary leaving the projection's domain closes with an

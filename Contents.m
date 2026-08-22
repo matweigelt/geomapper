@@ -1,5 +1,5 @@
 % geoMap — cartographic visualisation in base MATLAB
-% Version 2.0.518 22-Aug-2026
+% Version 2.0.521 22-Aug-2026
 %
 %   THIS FILE IS THE VERSION AUTHORITY.
 %

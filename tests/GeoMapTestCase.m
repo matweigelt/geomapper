@@ -187,6 +187,51 @@ classdef GeoMapTestCase < matlab.unittest.TestCase
             geo.basemap(tc.demoGrid(), crs, Parent = ax, Hillshade = "off");
         end
 
+        function verifyNoTextOverlap(tc, figH, label)
+            %VERIFYNOTEXTOVERLAP  No two labels in a finished map collide.
+            %   PV-152, and the reason it survived a whole release.
+            %   EVERY other graphics assertion in this suite measures ONE
+            %   element against its own claim: the tick at its exact
+            %   fraction, the label anchor unprojecting to its own
+            %   longitude, the title clearing by the fraction asked for.
+            %   Not one compared two elements to each other - which is the
+            %   one thing a finished map IS. Six pairs overlapped in the
+            %   toolbox's own showcase call and 518 green points saw none.
+            %
+            %   Half a point of tolerance, because touching bounding boxes
+            %   are not a collision: the reported extent carries a little
+            %   side bearing, and two adjacent labels sharing an edge read
+            %   perfectly well.
+            arguments
+                tc
+                figH (1,1) matlab.ui.Figure
+                label (1,1) string = "map"
+            end
+            drawnow
+            t = findall(figH, 'Type', 'text');
+            t = t(arrayfun(@(h) strlength(string(h.String)) > 0, t));
+            r = geo.internal.textRects(reshape(t, 1, []));
+            worst = 0;
+            pair = "none";
+            for i = 1:size(r, 1)
+                for j = i + 1:size(r, 1)
+                    if any(isnan(r(i, :))) || any(isnan(r(j, :)))
+                        continue
+                    end
+                    ox = min(r(i,1) + r(i,3), r(j,1) + r(j,3)) ...
+                         - max(r(i,1), r(j,1));
+                    oy = min(r(i,2) + r(i,4), r(j,2) + r(j,4)) ...
+                         - max(r(i,2), r(j,2));
+                    if ox > 0.5 && oy > 0.5 && min(ox, oy) > worst
+                        worst = min(ox, oy);
+                        pair = string(t(i).String) + " / " + string(t(j).String);
+                    end
+                end
+            end
+            tc.verifyAndRecord(worst, 0.5, ...
+                "worst text overlap, " + label + " [" + pair + "]", "points");
+        end
+
         function suppressWarning(tc, id)
             %SUPPRESSWARNING  Disable an identifier for this test only.
             %   Restored by teardown, so a failing assertion cannot leave

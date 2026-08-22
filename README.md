@@ -25,7 +25,7 @@ at fifteen sites.
 | **E** | One-call fronts, export | **green** |
 | F | Documentation, packaging, release, independent audit | **in progress** |
 
-**518 test points**, reconciled three ways on every run, across seven
+**521 test points**, reconciled three ways on every run, across seven
 categories. Fourteen static checks, each proved against a planted defect
 before it reports. The version's patch component IS the test-point count,
 so the number above and the one in [`Contents.m`](Contents.m) cannot

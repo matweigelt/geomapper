@@ -86,40 +86,19 @@ end
 
 box = geo.internal.plottedBox(axH);
 
-% THE EXTENT IS MEASURED IN POINTS, NEVER DERIVED FROM THE LIMITS.
-% The first version of this function mapped the label's data-unit Extent
-% onto PLOTTEDBOX linearly, on the assumption that PLOTTEDBOX is the
-% rectangle the axis limits map onto. IT IS NOT: it is the rectangle the
-% MAP occupies, and with GEO.FRAME widening the limits after the graticule
-% has drawn, the two differ enough to matter. Measured on the showcase
-% call, the derived figure said the labels reached 6.9 pt below the map
-% and they reached 44.8 - so the colorbar was moved by a seventh of what
-% it needed and the overlap survived, slightly rearranged. This is
-% CODING_GUIDE R3 exactly: a property is read from the object, never
-% inferred from a convention about how the object was built.
-%
-% Setting Units mutates the text, so every label is restored on every
-% path, including an error one. A diagnostic that leaves the figure
-% reconfigured is worse than no diagnostic.
-prior = get(axH, 'Units');
-restoreAxes = onCleanup(@() set(axH, 'Units', prior));
-set(axH, 'Units', 'points');
-ap = get(axH, 'Position');
-
-for t = reshape(g.Labels, 1, [])
-    if ~isgraphics(t, 'text')
+% The extents come from GEO.INTERNAL.TEXTRECTS, which owns the
+% measure-don't-derive rule and the obligation to restore what it
+% changed. This function used to do both itself; the second caller
+% (GEO.GRATICULE's collision pass) is what made the duplication real,
+% and the duplicate-local check would have rejected it anyway.
+r = geo.internal.textRects(reshape(g.Labels, 1, []));
+for k = 1:size(r, 1)
+    if any(isnan(r(k, :)))
         continue
     end
-    u = get(t, 'Units');
-    restoreText = onCleanup(@() set(t, 'Units', u));
-    set(t, 'Units', 'points');
-    e = get(t, 'Extent');            % points, from the axes origin
-    clear restoreText                %#ok<CLEAR> restore before the next
-    x0 = ap(1) + e(1);
-    y0 = ap(2) + e(2);
-    over(1) = max(over(1), box(1) - x0);
-    over(2) = max(over(2), (x0 + e(3)) - (box(1) + box(3)));
-    over(3) = max(over(3), box(2) - y0);
-    over(4) = max(over(4), (y0 + e(4)) - (box(2) + box(4)));
+    over(1) = max(over(1), box(1) - r(k, 1));
+    over(2) = max(over(2), (r(k, 1) + r(k, 3)) - (box(1) + box(3)));
+    over(3) = max(over(3), box(2) - r(k, 2));
+    over(4) = max(over(4), (r(k, 2) + r(k, 4)) - (box(2) + box(4)));
 end
 end
