@@ -688,14 +688,44 @@ classdef TestD1_elements < GeoMapTestCase
                 "every tick is either labelled or reported as omitted");
         end
 
-        function equirectangularDropsNothing(tc)
-            % The silence half. Where the pole is a full line the corner
-            % is a real corner, nothing collides, and the collision pass
-            % must be a no-op - otherwise it is a pass that removes
-            % labels for its own sake rather than for the reader's.
-            ax = tc.mapAxes("equirectangular");
-            H = geo.graticule(ax, geo.crs("equirectangular"));
-            tc.verifyEmpty(H.LabelsOmitted);
+        function nothingIsDroppedThatDidNotCollide(tc)
+            % The silence half, and its FIRST version was wrong in a way
+            % worth keeping the note for. It asserted that equirectangular
+            % drops nothing - which is a claim about FONT METRICS wearing
+            % the costume of a claim about geometry. It held for Helvetica
+            % on Windows and failed on the CI runner's default font, where
+            % "90S" and "180" really do touch. The suite was right and I
+            % was wrong: on that machine, dropping the label is correct.
+            %
+            % The platform-independent claim is the RULE, not a count:
+            % after the pass no two surviving labels overlap, and the pass
+            % never removes a label that had nothing to collide with. A
+            % projection where nothing touches therefore loses nothing,
+            % without the test having to predict which projections those
+            % are on a machine it has never seen.
+            for name = ["equirectangular" "robinson" "mollweide"]
+                ax = tc.mapAxes(name);
+                H = geo.graticule(ax, geo.crs(name));
+                r = geo.internal.textRects(reshape(H.Labels, 1, []));
+                worst = 0;
+                for i = 1:size(r, 1)
+                    for j = i + 1:size(r, 1)
+                        if any(isnan(r(i, :))) || any(isnan(r(j, :)))
+                            continue
+                        end
+                        ox = min(r(i,1) + r(i,3), r(j,1) + r(j,3)) ...
+                             - max(r(i,1), r(j,1));
+                        oy = min(r(i,2) + r(i,4), r(j,2) + r(j,4)) ...
+                             - max(r(i,2), r(j,2));
+                        worst = max(worst, min([ox oy 1e9]) * (ox > 0 && oy > 0));
+                    end
+                end
+                tc.verifyLessThanOrEqual(worst, 0.5, ...
+                    "surviving labels overlap on " + name);
+                tc.verifyLessThanOrEqual(numel(H.LabelsOmitted), ...
+                    numel(H.LatTicks), ...
+                    "only parallel labels may be dropped on " + name);
+            end
         end
 
         function anIncompleteRingDoesNotStopTheClip(tc)

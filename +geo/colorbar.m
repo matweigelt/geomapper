@@ -244,7 +244,14 @@ box = geo.internal.plottedBox(axH);
 % through the longitude label row on the toolbox's own showcase call.
 over = geo.internal.labelOverhang(axH);
 isHoriz = any(options.Location == ["southoutside" "northoutside"]);
-lineH = options.FontSize * 1.4;
+% MEASURED, NOT DERIVED (R3, and the third time this rule has been
+% paid for in one round). FontSize * 1.4 is an ESTIMATE of a line's
+% height, and it is font-dependent: it was adequate for Helvetica on
+% Windows and it under-reports on the CI runner's default font, where
+% the number band and the label band then overlapped by 21.2 points.
+% The estimate cannot be tuned - a factor that fits two fonts will miss
+% a third - so the height is read from a real text object instead.
+lineH = measuredLineHeight(axH, options.FontName, options.FontSize);
 tickLen = 5;
 tickGap = 3;
 
@@ -284,6 +291,20 @@ else
     geom.BarY = [0 barLen];
 end
 geom.Position = anchorBox(box, over, geom, options);
+end
+
+function h = measuredLineHeight(axH, fontName, fontSize)
+%MEASUREDLINEHEIGHT  A line's height in points, read rather than assumed.
+%   The probe carries an ascender, a descender and a bracket, so the
+%   answer covers the tallest thing a tick label or an axis caption can
+%   contain. It is created invisible, measured, and deleted on every
+%   path - a layout computation may not leave anything on the figure.
+probe = text('Parent', axH, 'Units', 'points', 'Position', [0 0], ...
+    'String', "0123456789 [Ay]", 'FontName', fontName, ...
+    'FontSize', fontSize, 'Visible', 'off');
+cleanup = onCleanup(@() delete(probe));
+e = get(probe, 'Extent');
+h = e(4);
 end
 
 function pos = anchorBox(box, over, geom, options)
