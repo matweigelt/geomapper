@@ -155,8 +155,8 @@ end
 
 lonRow = double(lon(:)).';
 latCol = double(lat(:));
-lonStep = median(dLon);
-latStep = median(dLat);
+lonStep = stepOf(dLon);
+latStep = stepOf(dLat);
 reg = resolveRegistration(options.Registration, lonRow, lonStep, ...
     latCol(:).', latStep);
 
@@ -328,6 +328,39 @@ if isempty(d)
     s = 0;
 else
     s = max(abs(d));
+end
+end
+
+function s = stepOf(d)
+%STEPOF  The representative step of an axis, without sorting when it can.
+%   MEDIAN is the honest answer for an irregular axis and it SORTS, which
+%   at 4321 nodes is the single most expensive thing validation does.
+%   Measured on the target machine, R2026a, 4321 + 2161 nodes:
+%
+%     median of both axes   16.3 us      <- of 59.8 us total
+%     mean of both axes      1.7 us
+%     max(abs(d - m))        2.4 us
+%
+%   Nearly every axis a caller hands over is uniform - a linspace, a
+%   colon, or a product grid read from a file - and for a uniform axis
+%   the mean IS the median. So the mean is taken, the axis is checked for
+%   uniformity in one pass, and MEDIAN is called only when that check
+%   says the axis is genuinely irregular. The robust answer is kept for
+%   the case that needs it and paid for only there (PV-147).
+%
+%   The tolerance is RELATIVE and loose - a millionth - because it is
+%   asking "was this axis built by arithmetic", not "are these bits
+%   equal". A linspace over 4320 intervals does not return an exactly
+%   constant difference.
+if isempty(d)
+    s = 0;
+    return
+end
+m = mean(d);
+if m ~= 0 && max(abs(d - m)) <= 1e-6 * abs(m)
+    s = m;
+else
+    s = median(d);
 end
 end
 
