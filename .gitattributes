@@ -31,6 +31,14 @@ Makefile    text eol=lf
 *.md        text
 *.txt       text
 
+# The GENERATED MANUAL, now that a clone is the delivery (D-020, PV-146).
+# build_help writes LF; Git for Windows would check it back out as CRLF,
+# and the next rebuild would write LF again - so every run would leave 47
+# files modified and the tree permanently dirty. Pinned to LF so a
+# rebuild that changes nothing changes nothing, which is what makes
+# documentationSync's green mean something.
+docs/html/**   text eol=lf
+
 # MANIFEST.txt records a SHA-256 per file. Its own hashes are computed
 # over the text as MATLAB reads it, so it must not be renormalised
 # differently from the files it describes.
