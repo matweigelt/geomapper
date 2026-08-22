@@ -126,8 +126,14 @@ def citations(root: Path):
     return {k: sorted(v) for k, v in found.items()}
 
 
-def check(root: Path, handover_text: str | None = None):
-    """Findings as a list of strings. Empty means the register agrees."""
+def check(root: Path, handover_text: str | None = None,
+          cited_override: dict[str, list[str]] | None = None):
+    """Findings as a list of strings. Empty means the register agrees.
+
+    CITED_OVERRIDE exists so the self-test can run on an INLINE FIXTURE
+    rather than on the real tree, which is the whole repair described in
+    SELF_TEST below.
+    """
     findings: list[str] = []
     hv = root / "HANDOVER.md"
     text = handover_text if handover_text is not None else hv.read_text(
@@ -140,7 +146,7 @@ def check(root: Path, handover_text: str | None = None):
                 "findings, because this gate then checks nothing."]
 
     known = {r["id"] for r in rows}
-    cited = citations(root)
+    cited = citations(root) if cited_override is None else cited_override
 
     for r in rows:
         body, rid = r["body"], r["id"]
@@ -173,56 +179,79 @@ def check(root: Path, handover_text: str | None = None):
     return findings
 
 
-def _repair(m: re.Match) -> str:
-    """A row rewritten into an unarguably clean state, for the silence half
-    of the self-test: confirmed, dated, and with nothing for any rule to
-    catch."""
-    return (f"| **{m.group(1)}** | fixture | fixture | fixture | fixture "
-            f"| {CONFIRMED} 01-Jan-2026 |")
-
-
 def self_test(root: Path) -> bool:
-    """Fault injection. A check with no fixture proving it fires is not a
-    check (VALIDATION_GUIDE Part 3). Each planted defect is one this gate
-    was written for, and each must be caught in isolation."""
-    good = (root / "HANDOVER.md").read_text(encoding="utf-8",
-                                            errors="replace")
-    cases = []
+    """Fault injection on an INLINE FIXTURE, never on the real tree.
 
-    # 1. A confirmed row loses its date.
-    m = re.search(r"^\|\s*\*\*O4\*\*.*$", good, re.M)
-    if m:
-        cases.append(("date stripped from O4",
-                      good.replace(m.group(0),
-                                   DATE.sub("<no date>", m.group(0)))))
+    THIS IS THE SECOND VERSION, AND THE FIRST ONE'S FAILURE IS THE REASON
+    FOR THIS ONE. The first self-test mutated the REAL HANDOVER.md and
+    asserted that check() then reported something. That is unfalsifiable
+    whenever the tree is already dirty: check() returns findings about
+    the tree's own faults no matter whether the mutation applied. One of
+    the three mutations did not apply - a re.sub without re.M, whose
+    anchors bound to the whole string - and the case passed anyway for
+    two runs. It surfaced only when the register came clean and the
+    findings stopped.
 
-    # 2. A confirmed, heavily cited row is flipped back to open - the O8
-    #    defect exactly.
-    if m:
-        cases.append(("O4 flipped to open",
-                      good.replace(m.group(0),
-                                   m.group(0).replace(CONFIRMED, OPEN))))
+    The three older gates in this folder do not have this hole, and the
+    reason is worth copying rather than restating: mcheck,
+    provenance_audit and ledger_sync all build a SMALL FIXTURE and mutate
+    that, with a healthy case asserted to be silent. A no-op mutation on
+    a fixture yields no findings, so the case fails loudly. The fixture
+    is not a convenience - it is what makes the injection falsifiable.
 
-    # 3. The whole table disappears.
-    cases.append(("register removed", ROW_MULTILINE.sub("", good)))
+    A guard asserting "the mutation changed the text" was considered and
+    rejected as the primary repair: it patches this instance and leaves
+    the structure that produced it, and a guard is not a fix. It is kept
+    as a second, cheap assertion because it names the exact defect.
+    """
+    ok = True
+    healthy = (
+        "## Part 3 - Oracle register\n"
+        "| id | Oracle | Type | Certifies | Consumed by | Status |\n"
+        "| **O1** | thing | analytic | a claim | Stage A | "
+        + CONFIRMED + " 15-Aug-2026 |\n"
+        "| **O2** | thing | toolkit | a claim | Stage B | " + OPEN + " |\n"
+        "## Part 4 - next\n")
+    cited_none: dict[str, list[str]] = {}
+    cited_o2 = {"O2": ["tests/TestX.m"]}
 
-    for name, broken in cases:
-        if not check(root, broken):
-            print(f"  self-test: FAIL - silent on a broken tree ({name})")
+    cases = [
+        ("false positive on an agreeing register", healthy, cited_none, None),
+        ("confirmed row with no date",
+         healthy.replace(" 15-Aug-2026", ""), cited_none, "no date"),
+        ("open row that the tree cites",
+         healthy, cited_o2, "marked OPEN but cited"),
+        ("citation with no row",
+         healthy, {"O9": ["mirror/x.py"]}, "absent from the register"),
+        ("a row carrying both marks",
+         healthy.replace("| " + OPEN + " |", "| " + OPEN + CONFIRMED + " |"),
+         cited_none, "both marks"),
+        ("the register removed",
+         ROW_MULTILINE.sub("", healthy), cited_none, "did not parse"),
+    ]
+    for name, text, cited, expect in cases:
+        if expect is not None and text == healthy and cited is cited_none:
+            print(f"  self-test: FAIL - the injection for '{name}' changed "
+                  f"nothing, so the case proves nothing")
             return False
-    if check(root, good) != check(root, good):
-        print("  self-test: FAIL - not deterministic")
+        found = check(root, text, cited)
+        if expect is None and found:
+            print(f"  self-test: FAIL - fires on a healthy register: {found}")
+            return False
+        if expect is not None and not any(expect in f for f in found):
+            print(f"  self-test: FAIL - silent on '{name}'")
+            return False
+
+    # An exempted citation must be forgiven, or the marker is decorative.
+    exempt = healthy.replace("| " + OPEN + " |",
+                             "| " + OPEN + " " + EXEMPT_MARK + ": reason |")
+    if check(root, exempt, cited_o2):
+        print("  self-test: FAIL - the exemption marker was not honoured")
         return False
-    # A check must also be SILENT on a healthy tree, and this half is not
-    # decorative: it is the half that would have caught the vacuous
-    # injection above two runs earlier. An instrument that only ever
-    # reports is indistinguishable from one that is stuck on.
-    healthy = ROW_MULTILINE.sub(_repair, good)
-    if check(root, healthy):
-        print("  self-test: FAIL - fires on a repaired register")
-        return False
-    print(f"  self-test: PASS ({len(cases)} planted defects, each caught)")
-    return True
+
+    print(f"  self-test: PASS ({len(cases) - 1} planted defects on an "
+          f"inline fixture, each caught; healthy case silent)")
+    return ok
 
 
 def main() -> int:

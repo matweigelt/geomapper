@@ -82,6 +82,17 @@ function H = graticule(axH, crs, options)
 %          Meridians  (1,:) Line   One object per meridian.
 %          Parallels  (1,:) Line
 %          Labels     (1,:) Text   Empty if Labels = false.
+%          LabelsOmitted (1,:) string  The labels NOT drawn because they
+%                                would have overlapped one already
+%                                placed. Empty on a projection where
+%                                nothing collides. Meridian labels are
+%                                kept and a colliding parallel label is
+%                                dropped: at the pole of a
+%                                pseudocylindrical projection the "left
+%                                edge" is not an edge but the point the
+%                                parallel has collapsed to, so that label
+%                                has the least claim to the corner
+%                                (PV-152).
 %          LonTicks   (1,:) double The degrees actually drawn.
 %          LatTicks   (1,:) double
 %          MaxSegment (1,1) double Longest projected segment, as a
@@ -176,14 +187,23 @@ for k = 1:nLat
 end
 
 labels = gobjects(1, 0);
+dropped = strings(1, 0);
 if options.Labels
-    labels = placeLabels(axH, crs, lonTicks, latTicks, lonLim, latLim, ...
+    [labels, dropped] = placeLabels(axH, crs, lonTicks, latTicks, lonLim, latLim, ...
         diag, options);
 end
 
+% LABELSOMITTED IS THE REPORT, AND IT IS DELIBERATELY NOT A WARNING.
+% R4 offers three outcomes, and this is the third: proceed, saying what
+% was done. A warning was written first and withdrawn, because on a
+% pseudocylindrical projection the extreme parallel and the seam meridian
+% meet at the same corner on almost every GLOBAL map - so the warning
+% would have fired on the toolbox's most ordinary call, taught its users
+% to silence the identifier, and put a permanent entry in a warning
+% inventory whose whole value is that it is empty.
 H = struct('Meridians', meridians, 'Parallels', parallels, ...
     'Labels', labels, 'LonTicks', lonTicks, 'LatTicks', latTicks, ...
-    'MaxSegment', worst / max(diag, eps), ...
+    'MaxSegment', worst / max(diag, eps), 'LabelsOmitted', dropped, ...
     'All', [meridians, parallels, labels]);
 
 geo.internal.layout("register", axH, "graticule", @(~) []);
@@ -242,7 +262,7 @@ h = line('Parent', axH, 'XData', x, 'YData', y, ...
     'LineWidth', options.LineWidth);
 end
 
-function labels = placeLabels(axH, crs, lonTicks, latTicks, lonLim, latLim, ...
+function [labels, dropped] = placeLabels(axH, crs, lonTicks, latTicks, lonLim, latLim, ...
                               diag, options)
 %PLACELABELS  One label per tick, on the chosen edge, pushed outward.
 gap = options.LabelGap * diag;
@@ -287,6 +307,71 @@ for k = 1:numel(latTicks)
         formatLat(latTicks(k)), options);
 end
 labels = labels(1:m);
+[labels, dropped] = resolveCollisions(labels, numel(lonTicks));
+end
+
+function [labels, dropped] = resolveCollisions(labels, nLon)
+%RESOLVECOLLISIONS  Delete a label that lands on one already placed.
+%   PV-152. PLACELABELS pushed every label outward and compared it to
+%   nothing, so on Robinson "90S" and "180" overlapped by 12.4 x 9.6
+%   points in the toolbox's own showcase call - and 518 green tests did
+%   not see it, because every graphics assertion here measures ONE
+%   element against its own claim and none compares two to each other.
+%
+%   EARLIER LABELS WIN, and meridians are placed first, so a parallel
+%   label loses the corner to a meridian. The asymmetry is deliberate and is what a
+%   cartographer does by hand: on a pseudocylindrical projection the
+%   "left edge" at the pole is not an edge, it is the point the parallel
+%   has collapsed to, so the parallel label there is the one with least
+%   claim to the corner. Where nothing collides - equirectangular, where
+%   the pole is a full line - nothing is dropped and this pass is a
+%   no-op.
+%
+%   DELETING AND NOT SLIDING. Sliding a parallel label along the edge
+%   moves it away from the parallel it names, which is a label that lies
+%   rather than a label that is missing.
+dropped = strings(1, 0);
+if numel(labels) < 2
+    return
+end
+rects = geo.internal.textRects(labels);   % which settles the layout itself
+keep = true(1, numel(labels));
+% EVERY label is a candidate, not only the parallels. The first version
+% of this pass started at nLon + 1, on the reasoning that meridians win
+% the corner - which is true and is still true, because they are placed
+% first and an earlier label always wins. But it left two MERIDIAN
+% labels free to overlap each other, which they do on a small axes, and
+% the rule the suite asserts is that no two SURVIVING labels overlap.
+% The implementation was weaker than the claim; this is the claim.
+for k = 2:numel(labels)
+    if any(isnan(rects(k, :)))
+        continue
+    end
+    for j = find(keep(1:k - 1))
+        if any(isnan(rects(j, :)))
+            continue
+        end
+        ox = min(rects(k,1) + rects(k,3), rects(j,1) + rects(j,3)) ...
+             - max(rects(k,1), rects(j,1));
+        oy = min(rects(k,2) + rects(k,4), rects(j,2) + rects(j,4)) ...
+             - max(rects(k,2), rects(j,2));
+        if ox > 0 && oy > 0
+            keep(k) = false;
+            break
+        end
+    end
+end
+
+% F13: nothing grows in a loop inside +geo, and the audit enforces it.
+% One pass decides, one reports, one deletes - and the report is taken
+% BEFORE the delete, because a deleted handle has no String to read.
+gone = find(~keep);
+dropped = strings(1, numel(gone));
+for i = 1:numel(gone)
+    dropped(i) = string(labels(gone(i)).String);
+end
+delete(labels(gone));
+labels = labels(keep);
 end
 
 function [px, py] = anchorOnEdge(lonAt, latAt, crs, lonSpan, latSpan, edge)

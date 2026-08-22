@@ -8,6 +8,7 @@
     <tocitem target="geo_grid.html">geo.grid</tocitem>
     <tocitem target="geo_track.html">geo.track</tocitem>
     <tocitem target="geo_points.html">geo.points</tocitem>
+    <tocitem target="geo_imageGrid.html">geo.imageGrid</tocitem>
     <tocitem target="geo_region.html">geo.region</tocitem>
   </tocitem>
   <tocitem target="index.html">L2 — numerics, no graphics

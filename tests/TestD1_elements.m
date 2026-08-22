@@ -55,6 +55,73 @@ classdef TestD1_elements < GeoMapTestCase
     % ==================================================================
     methods (Test, TestTags = {'contract'})
 
+        function anImageBackdropDrawsWithoutAColourScale(tc)
+            % G.1b. The whole point of the separate kind: an image must
+            % not put a colour scale on the axes, because the field drawn
+            % on top of it owns that scale. If the backdrop set CLim, a
+            % colorbar beside the map would describe the picture instead
+            % of the data.
+            ax = axes('Parent', tc.figureFor());
+            IG = tc.imageFixture();
+            [~, ~, H] = geo.basemap(IG, "equirectangular", Parent = ax);
+            tc.verifyTrue(H.IsImage);
+            tc.verifyEmpty(H.Colormap);
+            tc.verifySize(get(H.Surface, 'CData'), ...
+                [numel(IG.Lat) + 1, numel(IG.Lon) + 1, 3]);
+
+            % THE CLAIM IS ABOUT MODE, NOT VALUE, and the first draft of
+            % this point got that wrong. An axes auto-ranges CLim from
+            % whatever CData it holds, truecolour included, so the NUMBER
+            % moves and asserting it unchanged fails for a reason that
+            % has nothing to do with the defect. What matters is that the
+            % image does not PIN the scale: CLimMode stays auto, so the
+            % field drawn on top still owns it.
+            tc.verifyEqual(ax.CLimMode, 'auto', ...
+                "an image must not pin the axes colour scale");
+
+            % And the consequence, which is what a user would notice: a
+            % field drawn over the backdrop gets ITS OWN limits.
+            G = geo.grid(IG.Lon, IG.Lat, ...
+                repmat((1:numel(IG.Lat))', 1, numel(IG.Lon)) * 1.0);
+            geo.basemap(G, "equirectangular", Parent = ax, Hillshade = "off");
+            tc.verifyEqual(clim(ax), [1 numel(IG.Lat)], 'AbsTol', 1e-12, ...
+                "the field on top owns the colour scale, not the backdrop");
+        end
+
+        function anImageRefusesAColourScaleItCannotHonour(tc)
+            % R4: refuse, never degrade silently. A caller who asks an
+            % image for a colormap has misunderstood something, and
+            % ignoring them would let the misunderstanding survive.
+            IG = tc.imageFixture();
+            ax = axes('Parent', tc.figureFor());
+            tc.verifyError(@() geo.basemap(IG, "equirectangular", ...
+                Parent = ax, CLim = [0 1]), 'geo:basemap:ImageHasNoColourScale');
+            tc.verifyError(@() geo.basemap(IG, "equirectangular", ...
+                Parent = ax, Colormap = parula(8)), ...
+                'geo:basemap:ImageHasNoColourScale');
+        end
+
+        function theSeamRollMovesThePictureNotJustTheAxis(tc)
+            % The claim the index-map carrier exists to make. Drawing the
+            % same image centred on 0 and on 180 must permute the CData
+            % by exactly the same columns as the longitudes - if the
+            % bands rolled differently from the axis, every pixel would
+            % still be a plausible colour and the map would be wrong.
+            IG = tc.imageFixture();
+            ax0 = axes('Parent', tc.figureFor());
+            [~, ~, H0] = geo.basemap(IG, geo.crs("equirectangular"), Parent = ax0);
+            ax1 = axes('Parent', tc.figureFor());
+            [~, ~, H1] = geo.basemap(IG, ...
+                geo.crs("equirectangular", CenterLongitude = 180), Parent = ax1);
+            C0 = get(H0.Surface, 'CData');
+            C1 = get(H1.Surface, 'CData');
+            n = numel(IG.Lon);
+            tc.verifyEqual(sort(reshape(C1(1:end-1, 1:n, 1), 1, [])), ...
+                sort(reshape(C0(1:end-1, 1:n, 1), 1, [])), ...
+                "bitwise: a roll is a permutation, so the multiset is fixed");
+        end
+
+
         function basemapRejectsABareMatrix(tc)
             % The grid contract belongs to geo.grid and is not re-checked
             % in the drawing path; this asserts that it still fires there.
@@ -591,6 +658,77 @@ classdef TestD1_elements < GeoMapTestCase
     end
 
     methods (Test, TestTags = {'robustness'})
+
+        function noTwoLabelsOverlapInAFinishedMap(tc)
+            % PV-152. The check that did not exist, on the call that
+            % showed why: a global field on Robinson with graticule,
+            % frame, colorbar and title. Measured before the repair:
+            % SIX colliding pairs, five of them the colorbar's numbers
+            % through the longitude label row and one the extreme
+            % parallel against the seam meridian.
+            tc.suppressWarning('geo:scalebar:ScaleVaries');
+            H = geo.map(tc.demoGrid(), geo.crs("robinson"), ...
+                Coastline = true, Graticule = true, Frame = true, ...
+                Colorbar = struct('Label', "value [m]"), ...
+                Title = "a finished map");
+            tc.keep(H);
+            tc.verifyNoTextOverlap(H.Figure, "robinson, full front");
+        end
+
+        function theCornerLabelIsDroppedAndSaidSo(tc)
+            % The other half of PV-152's repair, and the half a careless
+            % fix skips: the omission must be REPORTABLE. A label that
+            % vanished silently would read as a graticule that never had
+            % one, which is R4's forbidden fourth outcome.
+            ax = tc.mapAxes("robinson");
+            H = geo.graticule(ax, geo.crs("robinson"));
+            tc.verifyTrue(isfield(H, 'LabelsOmitted'));
+            tc.verifyEqual(numel(H.Labels) + numel(H.LabelsOmitted), ...
+                numel(H.LonTicks) + numel(H.LatTicks), ...
+                "every tick is either labelled or reported as omitted");
+        end
+
+        function nothingIsDroppedThatDidNotCollide(tc)
+            % The silence half, and its FIRST version was wrong in a way
+            % worth keeping the note for. It asserted that equirectangular
+            % drops nothing - which is a claim about FONT METRICS wearing
+            % the costume of a claim about geometry. It held for Helvetica
+            % on Windows and failed on the CI runner's default font, where
+            % "90S" and "180" really do touch. The suite was right and I
+            % was wrong: on that machine, dropping the label is correct.
+            %
+            % The platform-independent claim is the RULE, not a count:
+            % after the pass no two surviving labels overlap, and the pass
+            % never removes a label that had nothing to collide with. A
+            % projection where nothing touches therefore loses nothing,
+            % without the test having to predict which projections those
+            % are on a machine it has never seen.
+            for name = ["equirectangular" "robinson" "mollweide"]
+                ax = tc.mapAxes(name);
+                H = geo.graticule(ax, geo.crs(name));
+                r = geo.internal.textRects(reshape(H.Labels, 1, []));
+                worst = 0;
+                for i = 1:size(r, 1)
+                    for j = i + 1:size(r, 1)
+                        if any(isnan(r(i, :))) || any(isnan(r(j, :)))
+                            continue
+                        end
+                        ox = min(r(i,1) + r(i,3), r(j,1) + r(j,3)) ...
+                             - max(r(i,1), r(j,1));
+                        oy = min(r(i,2) + r(i,4), r(j,2) + r(j,4)) ...
+                             - max(r(i,2), r(j,2));
+                        worst = max(worst, min([ox oy 1e9]) * (ox > 0 && oy > 0));
+                    end
+                end
+                tc.verifyLessThanOrEqual(worst, 0.5, ...
+                    "surviving labels overlap on " + name);
+                tc.verifyLessThanOrEqual( ...
+                    numel(H.Labels) + numel(H.LabelsOmitted), ...
+                    numel(H.LonTicks) + numel(H.LatTicks), ...
+                    "no label may be invented on " + name);
+            end
+        end
+
         function anIncompleteRingDoesNotStopTheClip(tc)
             % RE-DERIVED, not deleted (PV-137). The premise was that a
             % boundary leaving the projection's domain closes with an
@@ -844,6 +982,17 @@ classdef TestD1_elements < GeoMapTestCase
 
     % ==================================================================
     methods (Access = private)
+        function IG = imageFixture(~)
+            %IMAGEFIXTURE  A small cell-registered world raster.
+            %   Values keyed to indices so a roll or a flip shows up in
+            %   the numbers, not only in the size.
+            lon = -180 + 22.5 + (0:7) * 45;
+            lat = -90 + 22.5 + (0:3) * 45;
+            [I, J] = ndgrid(1:4, 1:8);
+            IG = geo.imageGrid(lon, lat, ...
+                uint8(cat(3, I * 20, J * 20, I + J)), Source = "fixture");
+        end
+
         function ax = axesFor(tc)
             %AXESFOR  Fresh axes in an invisible figure, closed on teardown.
             ax = axes('Parent', tc.figureFor());

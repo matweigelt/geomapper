@@ -9,6 +9,21 @@ It moves when the evidence moves.
 
 ---
 
+## 2.0.521 — 2026-08-22
+
+**PV-152 — six pairs of overlapping labels in the flagship output, and 518 green points saw none of them.**
+
+Measured on the toolbox's own showcase call: a global field on Robinson with graticule, frame, colorbar and title. Two causes.
+
+- `geo.colorbar` anchored to `geo.internal.plottedBox`, which is the **map**; the graticule's labels sit outside it, so `southoutside` put the bar's numbers through the longitude label row. `geo.internal.labelOverhang` now reports how far the labels reach past the box, per side, and `anchorBox` adds only the side it is going.
+- `placeLabels` compared each label to nothing. On a projection whose parallels converge, the extreme parallel and the seam meridian meet at the same corner. Meridian labels are kept; a colliding parallel label is dropped and reported in `H.LabelsOmitted`.
+
+**The first repair was wrong in the way that looks like success.** `labelOverhang` initially *derived* the overhang by mapping data-unit extents onto `plottedBox`. That assumes `plottedBox` is the rectangle the axis limits map onto — it is not, and `geo.frame` widens the limits after the graticule has drawn. The derived figure said 6.9 pt where the truth was 44.8, so the colorbar moved a seventh of what it needed and six pairs became five, rearranged rather than repaired. `geo.internal.textRects` now owns measure-don't-derive and the obligation to restore the Units it changes.
+
+**Why no gate saw it.** Every graphics assertion in the suite measures **one element against its own claim**. Not one compared two elements to each other, which is the one thing a finished map is. `GeoMapTestCase.verifyNoTextOverlap` is that comparison.
+
+**`LabelsOmitted` is a returned field, not a warning.** A warning was written first and withdrawn: on a pseudocylindrical projection that corner collides on almost every global map, so the warning would have fired on the most ordinary call in the toolbox and taught its users to silence the identifier.
+
 ## 2.0.518 — 2026-08-22
 
 **PV-149 — a green run left four figures open, and nothing could see them.**

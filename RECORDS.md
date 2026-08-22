@@ -2654,3 +2654,185 @@ project with no instrument, which is debt **V12** and package **G.0**.
    split/merge property, which are narrower and true.
 5. Next action, as a command:
    `rungeoMapTests("all")` after `git checkout claude/g1-figure-leak-and-ci`.
+
+---
+
+## R-033 — Stage G, package G.0, 22-Aug-2026, **tier A (bridge)**
+
+**Scope.** The oracle register's first instrument (G.0a) and PV-152's repair
+(G.0b). Status is in `HANDOVER.md` Parts 0, 1, 3, 4 and 10; this holds the
+evidence.
+
+**Execution tier. Tier A**, over the working tree at
+`C:\Users\matth\Documents\MATLAB\geoMap`. Python gates in the container; the
+mirror tier is CI's, because the sandbox has no GDAL — stated rather than
+left as an unexplained gap.
+
+### Confirming run
+
+| | |
+|---|---|
+| predicted, in the commit message before the run | **521** = 518 + 3 |
+| passed + failed + incomplete | 521 + 0 + 0 |
+| suite size / per-class sum | 521 / 521 |
+| warning inventory | empty |
+| figure census | clean |
+| static audit | 0 findings |
+| **green gate** | **PASS**, all seven |
+
+New record: `worst text overlap, robinson, full front [none] — 0 points
+(bound <= 0.5)`.
+
+### G.0a — four register rows were wrong, and one gate found them all
+
+`O2` open while `mirror/acceptance.json` cited it as the `source` of two
+frozen criteria; `O7` bundling two claims with different evidence; `O8` open
+while its module ran on every push; `O12` dated without a year. O7 was
+**split** rather than reworded — mass closure is now O13, open, debt V10.
+O13–O20 seeded for the Stage G packages.
+
+**The self-test was vacuous for two runs.** Its third planted defect called
+`ROW.sub()` without `re.M`, so the anchors bound to the whole string and it
+planted nothing. It passed regardless, because `check()` was returning real
+findings from a dirty register — **the dirt was hiding the vacuum**. It
+surfaced the moment the register came clean. Repaired, and a *silence half*
+added: the gate must also be quiet on a repaired register.
+
+**V12 discharged by this package.** The oracle register now has an
+instrument, it runs in CI and in `gates.sh`, and it found four wrong rows on
+its first clean run. Recorded explicitly because the gate cannot infer it:
+`ledger_sync` compares a discharge note in this file against the debt row in
+the handover, so a debt that is satisfied in FACT but declared in NEITHER file
+is invisible to it. It reads two statements; it cannot notice that neither was
+made. That is the same shape as the stage-alphabet defect above and belongs
+beside it.
+
+**This is a question the other three gates have not been asked.** `mcheck`,
+`provenance_audit` and `ledger_sync` all inject a defect and check they fire;
+none, as far as this session checked, verifies it is silent on a repaired
+tree. Not a claim that they are vacuous — a claim that the question now has a
+precedent and has not been put to them. Recorded here so a later session
+cannot mistake the omission for a finding of health.
+
+### G.0b — PV-152, and a first repair that was wrong in the way that looks right
+
+Two causes. `geo.colorbar` anchored to `plottedBox`, which is the **map**,
+while the graticule's labels sit outside it. And `placeLabels` compared each
+label to nothing, so on a projection whose parallels converge the extreme
+parallel and the seam meridian met at the same corner.
+
+**The first `labelOverhang` DERIVED the overhang**, mapping data-unit extents
+onto `plottedBox` on the assumption that `plottedBox` is the rectangle the
+axis limits map onto. It is not, and `geo.frame` widens the limits after the
+graticule has drawn:
+
+| | derived | measured |
+|---|---|---|
+| labels reach below the map | 6.9 pt | **44.8 pt** |
+| colliding pairs after "repair" | 5 | — |
+
+The colorbar moved a seventh of what it needed, six pairs became five, and
+the vertical overlaps got *worse* (4.3 → 9.8 pt): rearranged, not repaired.
+**Had the count been read as progress the defect would have shipped.**
+CODING_GUIDE R3 — read the property from the object, never infer it from a
+convention about how the object was built. `geo.internal.textRects` now owns
+measure-don't-derive and the restoration of the Units it changes.
+
+**`LabelsOmitted` is a returned field and not a warning.** A warning was
+written first and withdrawn: that corner collides on almost every *global*
+map, so it would have fired on the most ordinary call in the toolbox, taught
+its users to silence the identifier, and put a permanent entry in an
+inventory whose entire value is being empty.
+
+**Three defects came out of the red run**, all mine: `tc.worldGrid()` is a
+local of `TestE1_map` and not a base-class fixture (`demoGrid` is) — the
+second time this session a per-suite helper was reached for as if shared;
+`%#ok<AGROW>` inside `+geo`, which the audit bans on F13's evidence; and a
+stale `geo_graticule.html`. The suite size read **521 in the red run too**,
+so the prediction was right and only the outcomes were wrong — which is the
+signal the prediction discipline exists to give.
+
+### Binding items a later stage could be wrong for not reading
+
+1. **A graphics assertion that measures one element against its own claim
+   proves nothing about the map.** Six pairs overlapped for a whole release
+   behind 518 such assertions. New front-level work adds a
+   `verifyNoTextOverlap` point.
+2. **Ask every instrument whether it is silent on a repaired tree**, not only
+   whether it fires on a broken one.
+3. **A symptom count going down is not evidence of a repair.** 6 → 5 here was
+   a wrong fix.
+4. Next action, as a command: `rungeoMapTests("all")` after merge, predicting
+   521.
+
+---
+
+## R-034 — Stage G, package G.1a/G.1b, 22-Aug-2026, **tier A (bridge)**
+
+**Scope.** The RGB kind and its renderer. `geo.imageGrid`, and `geo.basemap`
+accepting it. Status in `HANDOVER.md` Parts 1, 4 and 10.
+
+**Confirming run.** Bridge, `win64 | R2026a | 16 threads`. Predicted **532**
+for G.1a and **535** for G.1b, in the commit messages before the runs; both hit
+three ways. Green gate on all seven conditions, census clean, audit 0 findings.
+
+| measurement | value | bound |
+|---|---|---|
+| `geo.imageGrid` / one pass over the raster, 1024x512 | 0.225 | ≤ 6 |
+| imageGrid double→uint8 vs `round(x*255)` | 0 levels | 0 |
+| imageGrid vs grid step on identical axes | 0 deg | ≤ 1e-12 |
+
+`geo.imageGrid` ships **all seven categories with no exemption**.
+
+### Why the reference point compares against `geo.grid`
+
+The likeliest defect a new kind could introduce is a backdrop and a field
+disagreeing about the seam. So the `reference` point puts both kinds on
+*identical axes* and asserts they agree about `IsGlobalLon` and `LonStep`,
+rather than checking the image against itself.
+
+### The index-map carrier (D-027)
+
+An image cannot pass through `rollToCentre`, which rolls one plane. The
+carrier grid's `Z` is therefore `1:numel`, and the bands are gathered through
+the rolled result — so the seam roll reaches the picture by the same code that
+rolls a field, not by a copy that would drift. Alpha is gathered through the
+same map, so a roll cannot move the picture and leave the transparency behind.
+
+### R4 honoured where it can be, and the asymmetry written down
+
+`CLim`, `Colormap` and `Mask` are **refused** for an image: their defaults
+(NaN, empty, empty) make an omission distinguishable from a choice. `Hillshade`
+and `Divergent` default to real values, so an omission cannot be told from a
+choice and refusing them would reject the ordinary call — documented as not
+read instead. That is R5's idiom showing its cost, recorded rather than left as
+an apparent inconsistency.
+
+### Three of my own errors this round
+
+1. **The `Contents.m` summary must BE the H1, character for character.** I
+   wrote a paraphrase with "(G.1)" appended — the exact drift
+   `TestContentsConsistency` exists to stop.
+2. **The first assertion tested the wrong thing.** It said the image leaves
+   `clim()` numerically unchanged. Measured, it does not and should not: an
+   axes auto-ranges `CLim` from whatever `CData` it holds, truecolour included.
+   The real property is that the image does not **pin** the scale —
+   `CLimMode` stays `auto` after an image and becomes `manual` after a field.
+   Criterion before code (Part 9): the criterion was wrong, the code was right.
+3. **A docs commit was never pushed and I did not check.** The bridge command
+   ended `| tail -2`; `tail` does not exist on Windows, the pipeline failed,
+   and the container then pushed past it, diverging the histories. Nothing was
+   lost — the files are generated — but this is the **third** time in one
+   session I read a command's output as evidence that its side effect
+   happened. The other two were a `git push` exit status and a `write_text`
+   that never ran.
+
+### Binding items a later stage could be wrong for not reading
+
+1. **Verify side effects, do not infer them from output.** Three instances in
+   one session. On the bridge, prefer plain `git` with no pipeline: Windows has
+   no `tail`, `head`, or `grep`.
+2. **A new kind gets its `reference` point against the EXISTING kind on
+   identical axes**, not against itself.
+3. Next action, as a command: `rungeoMapTests("all")` after merge, predicting
+   535.

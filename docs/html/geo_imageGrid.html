@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>geo.imageGrid - geoMap</title>
+<style>body{font-family:Helvetica,Arial,sans-serif;max-width:52em;margin:2em auto;padding:0 1em;color:#222;line-height:1.5}nav{border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1.5em}h1{margin-bottom:.2em}.h1line{color:#555;margin-top:0;font-size:1.1em}h2{margin-top:1.8em;border-bottom:1px solid #eee;padding-bottom:.2em}table.args{border-collapse:collapse;width:100%}table.args th{text-align:left;background:#f6f6f6;padding:.4em .6em;border:1px solid #e0e0e0}table.args td{padding:.4em .6em;border:1px solid #e0e0e0;vertical-align:top}code{background:#f4f4f4;padding:0 .2em;border-radius:2px}pre{background:#f8f8f8;border:1px solid #eee;padding:.8em;overflow-x:auto}pre.syntax{background:#fbfbfb}.accuracy{border-left:3px solid #4a7;padding-left:.9em;background:#f6fbf8}.warn{border-left:3px solid #c62;padding-left:.9em;background:#fdf6f2}dl.errors dt{margin-top:.6em}dl.errors dd{margin-left:1.5em;color:#444}.kw{color:#0a5}.str{color:#a50}.cmt{color:#888;font-style:italic}.broken{background:#fdd}ul.index{columns:2;list-style:none;padding-left:0}footer{margin-top:3em;color:#888;font-size:.9em;border-top:1px solid #eee;padding-top:.6em}</style></head><body>
+<nav><a href="index.html">geoMap</a></nav>
+<h1>geo.imageGrid</h1>
+<p class="h1line">A true-colour raster on a geographic axes pair.</p>
+<h2>Syntax</h2>
+<pre class="syntax">     IG = GEO.IMAGEGRID(LON, LAT, RGB)
+     IG = GEO.IMAGEGRID(..., Name, Value)
+</pre>
+<h2>Description</h2>
+<p>Wraps an RGB raster and its geographic axes into the struct the drawing layer consumes, validating the pairing that a caller otherwise discovers as a picture in the wrong place.</p>
+<p>WHY THIS IS NOT A THREE-BAND GEO.GRID (decision D-024). A GEO.GRID carries a colour scale: CLim, a colormap, a colorbar, a hillshade, a NaN colour. An image carries none of those - its colours ARE the data - and it must never consume the colour scale that the field drawn on top of it owns. Sharing one kind would put an `if ndims(Z) == 3` branch in every consumer of every grid, and each of those branches would be a place for a backdrop to steal a colorbar.</p>
+<p>WHAT IT IS FOR. A photographic backdrop under sparse data - a ground track, a set of stations, a basin outline - where a shaded-relief base says less than an image does. NASA's Blue Marble is the case this was built for; any georeferenced raster with a regular axes pair works.</p>
+<p>ROW ORDER IS MEASURED, NEVER ASSUMED (R3). Image files conventionally run north to south and grids conventionally run south to north, so a rule based on the source would be right about half the time and silently upside down the other half. LAT is read: if it descends, the raster and the vector are flipped together so the returned struct always ascends. `Flipped` records whether that happened, because a caller comparing against the file on disk needs to know.</p>
+
+<h2>Inputs</h2>
+<table class="args"><tr><th>Argument</th><th>Type</th><th>Description</th></tr><tr><td><code>lon</code></td><td>(1,:) double</td><td>Degrees east, monotonic, equally spaced.</td></tr>
+<tr><td><code>lat</code></td><td>(1,:) double</td><td>Degrees north, monotonic, equally spaced.</td></tr>
+<tr><td><code>RGB</code></td><td></td><td>(:,:,3) uint8|double The raster. numel(lat) rows by numel(lon) columns. double is taken as 0..1 and converted to uint8 once, here, so no consumer has to ask which it holds.</td></tr></table>
+<h2>Options</h2>
+<table class="args"><tr><th>Option</th><th>Default</th><th>Description</th></tr><tr><td><code>Source</code></td><td>(1,1) string</td><td>[&quot;&quot;]      Where the raster came from.</td></tr>
+<tr><td><code>Alpha</code></td><td>(:,:) double</td><td>[]        Per-pixel opacity in 0..1, same size as one band. Empty means opaque.</td></tr></table>
+<h2>Outputs</h2>
+<table class="args"><tr><th>Output</th><th>Type</th><th>Description</th></tr><tr><td><code>IG</code></td><td>(1,1) struct</td><td>Fields: Identity     (1,1) string   Always &quot;geo.imageGrid&quot;. Lon          (1,:) double   Ascending. Lat          (1,:) double   Ascending. RGB          (:,:,3) uint8 Alpha        (:,:) double   Empty when opaque. LonStep      (1,1) double   Signed step, always positive here. LatStep      (1,1) double IsGlobalLon  (1,1) logical  Measured: does the span plus one step close 360 degrees? Registration (1,1) string Flipped      (1,1) logical  True when LAT descended on input. Source       (1,1) string</td></tr></table>
+<h2>Accuracy</h2>
+<div class="accuracy"><p>No numerical claim of its own: it validates and rearranges. The one derived quantity is the step, taken as the mean difference and asserted equal to every difference within 1e-9 of a step - the same tolerance and the same reasoning as GEO.GRID, so that a raster and a field on the same axes cannot disagree about whether they are regular.</p>
+</div>
+<h2>Errors</h2>
+<dl class="errors"><dt><code>geo:imageGrid:SizeMismatch</code></dt><dd>RGB is not numel(lat) x numel(lon) x 3</dd>
+<dt><code>geo:imageGrid:NonMonotonic</code></dt><dd>lon or lat does not increase or decrease throughout</dd>
+<dt><code>geo:imageGrid:UnevenStep</code></dt><dd>a step differs from the mean by more than 1e-9 of it</dd>
+<dt><code>geo:imageGrid:AlphaMismatch</code></dt><dd>Alpha is not the size of one band Domain:</dd>
+<dt><code>geo:imageGrid:BadRange</code></dt><dd>a double RGB outside 0..1</dd></dl>
+<h2>Example</h2>
+<pre class="example">lon = -180:0.5:179.5;
+lat = -89.75:0.5:89.75;
+IG  = geo.imageGrid(lon, lat, blueMarble, Source = <span class="str">&quot;NASA BMNG&quot;</span>);
+IG.IsGlobalLon</pre>
+<h2>Limitations</h2>
+<p>Regular axes only. A rotated or affine raster - a GeoTIFF with a sheared geotransform - is not representable here and is rejected by the reader rather than silently squared up.</p>
+<p>It does not reproject. The raster is assumed to be on a plain geographic axes pair; a raster in a projected CRS must be warped before it arrives.</p>
+
+<h2>See also</h2>
+<p><a href="geo_grid.html"><code>geo.grid</code></a>, <a href="geo_basemap.html"><code>geo.basemap</code></a>, <a href="geo_readGrid.html"><code>geo.readGrid</code></a></p>
+<footer>geoMap v2.0 - generated by docbuild/build_help.m</footer>
+</body></html>
+<!-- helpsha256: 0c0ba81db064dd8b82d9c9195e9df272ab30e9eafd9429e584be4e677d121f21 -->

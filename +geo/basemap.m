@@ -50,7 +50,8 @@ function [figH, axH, H] = basemap(G, crs, options)
 %     tag. Asserted by a constant handle count, not described.
 %
 %   INPUTS
-%     G    (1,1) struct  A GEO.GRID. A bare matrix is rejected by
+%     G    (1,1) struct  A GEO.GRID, or a GEO.IMAGEGRID for a
+%                        true-colour backdrop (D-024). A bare matrix is rejected by
 %                        GEO.GRID rather than guessed at.
 %     crs  (1,1) struct  A GEO.CRS, or a projection name.
 %
@@ -139,6 +140,15 @@ function [figH, axH, H] = basemap(G, crs, options)
 %       geo:basemap:NothingToDraw       - every cell projected to NaN, so
 %                                         the extent lies wholly outside
 %                                         the projection's domain
+%       geo:basemap:ImageHasNoColourScale - CLim, Colormap or Mask was
+%                                         given for a GEO.IMAGEGRID,
+%                                         whose colours are its data.
+%                                         Hillshade and Divergent are NOT
+%                                         refused: their defaults are
+%                                         real values, so an omission
+%                                         cannot be told from a choice,
+%                                         and they are not read for an
+%                                         image.
 %     A bare matrix, a non-monotone axis or a transposed Z is rejected by
 %     GEO.GRID, and an unknown projection by GEO.CRS; neither is
 %     re-checked here.
@@ -196,7 +206,7 @@ arguments
     options.Parent = []
 end
 
-G = geo.grid(G);
+[G, image] = resolveKind(G, options);
 crs = resolveCrs(crs);
 
 [lon, lat, Z, topo] = rollToCentre(G, crs.CenterLongitude);
@@ -240,14 +250,27 @@ if ~any(isfinite(X(:)) & isfinite(Y(:)))
         crs.CenterLongitude, crs.CenterLatitude);
 end
 
-mask = resolveMask(options, Z, LON, LAT);
-cLim = resolveCLim(options, Z);
-cmap = resolveColormap(options);
-shade = resolveShade(options, lon, lat, Z, topo);
-
-CData = geo.colormaps("truecolor", Z, cmap, ...
-    CLim = cLim, Mask = mask, MaskColor = options.MaskColor, ...
-    NaNColor = options.NaNColor, Shade = shade);
+if isempty(image)
+    mask = resolveMask(options, Z, LON, LAT);
+    cLim = resolveCLim(options, Z);
+    cmap = resolveColormap(options);
+    shade = resolveShade(options, lon, lat, Z, topo);
+    CData = geo.colormaps("truecolor", Z, cmap, ...
+        CLim = cLim, Mask = mask, MaskColor = options.MaskColor, ...
+        NaNColor = options.NaNColor, Shade = shade);
+else
+    % AN IMAGE HAS NO COLOUR SCALE, so none is computed and none is put
+    % on the axes. Z here is the index map RESOLVEKIND substituted for
+    % the data, already permuted by ROLLTOCENTRE, so gathering through it
+    % applies the identical column roll to all three bands - the seam
+    % moves the picture exactly as it moves a field, without a second
+    % implementation of the roll.
+    mask = [];
+    cLim = [NaN NaN];
+    cmap = double.empty(0, 3);
+    shade = [];
+    CData = gatherBands(image.RGB, Z);
+end
 
 [figH, axH, createdFigure] = resolveAxes(options.Parent, options.NaNColor);
 % FROM HERE ON A FAILURE MUST NOT LEAVE THE FIGURE BEHIND (PV-149). Every
@@ -267,16 +290,27 @@ end
 % the rim cell is painted from the node it belongs to rather than left
 % blank. This is cartopy's add_cyclic, arrived at from the other side.
 CData = padLast(CData(:, colIdx, :));
-drawable = padLast(~isnan(Z(:, colIdx))) & isfinite(X) & isfinite(Y);
+if isempty(image)
+    drawable = double(padLast(~isnan(Z(:, colIdx))) & isfinite(X) & isfinite(Y));
+elseif isempty(image.Alpha)
+    drawable = double(isfinite(X) & isfinite(Y));
+else
+    % The mask is gathered through the SAME index map as the bands, so a
+    % roll cannot move the picture and leave the transparency behind.
+    A = image.Alpha(Z);
+    drawable = padLast(A(:, colIdx)) .* double(isfinite(X) & isfinite(Y));
+end
 
 s = surface('Parent', axH, 'XData', X, 'YData', Y, ...
     'ZData', zeros(size(X)), 'CData', CData, ...
     'FaceColor', 'flat', 'EdgeColor', 'none', 'FaceLighting', 'none', ...
     'FaceAlpha', 'flat', 'AlphaDataMapping', 'none', ...
-    'AlphaData', double(drawable));
+    'AlphaData', drawable);
 
-colormap(axH, cmap);
-clim(axH, cLim);                        % clim(), never caxis (F11)
+if isempty(image)
+    colormap(axH, cmap);
+    clim(axH, cLim);                    % clim(), never caxis (F11)
+end
 styleAxes(axH, X, Y);
 dataLimits = struct('XLim', xlim(axH), 'YLim', ylim(axH));
 
@@ -284,7 +318,12 @@ H = struct('Surface', s, 'CLim', cLim, 'Colormap', cmap, ...
     'Shade', shade, 'DataLimits', dataLimits, 'Crs', crs, ...
     'LonLimit', [min(lonE) max(lonE)], 'LatLimit', [min(latE) max(latE)], ...
     'Registration', G.Registration, 'CreatedFigure', createdFigure, ...
-    'HasUnder', any(Z(:) < cLim(1)), 'HasOver', any(Z(:) > cLim(2)));
+    'IsImage', ~isempty(image), ...
+    'HasUnder', ~isempty(image) && false, 'HasOver', false);
+if isempty(image)
+    H.HasUnder = any(Z(:) < cLim(1));
+    H.HasOver = any(Z(:) > cLim(2));
+end
 
 geo.internal.layout("register", axH, "basemap", @(~) []);
 geo.internal.layout("setData", axH, "basemap", H);
@@ -386,6 +425,72 @@ function A = padLast(A)
 %   here is cheaper than a reader later wondering whether the rim cells
 %   are drawn twice.
 A = A([1:end, end], [1:end, end], :);
+end
+
+function [G, image] = resolveKind(G, options)
+%RESOLVEKIND  Accept a field or an image, and refuse to confuse them.
+%   D-024 keeps GEO.GRID and GEO.IMAGEGRID as separate KINDS, because a
+%   field carries a colour scale and an image does not. It does not
+%   follow that they need separate RENDERERS: the projection, the seam
+%   roll, the rim clamp, the edge mesh and the flat-shading pad are
+%   identical for both, and duplicating ~200 lines of that geometry to
+%   avoid one branch would be F6 with extra steps. One kind check, here,
+%   and everything downstream is shared.
+%
+%   THE INDEX-MAP TRICK. An image cannot go through ROLLTOCENTRE, which
+%   rolls one plane. So the carrier grid's Z is 1:numel, and the bands
+%   are gathered THROUGH the rolled result afterwards. The roll is
+%   therefore applied to the picture by the same code that applies it to
+%   a field, rather than by a second copy that would drift.
+if isstruct(G) && isscalar(G) && isfield(G, 'Identity') && ...
+        string(G.Identity) == "geo.imageGrid"
+    refuseColourOptions(options);
+    image = struct('RGB', G.RGB, 'Alpha', G.Alpha);
+    idx = reshape(1:(numel(G.Lat) * numel(G.Lon)), numel(G.Lat), numel(G.Lon));
+    G = geo.grid(G.Lon, G.Lat, idx, ...
+        Registration = G.Registration, Source = G.Source);
+else
+    image = [];
+    G = geo.grid(G);
+end
+end
+
+function refuseColourOptions(options)
+%REFUSECOLOUROPTIONS  R4: refuse, never degrade silently.
+%   Only the options whose omission is DISTINGUISHABLE from a choice can
+%   be refused, which is why the list is these three and not every colour
+%   option: CLim defaults to NaN, Colormap to an empty, Mask to an empty,
+%   so a caller who supplied one can be told they are asking an image to
+%   have a colour scale. HILLSHADE and DIVERGENT default to real values,
+%   so an omission cannot be told from a choice and refusing them would
+%   reject the ordinary call; they are documented as not applicable
+%   instead. That asymmetry is R5's idiom showing its cost, not an
+%   oversight.
+bad = string.empty(1, 0);
+if ~all(isnan(options.CLim))
+    bad(end + 1) = "CLim";
+end
+if ~isempty(options.Colormap)
+    bad(end + 1) = "Colormap";
+end
+if ~isempty(options.Mask)
+    bad(end + 1) = "Mask";
+end
+if ~isempty(bad)
+    error("geo:basemap:ImageHasNoColourScale", ...
+        "%s cannot apply to a geo.imageGrid: its colours ARE its data. " + ...
+        "Setting a colour scale here would also take the axes scale " + ...
+        "away from the field drawn on top of the image, which is the " + ...
+        "backdrop stealing the colorbar.", strjoin(bad, ", "));
+end
+end
+
+function CData = gatherBands(RGB, idx)
+%GATHERBANDS  The three bands, permuted by one index map.
+n = numel(idx);
+CData = cat(3, reshape(RGB(idx), size(idx)), ...
+               reshape(RGB(idx + n), size(idx)), ...
+               reshape(RGB(idx + 2 * n), size(idx)));
 end
 
 function [lon, lat, Z, topo] = rollToCentre(G, lon0)

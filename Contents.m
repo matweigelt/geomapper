@@ -1,5 +1,5 @@
 % geoMap — cartographic visualisation in base MATLAB
-% Version 2.0.518 22-Aug-2026
+% Version 2.0.535 22-Aug-2026
 %
 %   THIS FILE IS THE VERSION AUTHORITY.
 %
@@ -36,6 +36,7 @@
 %     geo.grid             - Validated lon/lat grid, checked once so nothing re-checks it.
 %     geo.track            - Validated along-track series, NaN gaps preserved.
 %     geo.points           - Validated scattered point set, with optional size and labels.
+%     geo.imageGrid        - A true-colour raster on a geographic axes pair.
 %     geo.region           - Resolve an area of interest into a padded box and outline.
 %
 %   L2 — numerics, no graphics
