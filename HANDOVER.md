@@ -1,8 +1,10 @@
 # geoMap v2 — HANDOVER
 
-**Revision 3.1 · 21-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug); revision 3.1 re-synchronises Parts 0 and 1 with the evidence in `RECORDS.md` (PV-130).**
+**Revision 4.0 · 22-Aug-2026 · supersedes revision 1.1 (23-Jul-2026) in full. Revision 2.0 amended by Stage 0 pre-validation (13-Aug); revision 2.2 amended by the first EXECUTED run of the harness (14/15-Aug); revision 3.1 re-synchronises Parts 0 and 1 with the evidence in `RECORDS.md` (PV-130).**
 
 **What revision 3.1 changes, and why it had to.** Between 16-Aug and 20-Aug, Stages D, E and F.1–F.3 were built, executed and merged. Fourteen records entries (R-012 … R-025) and seventy change-log rows (C-100 … C-169) were written. **Part 1 — the one place a status is allowed to live — was not touched.** A session opening this file on the morning of 21-Aug read that Stage 0 was in progress and that Stages D, E and F had not started. Nothing was red: every gate looks at code, and no gate looked at the document set. This is BEST_PRACTICE §6.1 inverted — the evidence file grew a status and the status file kept none. The drift is now a check (`tools/ledger_sync.py`), so the next occurrence is a red static gate rather than a reader's surprise.
+
+**What revision 4.0 changes.** v2.0 shipped, and a three-reviewer examination — geodesist, software reviewer, cartographer — then read the tree against the four guides that became binding on 21-Aug. It closed three defects in a release-complete, all-green tree (PV-149/150/151), **corrected three rows of the oracle register that no instrument was watching**, and set the scope of Stage G in Part 10. The scope of Stage G is the first in this project decided against the field rather than against `geoImagescToolbox`: v2.0 discharged the obligation to replace v1, and what comes next is measured against GMT and against what a GRACE workflow actually needs.
 
 **What this file is.** The single source of truth for the revision of `geoImagescToolbox` v1.1/1.2 → `geoMap` v2.0. It holds the rules, the design and the ledger. **It is the only place a status lives.** Per BEST_PRACTICE §6.1 it holds no round-by-round narrative evidence; that goes to `RECORDS.md`.
 
@@ -36,6 +38,10 @@
 | V8 | ~~`geo.scalebar`'s 5% scale-variation gate is an invented threshold.~~ **DISCHARGED 13-Aug-2026.** Measured across 14 projections × 4 extents. At a 1.05 threshold a *refusing* gate would refuse on 6 of 14 projections even for a 10°×10° regional map, and 12 of 14 at continental scale — confirming D-006's draw-and-report decision on evidence rather than judgement. Threshold retained as a **warning** trigger only. Two method corrections: the gate must read **linear** scale (h, k), not area scale (PV-009), and must sample strictly inside the extent (PV-008/L7). | Mirror `check_scale_variation`. | — closed | — |
 | V9 | ~~Whether the v1 option surface can be preserved 1:1 is untested.~~ **DISCHARGED 16-Aug-2026 at checkpoint E.1c.** **177 options: 159 carried, 15 renamed, 3 dropped, 0 unmapped**, each checked against the real `arguments` block rather than asserted. Of v1's 120 `geoImagesc` options, 92 translate and 28 raise with the replacement named. | Enumerated mechanically, then checked. | `records/v1_option_inventory.md`, `records/v1_option_resolution.m`; R-019; **re-run 22-Aug, 177 options, 0 unmapped (PV-148)**. | — closed |
 
+| V10 | The mass-closure claim has no genuinely conservative second toolkit behind it. Part 3's O7 named `gdalwarp -r average`, which is not conservative on a geographic grid. Present evidence is an analytic invariant and a metamorphic split/merge property — both real, both **narrower** than the register implied. | The register row was never re-read against the module that implements it. | `cdo remapcon` or ESMF in the mirror, package G.0. | **Medium** |
+| V11 | Every speed ratio in the 518-point run still carries the **PREDICTED** stamp. V5 discharged the machine *baseline*; the budgets were never rebaselined against it, so each is ~3× wider than the measurement now supports. | Predictions transferred from the mirror were never replaced once the measurements existed. | One round reading the recorded per-repeat bands and rewriting each budget from them. | Low — the budgets are not wrong, they merely detect less than they could. |
+| V12 | The oracle register (Part 3) has no instrument. Three of its twelve rows were wrong across a release. | Every gate reads code or the stage ledger; none reads Part 3. | Package G.0. | **Medium** |
+
 **Standing rule.** A debt is discharged only when a number exists end to end (BEST_PRACTICE §F5). "The mirror now computes it" is not discharge; "the mirror computes it, MATLAB reproduces it, and both are in `RECORDS.md`" is.
 
 ---
@@ -55,6 +61,8 @@
 | **D** | L3 cartographic elements (14 files) | 0, A–C | **A** (bridge) | **☑ done** — seven checkpoints. **347 points predicted, 347 run, 347 passed, 0 failed.** Fourteen L3 elements and five internals replace v1's 3413-line plotting function, its two near-clones and its five plumbing functions | **16-Aug-2026** | R-009 … R-015 |
 | **E** | L4 fronts (6 files) | 0, A–D | **A** (bridge) | **☑ done** — seven checkpoints. **468 points predicted, 468 run, 468 passed, 0 failed.** `geo.map` is 128 lines against `geoImagesc`'s 3413. V9 discharged at E.1c | **20-Aug-2026** | R-016 … R-022 |
 | **F** | Docs, packaging, release, independent audit | 0, A–E | **A** (bridge) + CI | **☑ done** — deliverables 1–7, 9, 10, 11, 12 executed; **8 withdrawn (D-020)**. Release checklist complete, every item verified including the two with no automated oracle: **a fresh clone with only the root on the path runs `GettingStarted` and resolves `doc geoMap`**, and **the rendered manual read by a human**. Bridge: **516 + 0 + 0, nothing filtered** | **22-Aug-2026** | R-023 … R-030 |
+
+| **G** | Post-2.0: oracle gate, image backdrop + data cache, spherical filtering, sampling and grid algebra, animation and vectors | F | **A** (bridge) + CI | **☐ not started.** Scope set by the three-reviewer examination of 22-Aug (R-032) and specified in **Part 10**. Six packages G.0 … G.5; G.0 first because it is the instrument the rest are judged by | — | R-032 |
 
 Status values, and nothing else: `☐ not started` · `◐ in progress` · `◐ provisional (code shipped, not executed)` · `☑ done`.
 
@@ -101,6 +109,8 @@ Stages B and D are delivered in checkpoints — consecutive turns within one cha
 | F | — | **deliverable 12: the independent audit** | ☐ its own session, findings only |
 | F | F.5 | audit finding A-1: filter registry, three-state speed, partial-run banner | ◐ pushed; CI is the confirming run |
 | F | — | **deliverable 12: the independent audit** | ☑ delivered 21-Aug, five findings, R-026 |
+| F | F.10 | PV-149 figure discard + census, PV-150 CI twin run, PV-151 stale prose count | ☑ **518 points, 0 failed, 0 filtered, census clean, audit 0 findings**, bridge 22-Aug; R-032 |
+| G | G.0 | oracle-register gate; O7 re-specification | ☐ next |
 
 **The planned checkpoint names did not survive contact, and the delivered ones are what is recorded above.** Stage D was planned as three checkpoints and ran as seven; Stage E as one and ran as seven. That is not drift to be tidied away — a checkpoint was cut whenever a confirming run was owed, which is the rule working.
 
@@ -420,12 +430,14 @@ Gaps show as empty rows rather than as an absence nobody notices. **A stage may 
 | **O4** | `pyproj` **3.7.2** / PROJ **9.5.1** (independent implementation, in the mirror) | Second toolkit | **All 16 projections, forward and inverse**, over dense in-domain samples | Stage 0 pre-validation, Stage B `reference` | ☑ **13-Aug-2026, live.** 15 of 16 agree to ≤ 6e-13; Robinson to 8.9e-4 only (limit L5). Configured on an authalic-radius sphere with a same-sphere geographic source CRS — **not** EPSG:4326, which would insert an ellipsoid→sphere datum shift (PV-002 method note) |
 | **O5** | Natural Earth `.shp` (real third-party file) | Real data file | Shapefile reader against a file this project did not write | Stage C `reference` | ☑ **15-Aug-2026.** `ne_10m_coastline.shp` 410 957 pts / 4 133 parts; `ne_10m_ocean.shp` 446 789 / 6 822. Coordinates exact as IEEE doubles (ISEQUAL, not a tolerance) |
 | **O6** | GSHHG binary `.b`, any resolution (real file) | Real data file | GSHHG reader — **the only thing that can discharge V3** | Stage C `reference` | ☑ **15-Aug-2026, V3 DISCHARGED.** Five resolutions available; crude and intermediate checked. F17 pole closure exact at −90. Microdegree residual 2.98e-8 |
-| **O7** | `cdo remapcon` or `gdalwarp -r average` | Second toolkit | Conservative regrid weights and mass closure | Stage 0 mirror, Stage B `reference` | ☐ |
-| **O8** | `gdaldem hillshade` (Horn) | Second toolkit | Horn gradient hillshade on a known DEM tile | Stage 0 mirror, Stage B `reference` | ☐ |
+| **O7** | `cdo remapcon` or ESMF/`xESMF` **(RE-SPECIFIED 22-Aug-2026)** | Second toolkit | Conservative regrid weights and mass closure | Stage 0 mirror, Stage B `reference` | ☐ **and the row was wrong until now.** It also named `gdalwarp -r average`, which cannot certify this claim: it takes an unweighted mean of the source centres in a target cell, and on a geographic grid the cell area goes as cos φ, so that is not the cell integral and does not conserve mass away from the equator. `gdal_oracle.py` said so in its header and Part 3 never absorbed it. `gdalwarp -r average` is demoted to the **bilinear and nearest** paths. Until a genuinely conservative toolkit runs, mass closure rests on the analytic invariant and the split/merge property — real evidence, and NARROWER than this row implied. Debt V10, package G.0 |
+| **O8** | `gdaldem hillshade` (Horn) | Second toolkit | Horn gradient hillshade on a known DEM tile | Stage 0 mirror, Stage B `reference` | ☑ **FILLED — and it had been filled for days while this row said otherwise (22-Aug-2026).** `mirror/geomap_mirror/gdal_oracle.py` exists to fill it and CI proves the route against an analytically known plane before anything cites it. Caveat, from the module rather than invented here: `gdaldem hillshade` emits **uint8**, so it certifies to ~1/254 and no finer; `slope` and `aspect` are Float32 and carry the precision |
 | **O9** | ETOPO 2022, 60 and 30 arc-second, BOTH the ice-surface and bedrock variants | Real data | `geo.readGrid` NetCDF path, window and stride selection; regrid at production size | Stage C `reference`, Stage D.0 | ☑ **16-Aug-2026, FILLED.** Dimension order (lon,lat) read from the file; cell-centred origin and span exact to **0**; EGM2008 vertical datum recorded. `.nc` and `.tif` of one tile disagree on row order — NCO flipped latitude |
 | **O10** | MATLAB built-in `topo.mat` (`coast.mat` **absent from R2026a**) | Shipped reference data | Builtin grid path; the 0–359 longitude convention case | Stage C `reference`, Stage D.0 | ☑ **16-Aug-2026, FILLED for `topo.mat`.** Axes derived from `topolatlim`/`topolonlim` and the array size, not the legend's corner; four named places land correctly. `coast.mat` does not ship with R2026a, so that half stays open rather than pretended |
 | **O11** | A published GRACE mascon EWH trend map (e.g. JPL RL06 mascon, any release) | Real scientific product | End-to-end figure sanity: sign, magnitude and pattern of a known signal (Greenland, West Antarctica, north India) | Stage F acceptance | ☐ Matthias to name the release |
-| **O12** | v1 `geoImagescToolbox` itself, as installed | Prior implementation | **Only** the F1–F18 defect probes (V4). Not an authority on correctness — it is the thing being replaced. | Stage 0 probes | ☐ |
+| **O12** | v1 `geoImagescToolbox` itself, as installed | Prior implementation | **Only** the F1–F18 defect probes (V4). Not an authority on correctness — it is the thing being replaced. | Stage 0 probes | ☑ **FILLED, twice (15-Aug and 22-Aug).** 17 of 18 reproduced, 0 refuted, 1 blocked (F17, on O6). The row's own wording stands unchanged and is the reason this ☑ is narrow: v1 is an authority on its own defects and on nothing else |
+
+**THREE ROWS OF THIS TABLE WERE WRONG AT 2.0.516, AND NOTHING COULD SEE IT.** `tools/ledger_sync.py` compares the stage ledger against `RECORDS.md`; it reads nothing here. The oracle register was the one status surface in this project with no instrument watching it, which is why two rows read ☐ while the module filling them ran on every push, and one named an oracle that cannot certify its own claim. Package **G.0** gives it a gate. Until that gate exists, this table is **provisional in writing** (`VALIDATION_GUIDE` Part 3: no coverage claim from an instrument that does not exist).
 
 **O11 carries a span (§2.11).** When the release is named, the span of the data behind it is written next to the expected numbers, and the expectation is re-derived when a newer release supersedes it.
 
@@ -1279,6 +1291,98 @@ anything. R-011, PV-080.
 | C-192 | 22-Aug-2026 | **PV-146: under git distribution an ignored manual is an undelivered one.** `docs/html` was ignored as a build output — right while the `.mltbx` shipped it, wrong once a clone became the delivery. Tracked now, 47 pages, pinned to LF so a rebuild that changes nothing leaves the tree clean | D-020 |
 | C-193 | 22-Aug-2026 | **PV-147: validation walked each axis four times, and sorted to find a constant.** Registration and the angular guard each added an O(n) pass; together they crossed a budget neither could cross alone. `mustBeAxis` returns the diff its three readers need, and `median` (16.3 µs of 59.8, and it sorts) is called only when a one-pass uniformity check says the axis is irregular. Ratio 0.108 → **0.0767** | Budget not raised (§4.6) |
 | C-194 | 22-Aug-2026 | **PV-148: the v1 tree was never absent, the path was.** Two copies of one developer's absolute path, both one folder too deep. Four points filtered for four rounds and PV-129 recorded the cause as *gone from disk*. One resolver now, on the base class, searching `GEOMAP_V1_ROOT` then every sibling of the geoMap root. **OB-7 met; 516 + 0 + 0 on the bridge** | Matthias named the real location |
+
+---
+
+## Part 10 — Stage G: the post-2.0 plan
+
+*Written 22-Aug-2026 after the three-reviewer examination recorded in R-032. Stage G is the first stage whose scope was set by a review rather than by a migration target: v2.0 discharged its obligation to replace v1, and what follows is decided against the field, not against `geoImagescToolbox`.*
+
+**Stage G does not begin until PR for `claude/g1-figure-leak-and-ci` is merged.** That branch carries PV-149 and PV-150 and is the confirming run this plan is written on top of.
+
+### 10.1 What the review found
+
+Three reviewers examined the tree at 2.0.516: a geodesist (`geodesist.md`), a MATLAB software reviewer, and a cartographer. Their findings are evidence and live in `RECORDS.md` R-032. Their **consequences** are here, because a consequence is a status.
+
+**Where they agreed the toolbox is already right, stated explicitly so that a reviewer who only reports problems cannot be mistaken for one who checked nothing:** the sixteen projections are certified against PROJ and against published point values, not against themselves; the conservative regrid closes mass at 2.6e-14 against a 1e-13 bound derived from measurement rather than guessed; the hillshade carries the spherical metric and is checked against `gdaldem`; the colour defaults are perceptually ordered and CVD-safe; and the layering rule is machine-checked rather than drawn. None of that needed changing and none of it was changed.
+
+**The three defects the review closed immediately** are PV-149 (figures orphaned by a failing front, and no gate that could see them), PV-150 (CI ran every job twice), and PV-151 (a test-point count stale by twenty-five in prose behind a correct version stamp).
+
+### 10.2 Oracle register corrections — read this before citing O7
+
+Three rows of Part 3 were wrong at 2.0.516, and two were wrong in the direction that matters most.
+
+| Row | What Part 3 said | What is true | Action |
+|---|---|---|---|
+| **O7** | `cdo remapcon` **or** `gdalwarp -r average`, certifying "conservative regrid weights and mass closure" | **`gdalwarp -r average` cannot certify that claim.** It averages the source pixels whose centres fall in a target cell, unweighted. On a geographic grid the cell area goes as cos φ, so an unweighted mean is not the cell integral and does not conserve mass away from the equator. The project's own `mirror/geomap_mirror/gdal_oracle.py` says so in its header; Part 3 never absorbed it | **O7 is re-specified**: the conservative oracle is `cdo remapcon` or ESMF/`xESMF`, and `gdalwarp -r average` is demoted to certifying the *bilinear and nearest* paths only. Until a genuinely conservative second toolkit runs, the mass-closure claim rests on the analytic invariant (O3-class) and on the split/merge metamorphic property — which is real evidence, and is **narrower** than the register implied |
+| **O8** | ☐ open | **Filled.** `gdal_oracle.py` exists to fill it, CI proves the route against an analytically known plane before anything cites it, and the hillshade `reference` tier consumes it | Status → ☑, with the caveat already in the module: `gdaldem hillshade` emits uint8, so it certifies to ~1/254 and no finer. `slope` and `aspect` are Float32 and carry the precision |
+| **O12** | ☐ open | **Filled twice.** The v1 probes ran 15-Aug and again 22-Aug against the real tree: 17 of 18 reproduced, 0 refuted, 1 blocked | Status → ☑ *for the defect list only*. The row's own wording is right and is retained: v1 is an authority on its own defects and on nothing else |
+
+**The lesson is not that three rows were stale.** It is that `tools/ledger_sync.py` compares the *stage ledger* against `RECORDS.md` and reads nothing in Part 3, so the oracle register is the one status surface in this project with no instrument watching it. **G.0 gives it one.**
+
+### 10.3 The gap against GMT, and which gaps this project should care about
+
+The Generic Mapping Tools is the reference implementation of this domain and has been for thirty years. Comparing feature lists wholesale would produce a roadmap nobody executes, so the table below is scored by **what a GRACE-like gravimetry workflow actually needs**, which is this toolbox's stated purpose. A GMT capability that is genuinely irrelevant here is listed and dismissed, because an unstated dismissal is indistinguishable from an oversight.
+
+| GMT capability | geoMap v2.0 | Verdict for this project |
+|---|---|---|
+| `grdfilter` — spatial filtering with spherical support | **absent** | **Critical.** A 300 km Gaussian is not an optional garnish on a GRACE field, it is how the field is made presentable at all. A GRACE toolbox that cannot smooth is incomplete in its own domain. **G.2** |
+| `grdtrack` — sample a grid along a path | **absent** | **High.** The toolbox draws tracks and draws grids and cannot ask what the grid says under the track. **G.3** |
+| `grdmath` — grid algebra | **absent** | **High**, but cheap: MATLAB *is* the grid algebra. What is missing is not arithmetic, it is arithmetic that carries provenance and checks that two grids are on the same axes. **G.3** |
+| `surface`, `nearneighbor`, `sphinterpolate` — scattered → grid | **absent** | **Medium.** `geo.points` goes in and only ever comes out as markers. Deferred to G.5; `scatteredInterpolant` covers the plane case and the spherical case is real work |
+| `grdlandmask` | **absent** | **Medium.** Basin and land/ocean averaging is standard GRACE practice. Falls out of G.2's polygon machinery |
+| `grdvector`, `psvelo` — vector fields, error ellipses | **absent** | **Medium.** Displacement and velocity fields are adjacent to this project's users. **G.4** |
+| Remote datasets (`@earth_relief`, `@earth_day`) with auto-download and cache | **partial** — one shipped 10-arcmin topography | **High**, and it is the same work package as the requested imagery backdrop. **G.1** |
+| `grdview` — 3D perspective | **absent** | **Low.** Perspective relief is a presentation idiom this domain has largely abandoned for quantitative work; it hides data behind terrain |
+| CPT colour-palette interchange | **absent** | **Medium.** Reading a `.cpt` is an afternoon and buys interoperability with every GMT figure a colleague has |
+| Scientific Colour Maps (Crameri: `vik`, `roma`, `broc`) | **absent** — has viridis/magma/cividis | **High** and cheap. `vik` is the community default for signed GRACE fields; the toolbox ships perceptually correct *sequential* maps and no perceptually correct *diverging* one. **G.1** |
+| Focal mechanisms, `x2sys` crossovers, `gravfft` | absent | **Out of scope**, stated so nobody reads the absence as an oversight. Crossover analysis belongs to an altimetry project and spectral gravity to `shAnalysis` |
+| Animation of a grid sequence | **absent** | **High.** GRACE is a *monthly* product. The toolbox can draw one month beautifully and has no way to show 240 of them. **G.4** |
+
+### 10.4 Work packages
+
+Each is a stage in the sense Part 1 uses: it declares its tier, predicts its count, and closes on a green gate with a records entry. **No package begins with an unfilled oracle row in its scope** (Part 3).
+
+| id | Package | Depends on | Oracles it needs | Why it is where it is in the order |
+|---|---|---|---|---|
+| **G.0** | Oracle-register gate; O7 re-specification; O8/O12 status | — | none new | It is the instrument that watches the others' evidence. An instrument ships before what it measures (D-004) |
+| **G.1** | **Image backdrop and the data cache.** RGB grids end to end: `geo.imageGrid`, `readGrid` for `.tif`/`.png`/`.jpg`, RGB resampling in projected space, `Background` accepting an image, and a cached fetch for NASA Blue Marble | G.0 | **O13** Blue Marble BMNG source tile, **O14** GeoTIFF with a known geotransform | The requested feature, and it discharges the deferred GeoTIFF debt from Stage C in the same round because they are one mechanism |
+| **G.2** | **`geo.filter`** — spherical Gaussian, boxcar and fan filters on a grid, with the half-width in kilometres | G.0 | **O15** `grdfilter -Fg`, **O16** analytic: a filtered constant is that constant; the filter's kernel integrates to 1 | The domain's real gap. Ships before anything cosmetic |
+| **G.3** | **`geo.sample`** (grid along track/points) and **`geo.gridMath`** (provenance-carrying two-grid arithmetic with axis agreement enforced) | G.2 | **O17** `grdtrack` on a known analytic surface | Makes the toolbox answer questions, not only draw answers |
+| **G.4** | **`geo.animate`** (a grid sequence to GIF/MP4 with one fixed colour scale) and **`geo.overlayVectors`** | G.1 | **O18** frame count and duration read back from the written file | Depends on G.1 only for the backdrop; otherwise independent |
+| **G.5** | Scattered → grid; `grdlandmask` equivalent; CPT import | G.2, G.3 | **O19** `sphinterpolate`; **O20** a published `.cpt` | Last because each has a usable workaround today |
+
+**Scope is frozen per package before implementation, and G.0 is never mixed with anything** — it changes an instrument, and `WORKFLOW_GUIDE` Part 6b forbids mixing a change to the judging apparatus with a change it judges.
+
+### 10.5 Performance: what was measured, and what is worth doing
+
+**Nothing here is a guess.** The ratios below are from the 518-point run of 22-Aug on `win64 | R2026a | 16 threads`, and every one of them is *inside* budget. That is the point: **there is no measured speed defect in v2.0, and no speed work is scheduled on the strength of a feeling.**
+
+| Observed | Reading |
+|---|---|
+| `geo.map` vs the same four elements by hand: **1.012×** | The front costs essentially nothing over the elements it calls. Orchestration is not the bottleneck and optimising it would be optimising 1.2% |
+| `geo.grid` validation vs one pass over Z (2161×4321): **0.083×** | Validation is a twelfth of a single pass. The `arguments`-block cost the coding guide warns about is real per *call* and irrelevant per *grid* |
+| Coastline cold read / warm cache: **919×** | The cache is doing the work a cache exists to do |
+| Conservative regrid / bilinear: **1.393×** | Conservative costs 39% more than bilinear, not the 60× the budget allowed. The expensive-looking option is affordable enough to be the default where mass matters |
+
+**The one structural speed limit worth naming, and it is not yet a defect.** `geo.basemap` draws one `surface` sized to the data. At the shipped 10-arcmin topography this is trivial; at ETOPO 60-arcsecond global (21601×10801, ~1.9 GB as double) it is not, and the toolbox's answer today is `readGrid`'s `Stride` and `Region`, applied by the user who knows to apply them. **G.1 adds level-of-detail selection driven by the requested figure size** — a map 17 cm wide at 300 dpi has ~2000 pixels across and cannot show more than ~2000 columns, so reading more is work thrown away. This is decided by the same rule `mapBackdrop` already applies to the background and never invents cells.
+
+### 10.6 New verification debts
+
+| # | Debt | Why unverified | Discharged by | Severity |
+|---|---|---|---|---|
+| V10 | The mass-closure claim has no genuinely conservative second toolkit behind it — see O7 above. Present evidence is an analytic invariant and a metamorphic property, both real, both narrower than "checked against `cdo remapcon`" | The register named an oracle that cannot certify the claim, and nobody re-read the row against the module that implements it | `cdo remapcon` or ESMF in the mirror, in G.0 | **Medium** |
+| V11 | Every speed ratio in the run is still stamped **PREDICTED**. V5 discharged the *machine baseline*; the budgets themselves were never rebaselined against it | Predictions transferred from the mirror were never replaced by measurements once the measurements existed | One round that reads the recorded bands and rewrites each budget as `3 × measured`, then removes the stamp | **Low** — the budgets are not wrong, they are merely wider than they need to be, so they detect less than they could |
+| V12 | The oracle register has no instrument. Three rows were wrong for days across a release | Every gate reads code or the stage ledger; none reads Part 3 | G.0 | **Medium** |
+
+### 10.7 New decisions
+
+| id | Date | Decision | Rejected alternative | Deciding reason | **Re-read trigger** |
+|---|---|---|---|---|---|
+| D-021 | 22-Aug-2026 | A figure this toolbox created and did not finish is **deleted** on the way out; a figure the caller supplied is never touched. One authority: `geo.internal.discardOnFailure` | An `onCleanup` in each front; or leaving the figure so the user can inspect the failure | PV-149: four figures survived a green 516-point run. `DELETE` and not `CLOSE`, because `CloseRequestFcn` is user-replaceable and may refuse, and error unwinding must not run user code or be refusable. Leaving the figure was rejected because a half-drawn map is read as a *result*, not as wreckage — two of the four showed a bare surface and were reported as an "unfinished plot" | A user asks to inspect a partially drawn map after a failure, which would make this an option rather than a rule |
+| D-022 | 22-Aug-2026 | The green gate includes a **figure census**, which reports and never closes | Closing leaked figures in the runner; or a global `close all` before the suite | `VALIDATION_GUIDE` Part 10: the instrument may not change the machine it measures. Closing them would make the gate green by destroying its own evidence, and would close figures the operator opened for their own reasons | Never — a consequence of a paid-for rule |
+| D-023 | 22-Aug-2026 | CI triggers are `push` on `main` plus `pull_request`. The twin run is withdrawn | Keeping both triggers as a hang-diagnosis instrument, as the file's own comment argued | `WORKFLOW_GUIDE` Part 4 forbids the pairing by name. The defence does not survive costing: a permanent doubling of every job to make one rare diagnosis easier, when the step-level 8-minute timeout on the MATLAB setup step already turns a hang into a named failure. **The original reasoning was not wrong about the diagnosis being hard — it was wrong about this being the cheapest instrument for it** | A hang occurs that the step timeout does not localise, **and** the twin comparison would have localised it |
+| D-024 | 22-Aug-2026 | An RGB backdrop is a **separate grid kind**, not a three-band `geo.grid` | Overloading `geo.grid` with an M×N×3 `Z` | A `geo.grid` carries `CLim`, a colormap and a colorbar; an image carries none of those and must never consume the colour scale the data overlay owns. Overloading would put a `if ndims(Z)==3` branch in every consumer of every grid | The two kinds acquire more shared behaviour than distinct behaviour |
 
 ---
 

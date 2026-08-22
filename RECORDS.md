@@ -2442,3 +2442,173 @@ are both outside what it can see.
 ---
 
 *Entries R-032 onward are written at each stage's green gate.*
+
+---
+
+## R-032 — Stage F, checkpoint F.10, 22-Aug-2026, **tier A (bridge)**
+
+**Scope.** A three-reviewer examination of the tree at **2.0.516** against the
+four guides that became binding on 21-Aug (`CODING_GUIDE`,
+`VALIDATION_GUIDE`, `DOCUMENTATION_GUIDE`, `WORKFLOW_GUIDE`), plus the three
+defects it closed and the Stage G scope it set. Status lives in `HANDOVER.md`
+Parts 0, 1, 3 and 10; this entry holds the evidence and no status.
+
+**Execution tier. Tier A**, over the working tree itself — MATLAB
+R2026a Update 4, `win64`, 16 threads, at `C:\Users\matth\Documents\MATLAB\geoMap`,
+confirmed by `git rev-parse HEAD` in the same session that ran the suite. Not
+a copy. The three Python gates ran in the authoring container.
+
+### Confirming run
+
+`rungeoMapTests("all")` on the bridge, 22-Aug 16:08.
+
+| | |
+|---|---|
+| predicted, in the commit message before any run | **518** = 516 + 2 new `robustness` points |
+| passed + failed + incomplete | 518 + 0 + 0 |
+| suite size | 518 |
+| per-class sum | 518 |
+| wall time | 145.15 s |
+| warning inventory | empty |
+| filters | none raised; 0 incomplete |
+| speed tier | 24 of 24 selected points ran |
+| figure census | none — the graphics root ends as it began |
+| static audit | 0 findings |
+| **green gate** | **PASS** on all seven conditions |
+
+The prediction was hit exactly, three ways. The count reconciled to 519
+against a suite size of 518 in the preceding red run, which is not a defect:
+an *errored* point is counted both Failed and Incomplete.
+
+### Finding PV-149 — four figures survived every green run
+
+**Symptom, and where it came from.** Four figures were open on the target
+machine at the start of the session, `Visible='on'`. Two carried a single
+`Surface`; two carried 30 children. All four had `XLim` ±π, `YLim` ±π/2.
+
+**How it was attributed — measured, not read.** A `groot` `ChildAdded`
+listener was tried first and **did not fire**; that route is recorded here as
+not working rather than quietly replaced. `set(groot,'DefaultFigureCreateFcn',…)`
+does fire, and `dbstack` inside it carries the creating frames. Over a full
+516-point run every figure creation was logged with its stack and matched to
+the survivors by figure number. All four:
+
+```
+    resolveAxes (line 524)
+    basemap (line 243)
+    drawLadder (line 246)
+    map (line 185)
+    @()geo.map(G,args{:}) (line 88)
+    Throws.throwsExpectedException (line 187)
+    TestE1_map.anElementThatNeedsItsDataSaysWhichField (line 88)
+```
+
+**The defect.** `geo.basemap` creates the figure in `resolveAxes` when no
+`Parent` is given. `geo.map` then climbs a fourteen-rung ladder into it. The
+test asserts `geo:map:MissingField` for four element specs; the error escapes,
+and nothing owned the figure already on screen.
+
+**Why exactly two of the four look "unfinished".** The ladder order is
+`Contours, Polygons, Stipple, Graticule, Coastline, …, Track, Points, …`.
+`Polygons` and `Stipple` fail **below** `Graticule` and abandon a bare
+surface — 1 child. `Track` and `Points` fail **above** it and abandon a map
+with graticule and coastline — 30 children. 2 + 2, which is what the live
+handles showed. **The "unfinished plot" is not unfinished; it is abandoned.**
+
+**Why the assertion did not catch it.** The point asserted the *identifier*,
+and the identifier was always right. A correct error can still leave wreckage
+on screen. That is `VALIDATION_GUIDE` Part 3's **proxy**: asserting something
+implied by the claim rather than the claim.
+
+**Why no gate caught it.** Every condition the runner applies reads results,
+warning identifiers, filter reasons, speed records, category coverage or
+source files. **Not one reads the graphics root.** The leak was found by a
+human noticing windows on a desktop, which is not an instrument.
+
+**Repair.** `geo.internal.discardOnFailure` is the single authority for the
+rule. `geo.basemap` returns `H.CreatedFigure`; `geo.map` **reads** it rather
+than testing `isempty(Parent)` a second time — the same fact stated twice is
+the defect class this project has spent the most repairs on. The basemap
+body, the draw ladder and the export step are each inside the guard. `DELETE`
+and not `CLOSE`: `CloseRequestFcn` is user-replaceable and may refuse, and
+error unwinding must neither run user code nor be refusable.
+
+### Fault injection of the new check (`VALIDATION_GUIDE` Part 3)
+
+`FigureCensusPlugin` is a new instrument, so it was proved to fire before it
+was trusted. The guard's condition was neutered to `if false && …` on a
+working copy, `rungeoMapTests("TestE1_map")` was run, and the guard restored
+by `git checkout --` with `git status --porcelain` confirmed empty.
+
+| tree | census | figures open | gate |
+|---|---|---|---|
+| broken | `aFrontThatFailsLeavesNoFigureBehind +4`, `anElementThatNeedsItsDataSaysWhichField +4` | 8 | **FAIL** |
+| healthy | none | 0 | clean |
+
+It fires on a broken tree, is silent on a healthy one, **and it named the
+original defect independently of the test written for it.**
+
+### Finding PV-150 — CI bought two identical runs of everything
+
+`on: push:` was unrestricted and paired with `on: pull_request:`, which
+`WORKFLOW_GUIDE` Part 4 forbids by name. The file defended the duplicate in a
+comment as a hang-diagnosis instrument. The defence does not survive costing:
+a permanent doubling of every job for the project's life, to make one rare
+diagnosis marginally easier, when the step-level 8-minute timeout on the
+MATLAB setup step already turns a hang into a named failure. Nothing is lost
+by the repair — `pull_request` fires on synchronize, so a branch with an open
+PR still gets a run per push. What stops is the run on a branch nobody has
+opened a PR for, which Part 5 says should not exist.
+
+### Finding PV-151 — a count stale by twenty-five behind a correct stamp
+
+`Contents.m` line 15 and `README.md` line 28 both read **491 test points**
+while the version authority two lines above read **2.0.516**. Every gate
+green throughout. `geoMapAudit`'s `versionAgreement` check compares version
+**declarations** — `% Version X.Y.Z` and dotted triples declared as versions —
+and a count written into prose is not one. Textbook `DOCUMENTATION_GUIDE`
+Part 3: *a stamp is not the content*. `Contents.m` no longer restates the
+count at all; the Version line is its one home.
+
+Incidentally closed: the `Registration` field has been in `geo.basemap`'s
+returned struct since Stage D and was **never documented**. The sync gate
+could not see it, because it compares the page against the help block and
+both were silent about the field.
+
+### The reviewers' verdict, where it was that nothing needed changing
+
+Recorded explicitly, because a reviewer who reports only problems is not
+distinguishable from one who did not check. The sixteen projections are
+certified against PROJ **and** against published point values, not against
+themselves. The conservative regrid closes mass at **2.60e-14** against a
+1e-13 bound derived from measurement rather than guessed. The hillshade
+carries the spherical metric — the lat 60 / lat 0 ratio measures 6.09e-06
+relative against a 1e-05 bound — and is checked against `gdaldem`. CIELAB L*
+monotonicity holds for viridis, magma and cividis. The layering rule is
+parsed, not drawn. None of this was changed.
+
+### Oracle register: three rows were wrong, and nothing was watching
+
+| row | was | is |
+|---|---|---|
+| O7 | `cdo remapcon` **or `gdalwarp -r average`**, certifying conservative weights and mass closure | `gdalwarp -r average` takes an **unweighted** mean of source centres in a target cell. On a geographic grid cell area goes as cos φ, so that is not the cell integral and does not conserve mass away from the equator. `mirror/geomap_mirror/gdal_oracle.py` states this in its own header; Part 3 never absorbed it. Re-specified; debt **V10** raised |
+| O8 | ☐ | Filled, and had been for days — `gdal_oracle.py` exists to fill it and CI proves the route against an analytically known plane on every push |
+| O12 | ☐ | Filled twice (15-Aug, 22-Aug): 17 of 18 v1 probes reproduced, 0 refuted, 1 blocked |
+
+`tools/ledger_sync.py` compares the **stage ledger** against this file and
+reads nothing in Part 3. The oracle register is the one status surface in the
+project with no instrument, which is debt **V12** and package **G.0**.
+
+### Binding items a later stage could be wrong for not reading
+
+1. **A front that creates a figure owns it on every exit path.** Any new L4
+   front goes inside the same guard, or it reintroduces PV-149.
+2. **The green gate has seven conditions now, not six.** The figure census
+   reports and never closes; making it green by closing figures would destroy
+   its own evidence.
+3. **Part 3 is provisional in writing until G.0 ships its gate.** Do not cite
+   an oracle row's status without opening the module that implements it.
+4. **O7 does not certify mass closure.** Cite the analytic invariant and the
+   split/merge property, which are narrower and true.
+5. Next action, as a command:
+   `rungeoMapTests("all")` after `git checkout claude/g1-figure-leak-and-ci`.
